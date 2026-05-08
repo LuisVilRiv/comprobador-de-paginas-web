@@ -1,0 +1,501 @@
+2026-05-07 11:03:51,414 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://ejemplo.com
+2026-05-07 11:03:51,416 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://ejemplo.com
+2026-05-07 11:03:51,426 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://ejemplo.com
+2026-05-07 11:03:51,428 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://ejemplo.com
+2026-05-07 11:03:51,435 [WARNING] scraper.base.base_scraper — URL inválida: no-es-una-url
+2026-05-07 11:03:51,439 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://ejemplo.com
+2026-05-07 11:03:51,440 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 1/3 fallido para https://ejemplo.com: Error inesperado
+2026-05-07 11:03:53,442 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 2/3 fallido para https://ejemplo.com: Error inesperado
+2026-05-07 11:03:57,443 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 3/3 fallido para https://ejemplo.com: Error inesperado
+2026-05-07 11:03:57,443 [ERROR] scraper.base.base_scraper — [SeleniumStrategy] Fallaron los 3 intentos → https://ejemplo.com
+2026-05-07 11:03:57,836 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://ejemplo.com
+2026-05-07 11:03:57,837 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 1/3 fallido para https://ejemplo.com: WebDriverException: Message: fallo
+
+2026-05-07 11:03:59,838 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 2/3 fallido para https://ejemplo.com: WebDriverException: Message: fallo
+
+2026-05-07 11:04:03,839 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 3/3 fallido para https://ejemplo.com: WebDriverException: Message: fallo
+
+2026-05-07 11:04:03,839 [ERROR] scraper.base.base_scraper — [SeleniumStrategy] Fallaron los 3 intentos → https://ejemplo.com
+2026-05-07 11:04:03,867 [INFO] utils.url_loader — URL loader: 2 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-0\test_carga_solo_activas_por_de0\urls.json
+2026-05-07 11:04:03,876 [INFO] utils.url_loader — URL loader: 3 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-0\test_carga_todas_si_only_activ0\urls.json
+2026-05-07 11:04:03,888 [INFO] utils.url_loader — URL loader: 2 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-0\test_devuelve_lista_de_dicts0\urls.json
+2026-05-07 11:04:03,901 [WARNING] utils.url_loader — Entrada ignorada (URL inválida): {'url': 'no-es-url', 'strategy': 'selenium'}
+2026-05-07 11:04:03,901 [INFO] utils.url_loader — URL loader: 0 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-0\test_ignora_url_invalida0\urls.json
+2026-05-07 11:04:03,909 [WARNING] utils.url_loader — Entrada ignorada (estrategia 'phantomjs' desconocida): {'url': 'https://x.com', 'strategy': 'phantomjs'}
+2026-05-07 11:04:03,910 [INFO] utils.url_loader — URL loader: 0 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-0\test_ignora_estrategia_descono0\urls.json
+2026-05-07 11:04:03,952 [INFO] utils.url_loader — URL loader: 2 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-0\test_filtra_por_estrategia0\urls.json
+2026-05-07 11:04:03,962 [INFO] utils.url_loader — URL loader: 2 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-0\test_devuelve_vacio_si_no_hay_0\urls.json
+2026-05-07 11:04:11,832 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://ejemplo.com
+2026-05-07 11:04:11,834 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://ejemplo.com
+2026-05-07 11:04:11,840 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://ejemplo.com
+2026-05-07 11:04:11,841 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://ejemplo.com
+2026-05-07 11:04:11,845 [WARNING] scraper.base.base_scraper — URL inválida: no-es-una-url
+2026-05-07 11:04:11,848 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://ejemplo.com
+2026-05-07 11:04:11,849 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 1/3 fallido para https://ejemplo.com: Error inesperado
+2026-05-07 11:04:13,850 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 2/3 fallido para https://ejemplo.com: Error inesperado
+2026-05-07 11:04:17,852 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 3/3 fallido para https://ejemplo.com: Error inesperado
+2026-05-07 11:04:17,853 [ERROR] scraper.base.base_scraper — [SeleniumStrategy] Fallaron los 3 intentos → https://ejemplo.com
+2026-05-07 11:04:18,226 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://ejemplo.com
+2026-05-07 11:04:18,226 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 1/3 fallido para https://ejemplo.com: WebDriverException: Message: fallo
+
+2026-05-07 11:04:20,228 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 2/3 fallido para https://ejemplo.com: WebDriverException: Message: fallo
+
+2026-05-07 11:04:24,229 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 3/3 fallido para https://ejemplo.com: WebDriverException: Message: fallo
+
+2026-05-07 11:04:24,230 [ERROR] scraper.base.base_scraper — [SeleniumStrategy] Fallaron los 3 intentos → https://ejemplo.com
+2026-05-07 11:04:24,288 [INFO] utils.url_loader — URL loader: 2 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-1\test_carga_solo_activas_por_de0\urls.json
+2026-05-07 11:04:24,298 [INFO] utils.url_loader — URL loader: 3 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-1\test_carga_todas_si_only_activ0\urls.json
+2026-05-07 11:04:24,313 [INFO] utils.url_loader — URL loader: 2 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-1\test_devuelve_lista_de_dicts0\urls.json
+2026-05-07 11:04:24,322 [WARNING] utils.url_loader — Entrada ignorada (URL inválida): {'url': 'no-es-url', 'strategy': 'selenium'}
+2026-05-07 11:04:24,323 [INFO] utils.url_loader — URL loader: 0 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-1\test_ignora_url_invalida0\urls.json
+2026-05-07 11:04:24,334 [WARNING] utils.url_loader — Entrada ignorada (estrategia 'phantomjs' desconocida): {'url': 'https://x.com', 'strategy': 'phantomjs'}
+2026-05-07 11:04:24,334 [INFO] utils.url_loader — URL loader: 0 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-1\test_ignora_estrategia_descono0\urls.json
+2026-05-07 11:04:24,373 [INFO] utils.url_loader — URL loader: 2 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-1\test_filtra_por_estrategia0\urls.json
+2026-05-07 11:04:24,384 [INFO] utils.url_loader — URL loader: 2 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-1\test_devuelve_vacio_si_no_hay_0\urls.json
+2026-05-07 11:06:13,708 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://ejemplo.com
+2026-05-07 11:06:13,710 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://ejemplo.com
+2026-05-07 11:06:13,719 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://ejemplo.com
+2026-05-07 11:06:13,721 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://ejemplo.com
+2026-05-07 11:06:13,725 [WARNING] scraper.base.base_scraper — URL inválida: no-es-una-url
+2026-05-07 11:06:13,733 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://ejemplo.com
+2026-05-07 11:06:13,735 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 1/3 fallido para https://ejemplo.com: Error inesperado
+2026-05-07 11:06:15,737 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 2/3 fallido para https://ejemplo.com: Error inesperado
+2026-05-07 11:06:19,740 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 3/3 fallido para https://ejemplo.com: Error inesperado
+2026-05-07 11:06:19,741 [ERROR] scraper.base.base_scraper — [SeleniumStrategy] Fallaron los 3 intentos → https://ejemplo.com
+2026-05-07 11:06:19,751 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://ejemplo.com
+2026-05-07 11:06:19,755 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 1/3 fallido para https://ejemplo.com: WebDriverException: Message: fallo
+
+2026-05-07 11:06:21,757 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 2/3 fallido para https://ejemplo.com: WebDriverException: Message: fallo
+
+2026-05-07 11:06:25,759 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 3/3 fallido para https://ejemplo.com: WebDriverException: Message: fallo
+
+2026-05-07 11:06:25,759 [ERROR] scraper.base.base_scraper — [SeleniumStrategy] Fallaron los 3 intentos → https://ejemplo.com
+2026-05-07 11:06:25,814 [INFO] utils.url_loader — URL loader: 2 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-2\test_carga_solo_activas_por_de0\urls.json
+2026-05-07 11:06:25,830 [INFO] utils.url_loader — URL loader: 3 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-2\test_carga_todas_si_only_activ0\urls.json
+2026-05-07 11:06:25,845 [INFO] utils.url_loader — URL loader: 2 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-2\test_devuelve_lista_de_dicts0\urls.json
+2026-05-07 11:06:25,861 [WARNING] utils.url_loader — Entrada ignorada (URL inválida): {'url': 'no-es-url', 'strategy': 'selenium'}
+2026-05-07 11:06:25,861 [INFO] utils.url_loader — URL loader: 0 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-2\test_ignora_url_invalida0\urls.json
+2026-05-07 11:06:25,877 [WARNING] utils.url_loader — Entrada ignorada (estrategia 'phantomjs' desconocida): {'url': 'https://x.com', 'strategy': 'phantomjs'}
+2026-05-07 11:06:25,877 [INFO] utils.url_loader — URL loader: 0 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-2\test_ignora_estrategia_descono0\urls.json
+2026-05-07 11:06:25,932 [INFO] utils.url_loader — URL loader: 2 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-2\test_filtra_por_estrategia0\urls.json
+2026-05-07 11:06:25,944 [INFO] utils.url_loader — URL loader: 2 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-2\test_devuelve_vacio_si_no_hay_0\urls.json
+2026-05-07 11:07:00,710 [INFO] utils.url_loader — URL loader: 3 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-07 11:07:00,710 [INFO] __main__ — Iniciando scraping de 3 URL(s).
+2026-05-07 11:07:00,711 [INFO] scraper.context.scraper_context — Ejecutando [BeautifulSoupStrategy] sobre: https://quotes.toscrape.com/
+2026-05-07 11:07:00,711 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Iniciando scraping → https://quotes.toscrape.com/
+2026-05-07 11:07:02,469 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Éxito en intento 1/3 → https://quotes.toscrape.com/
+2026-05-07 11:07:02,470 [INFO] scraper.context.scraper_context — Ejecutando [SeleniumStrategy] sobre: https://quotes.toscrape.com/js/
+2026-05-07 11:07:02,470 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://quotes.toscrape.com/js/
+2026-05-07 11:07:30,211 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://quotes.toscrape.com/js/
+2026-05-07 11:07:30,211 [INFO] scraper.context.scraper_context — Ejecutando [BeautifulSoupStrategy] sobre: https://books.toscrape.com/
+2026-05-07 11:07:30,212 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Iniciando scraping → https://books.toscrape.com/
+2026-05-07 11:07:32,030 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Éxito en intento 1/3 → https://books.toscrape.com/
+2026-05-07 11:07:32,035 [INFO] utils.file_exporter — Resultados exportados (3 filas) → C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260507_110732.json
+2026-05-07 11:07:32,035 [INFO] __main__ — Scraping finalizado. Exitosos: 3 | Errores: 0 | Fichero: C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260507_110732.json
+2026-05-07 11:08:58,507 [INFO] utils.url_loader — URL loader: 4 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-07 11:08:58,507 [INFO] __main__ — Iniciando scraping de 4 URL(s).
+2026-05-07 11:08:58,508 [INFO] scraper.context.scraper_context — Ejecutando [BeautifulSoupStrategy] sobre: https://quotes.toscrape.com/
+2026-05-07 11:08:58,508 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Iniciando scraping → https://quotes.toscrape.com/
+2026-05-07 11:08:59,917 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Éxito en intento 1/3 → https://quotes.toscrape.com/
+2026-05-07 11:08:59,918 [INFO] scraper.context.scraper_context — Ejecutando [SeleniumStrategy] sobre: https://quotes.toscrape.com/js/
+2026-05-07 11:08:59,918 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://quotes.toscrape.com/js/
+2026-05-07 11:09:07,835 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://quotes.toscrape.com/js/
+2026-05-07 11:09:07,836 [INFO] scraper.context.scraper_context — Ejecutando [BeautifulSoupStrategy] sobre: https://books.toscrape.com/
+2026-05-07 11:09:07,837 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Iniciando scraping → https://books.toscrape.com/
+2026-05-07 11:09:09,307 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Éxito en intento 1/3 → https://books.toscrape.com/
+2026-05-07 11:09:09,308 [INFO] scraper.context.scraper_context — Ejecutando [SeleniumStrategy] sobre: https://ejemplo-spa.com/
+2026-05-07 11:09:09,308 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://ejemplo-spa.com/
+2026-05-07 11:09:16,015 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 1/3 fallido para https://ejemplo-spa.com/: WebDriverException: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+  (Session info: chrome=147.0.7727.138)
+Stacktrace:
+	chromedriver!GetHandleVerifier [0x7ff7d666a8e5+14e45]
+	chromedriver!GetHandleVerifier [0x7ff7d666a950+14eb0]
+	chromedriver!(No symbol) [0x7ff7d63dd6ed]
+	chromedriver!(No symbol) [0x7ff7d63da224]
+	chromedriver!(No symbol) [0x7ff7d63ca191]
+	chromedriver!(No symbol) [0x7ff7d63cc07f]
+	chromedriver!(No symbol) [0x7ff7d63ca733]
+	chromedriver!(No symbol) [0x7ff7d63c9efb]
+	chromedriver!(No symbol) [0x7ff7d63c9bb1]
+	chromedriver!(No symbol) [0x7ff7d63c77e1]
+	chromedriver!(No symbol) [0x7ff7d63c7f42]
+	chromedriver!(No symbol) [0x7ff7d63e19a6]
+	chromedriver!(No symbol) [0x7ff7d6485664]
+	chromedriver!(No symbol) [0x7ff7d646002a]
+	chromedriver!(No symbol) [0x7ff7d648483b]
+	chromedriver!(No symbol) [0x7ff7d64290e8]
+	chromedriver!(No symbol) [0x7ff7d6429fc3]
+	chromedriver!GetHandleVerifier [0x7ff7d6980149+32a6a9]
+	chromedriver!GetHandleVerifier [0x7ff7d697a715+324c75]
+	chromedriver!GetHandleVerifier [0x7ff7d699c012+346572]
+	chromedriver!GetHandleVerifier [0x7ff7d6687cb5+32215]
+	chromedriver!GetHandleVerifier [0x7ff7d669087c+3addc]
+	chromedriver!GetHandleVerifier [0x7ff7d66740e4+1e644]
+	chromedriver!GetHandleVerifier [0x7ff7d6674296+1e7f6]
+	chromedriver!GetHandleVerifier [0x7ff7d6658737+2c97]
+	KERNEL32!BaseThreadInitThunk [0x7ffdbc2ce8d7+17]
+	ntdll!RtlUserThreadStart [0x7ffdbd6ec3fc+2c]
+
+2026-05-07 11:09:24,548 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 2/3 fallido para https://ejemplo-spa.com/: WebDriverException: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+  (Session info: chrome=147.0.7727.138)
+Stacktrace:
+	chromedriver!GetHandleVerifier [0x7ff7d666a8e5+14e45]
+	chromedriver!GetHandleVerifier [0x7ff7d666a950+14eb0]
+	chromedriver!(No symbol) [0x7ff7d63dd6ed]
+	chromedriver!(No symbol) [0x7ff7d63da224]
+	chromedriver!(No symbol) [0x7ff7d63ca191]
+	chromedriver!(No symbol) [0x7ff7d63cc07f]
+	chromedriver!(No symbol) [0x7ff7d63ca733]
+	chromedriver!(No symbol) [0x7ff7d63c9efb]
+	chromedriver!(No symbol) [0x7ff7d63c9bb1]
+	chromedriver!(No symbol) [0x7ff7d63c77e1]
+	chromedriver!(No symbol) [0x7ff7d63c7f42]
+	chromedriver!(No symbol) [0x7ff7d63e19a6]
+	chromedriver!(No symbol) [0x7ff7d6485664]
+	chromedriver!(No symbol) [0x7ff7d646002a]
+	chromedriver!(No symbol) [0x7ff7d648483b]
+	chromedriver!(No symbol) [0x7ff7d64290e8]
+	chromedriver!(No symbol) [0x7ff7d6429fc3]
+	chromedriver!GetHandleVerifier [0x7ff7d6980149+32a6a9]
+	chromedriver!GetHandleVerifier [0x7ff7d697a715+324c75]
+	chromedriver!GetHandleVerifier [0x7ff7d699c012+346572]
+	chromedriver!GetHandleVerifier [0x7ff7d6687cb5+32215]
+	chromedriver!GetHandleVerifier [0x7ff7d669087c+3addc]
+	chromedriver!GetHandleVerifier [0x7ff7d66740e4+1e644]
+	chromedriver!GetHandleVerifier [0x7ff7d6674296+1e7f6]
+	chromedriver!GetHandleVerifier [0x7ff7d6658737+2c97]
+	KERNEL32!BaseThreadInitThunk [0x7ffdbc2ce8d7+17]
+	ntdll!RtlUserThreadStart [0x7ffdbd6ec3fc+2c]
+
+2026-05-07 11:09:30,355 [INFO] utils.url_loader — URL loader: 4 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-07 11:09:30,356 [INFO] __main__ — Iniciando scraping de 4 URL(s).
+2026-05-07 11:09:30,357 [INFO] scraper.context.scraper_context — Ejecutando [BeautifulSoupStrategy] sobre: https://quotes.toscrape.com/
+2026-05-07 11:09:30,357 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Iniciando scraping → https://quotes.toscrape.com/
+2026-05-07 11:09:31,638 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Éxito en intento 1/3 → https://quotes.toscrape.com/
+2026-05-07 11:09:31,639 [INFO] scraper.context.scraper_context — Ejecutando [SeleniumStrategy] sobre: https://quotes.toscrape.com/js/
+2026-05-07 11:09:31,640 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://quotes.toscrape.com/js/
+2026-05-07 11:09:39,779 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://quotes.toscrape.com/js/
+2026-05-07 11:09:39,780 [INFO] scraper.context.scraper_context — Ejecutando [BeautifulSoupStrategy] sobre: https://books.toscrape.com/
+2026-05-07 11:09:39,781 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Iniciando scraping → https://books.toscrape.com/
+2026-05-07 11:09:41,312 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Éxito en intento 1/3 → https://books.toscrape.com/
+2026-05-07 11:09:41,313 [INFO] scraper.context.scraper_context — Ejecutando [SeleniumStrategy] sobre: https://ejemplo-spa.com/
+2026-05-07 11:09:41,313 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://ejemplo-spa.com/
+2026-05-07 11:09:47,880 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 1/3 fallido para https://ejemplo-spa.com/: WebDriverException: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+  (Session info: chrome=147.0.7727.138)
+Stacktrace:
+	chromedriver!GetHandleVerifier [0x7ff7d666a8e5+14e45]
+	chromedriver!GetHandleVerifier [0x7ff7d666a950+14eb0]
+	chromedriver!(No symbol) [0x7ff7d63dd6ed]
+	chromedriver!(No symbol) [0x7ff7d63da224]
+	chromedriver!(No symbol) [0x7ff7d63ca191]
+	chromedriver!(No symbol) [0x7ff7d63cc07f]
+	chromedriver!(No symbol) [0x7ff7d63ca733]
+	chromedriver!(No symbol) [0x7ff7d63c9efb]
+	chromedriver!(No symbol) [0x7ff7d63c9bb1]
+	chromedriver!(No symbol) [0x7ff7d63c77e1]
+	chromedriver!(No symbol) [0x7ff7d63c7f42]
+	chromedriver!(No symbol) [0x7ff7d63e19a6]
+	chromedriver!(No symbol) [0x7ff7d6485664]
+	chromedriver!(No symbol) [0x7ff7d646002a]
+	chromedriver!(No symbol) [0x7ff7d648483b]
+	chromedriver!(No symbol) [0x7ff7d64290e8]
+	chromedriver!(No symbol) [0x7ff7d6429fc3]
+	chromedriver!GetHandleVerifier [0x7ff7d6980149+32a6a9]
+	chromedriver!GetHandleVerifier [0x7ff7d697a715+324c75]
+	chromedriver!GetHandleVerifier [0x7ff7d699c012+346572]
+	chromedriver!GetHandleVerifier [0x7ff7d6687cb5+32215]
+	chromedriver!GetHandleVerifier [0x7ff7d669087c+3addc]
+	chromedriver!GetHandleVerifier [0x7ff7d66740e4+1e644]
+	chromedriver!GetHandleVerifier [0x7ff7d6674296+1e7f6]
+	chromedriver!GetHandleVerifier [0x7ff7d6658737+2c97]
+	KERNEL32!BaseThreadInitThunk [0x7ffdbc2ce8d7+17]
+	ntdll!RtlUserThreadStart [0x7ffdbd6ec3fc+2c]
+
+2026-05-07 11:09:57,278 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 2/3 fallido para https://ejemplo-spa.com/: WebDriverException: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+  (Session info: chrome=147.0.7727.138)
+Stacktrace:
+	chromedriver!GetHandleVerifier [0x7ff7d666a8e5+14e45]
+	chromedriver!GetHandleVerifier [0x7ff7d666a950+14eb0]
+	chromedriver!(No symbol) [0x7ff7d63dd6ed]
+	chromedriver!(No symbol) [0x7ff7d63da224]
+	chromedriver!(No symbol) [0x7ff7d63ca191]
+	chromedriver!(No symbol) [0x7ff7d63cc07f]
+	chromedriver!(No symbol) [0x7ff7d63ca733]
+	chromedriver!(No symbol) [0x7ff7d63c9efb]
+	chromedriver!(No symbol) [0x7ff7d63c9bb1]
+	chromedriver!(No symbol) [0x7ff7d63c77e1]
+	chromedriver!(No symbol) [0x7ff7d63c7f42]
+	chromedriver!(No symbol) [0x7ff7d63e19a6]
+	chromedriver!(No symbol) [0x7ff7d6485664]
+	chromedriver!(No symbol) [0x7ff7d646002a]
+	chromedriver!(No symbol) [0x7ff7d648483b]
+	chromedriver!(No symbol) [0x7ff7d64290e8]
+	chromedriver!(No symbol) [0x7ff7d6429fc3]
+	chromedriver!GetHandleVerifier [0x7ff7d6980149+32a6a9]
+	chromedriver!GetHandleVerifier [0x7ff7d697a715+324c75]
+	chromedriver!GetHandleVerifier [0x7ff7d699c012+346572]
+	chromedriver!GetHandleVerifier [0x7ff7d6687cb5+32215]
+	chromedriver!GetHandleVerifier [0x7ff7d669087c+3addc]
+	chromedriver!GetHandleVerifier [0x7ff7d66740e4+1e644]
+	chromedriver!GetHandleVerifier [0x7ff7d6674296+1e7f6]
+	chromedriver!GetHandleVerifier [0x7ff7d6658737+2c97]
+	KERNEL32!BaseThreadInitThunk [0x7ffdbc2ce8d7+17]
+	ntdll!RtlUserThreadStart [0x7ffdbd6ec3fc+2c]
+
+2026-05-07 11:10:08,310 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 3/3 fallido para https://ejemplo-spa.com/: WebDriverException: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+  (Session info: chrome=147.0.7727.138)
+Stacktrace:
+	chromedriver!GetHandleVerifier [0x7ff7d666a8e5+14e45]
+	chromedriver!GetHandleVerifier [0x7ff7d666a950+14eb0]
+	chromedriver!(No symbol) [0x7ff7d63dd6ed]
+	chromedriver!(No symbol) [0x7ff7d63da224]
+	chromedriver!(No symbol) [0x7ff7d63ca191]
+	chromedriver!(No symbol) [0x7ff7d63cc07f]
+	chromedriver!(No symbol) [0x7ff7d63ca733]
+	chromedriver!(No symbol) [0x7ff7d63c9efb]
+	chromedriver!(No symbol) [0x7ff7d63c9bb1]
+	chromedriver!(No symbol) [0x7ff7d63c77e1]
+	chromedriver!(No symbol) [0x7ff7d63c7f42]
+	chromedriver!(No symbol) [0x7ff7d63e19a6]
+	chromedriver!(No symbol) [0x7ff7d6485664]
+	chromedriver!(No symbol) [0x7ff7d646002a]
+	chromedriver!(No symbol) [0x7ff7d648483b]
+	chromedriver!(No symbol) [0x7ff7d64290e8]
+	chromedriver!(No symbol) [0x7ff7d6429fc3]
+	chromedriver!GetHandleVerifier [0x7ff7d6980149+32a6a9]
+	chromedriver!GetHandleVerifier [0x7ff7d697a715+324c75]
+	chromedriver!GetHandleVerifier [0x7ff7d699c012+346572]
+	chromedriver!GetHandleVerifier [0x7ff7d6687cb5+32215]
+	chromedriver!GetHandleVerifier [0x7ff7d669087c+3addc]
+	chromedriver!GetHandleVerifier [0x7ff7d66740e4+1e644]
+	chromedriver!GetHandleVerifier [0x7ff7d6674296+1e7f6]
+	chromedriver!GetHandleVerifier [0x7ff7d6658737+2c97]
+	KERNEL32!BaseThreadInitThunk [0x7ffdbc2ce8d7+17]
+	ntdll!RtlUserThreadStart [0x7ffdbd6ec3fc+2c]
+
+2026-05-07 11:10:08,311 [ERROR] scraper.base.base_scraper — [SeleniumStrategy] Fallaron los 3 intentos → https://ejemplo-spa.com/
+2026-05-07 11:10:08,312 [ERROR] __main__ — Error en https://ejemplo-spa.com/: Fallaron los 3 intentos
+2026-05-07 11:10:08,317 [INFO] utils.file_exporter — Resultados exportados (4 filas) → C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260507_111008.json
+2026-05-07 11:10:08,317 [INFO] __main__ — Scraping finalizado. Exitosos: 3 | Errores: 1 | Fichero: C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260507_111008.json
+2026-05-07 11:13:52,612 [INFO] utils.url_loader — URL loader: 4 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-07 11:13:52,613 [INFO] __main__ — Iniciando scraping de 4 URL(s).
+2026-05-07 11:13:52,613 [INFO] scraper.context.scraper_context — Ejecutando [BeautifulSoupStrategy] sobre: https://quotes.toscrape.com/
+2026-05-07 11:13:52,614 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Iniciando scraping → https://quotes.toscrape.com/
+2026-05-07 11:13:53,913 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Éxito en intento 1/3 → https://quotes.toscrape.com/
+2026-05-07 11:13:53,921 [INFO] scraper.context.scraper_context — Ejecutando [SeleniumStrategy] sobre: https://quotes.toscrape.com/js/
+2026-05-07 11:13:53,948 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://quotes.toscrape.com/js/
+2026-05-07 11:14:01,840 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://quotes.toscrape.com/js/
+2026-05-07 11:14:01,841 [INFO] scraper.context.scraper_context — Ejecutando [BeautifulSoupStrategy] sobre: https://books.toscrape.com/
+2026-05-07 11:14:01,842 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Iniciando scraping → https://books.toscrape.com/
+2026-05-07 11:14:03,517 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Éxito en intento 1/3 → https://books.toscrape.com/
+2026-05-07 11:14:03,517 [INFO] scraper.context.scraper_context — Ejecutando [SeleniumStrategy] sobre: https://ejemplo-spa.com/
+2026-05-07 11:14:03,517 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://ejemplo-spa.com/
+2026-05-07 11:14:10,397 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 1/3 fallido para https://ejemplo-spa.com/: WebDriverException: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+  (Session info: chrome=147.0.7727.138)
+Stacktrace:
+	chromedriver!GetHandleVerifier [0x7ff7d666a8e5+14e45]
+	chromedriver!GetHandleVerifier [0x7ff7d666a950+14eb0]
+	chromedriver!(No symbol) [0x7ff7d63dd6ed]
+	chromedriver!(No symbol) [0x7ff7d63da224]
+	chromedriver!(No symbol) [0x7ff7d63ca191]
+	chromedriver!(No symbol) [0x7ff7d63cc07f]
+	chromedriver!(No symbol) [0x7ff7d63ca733]
+	chromedriver!(No symbol) [0x7ff7d63c9efb]
+	chromedriver!(No symbol) [0x7ff7d63c9bb1]
+	chromedriver!(No symbol) [0x7ff7d63c77e1]
+	chromedriver!(No symbol) [0x7ff7d63c7f42]
+	chromedriver!(No symbol) [0x7ff7d63e19a6]
+	chromedriver!(No symbol) [0x7ff7d6485664]
+	chromedriver!(No symbol) [0x7ff7d646002a]
+	chromedriver!(No symbol) [0x7ff7d648483b]
+	chromedriver!(No symbol) [0x7ff7d64290e8]
+	chromedriver!(No symbol) [0x7ff7d6429fc3]
+	chromedriver!GetHandleVerifier [0x7ff7d6980149+32a6a9]
+	chromedriver!GetHandleVerifier [0x7ff7d697a715+324c75]
+	chromedriver!GetHandleVerifier [0x7ff7d699c012+346572]
+	chromedriver!GetHandleVerifier [0x7ff7d6687cb5+32215]
+	chromedriver!GetHandleVerifier [0x7ff7d669087c+3addc]
+	chromedriver!GetHandleVerifier [0x7ff7d66740e4+1e644]
+	chromedriver!GetHandleVerifier [0x7ff7d6674296+1e7f6]
+	chromedriver!GetHandleVerifier [0x7ff7d6658737+2c97]
+	KERNEL32!BaseThreadInitThunk [0x7ffdbc2ce8d7+17]
+	ntdll!RtlUserThreadStart [0x7ffdbd6ec3fc+2c]
+
+2026-05-07 11:14:19,130 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 2/3 fallido para https://ejemplo-spa.com/: WebDriverException: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+  (Session info: chrome=147.0.7727.138)
+Stacktrace:
+	chromedriver!GetHandleVerifier [0x7ff7d666a8e5+14e45]
+	chromedriver!GetHandleVerifier [0x7ff7d666a950+14eb0]
+	chromedriver!(No symbol) [0x7ff7d63dd6ed]
+	chromedriver!(No symbol) [0x7ff7d63da224]
+	chromedriver!(No symbol) [0x7ff7d63ca191]
+	chromedriver!(No symbol) [0x7ff7d63cc07f]
+	chromedriver!(No symbol) [0x7ff7d63ca733]
+	chromedriver!(No symbol) [0x7ff7d63c9efb]
+	chromedriver!(No symbol) [0x7ff7d63c9bb1]
+	chromedriver!(No symbol) [0x7ff7d63c77e1]
+	chromedriver!(No symbol) [0x7ff7d63c7f42]
+	chromedriver!(No symbol) [0x7ff7d63e19a6]
+	chromedriver!(No symbol) [0x7ff7d6485664]
+	chromedriver!(No symbol) [0x7ff7d646002a]
+	chromedriver!(No symbol) [0x7ff7d648483b]
+	chromedriver!(No symbol) [0x7ff7d64290e8]
+	chromedriver!(No symbol) [0x7ff7d6429fc3]
+	chromedriver!GetHandleVerifier [0x7ff7d6980149+32a6a9]
+	chromedriver!GetHandleVerifier [0x7ff7d697a715+324c75]
+	chromedriver!GetHandleVerifier [0x7ff7d699c012+346572]
+	chromedriver!GetHandleVerifier [0x7ff7d6687cb5+32215]
+	chromedriver!GetHandleVerifier [0x7ff7d669087c+3addc]
+	chromedriver!GetHandleVerifier [0x7ff7d66740e4+1e644]
+	chromedriver!GetHandleVerifier [0x7ff7d6674296+1e7f6]
+	chromedriver!GetHandleVerifier [0x7ff7d6658737+2c97]
+	KERNEL32!BaseThreadInitThunk [0x7ffdbc2ce8d7+17]
+	ntdll!RtlUserThreadStart [0x7ffdbd6ec3fc+2c]
+
+2026-05-07 11:14:29,844 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 3/3 fallido para https://ejemplo-spa.com/: WebDriverException: Message: unknown error: net::ERR_NAME_NOT_RESOLVED
+  (Session info: chrome=147.0.7727.138)
+Stacktrace:
+	chromedriver!GetHandleVerifier [0x7ff7d666a8e5+14e45]
+	chromedriver!GetHandleVerifier [0x7ff7d666a950+14eb0]
+	chromedriver!(No symbol) [0x7ff7d63dd6ed]
+	chromedriver!(No symbol) [0x7ff7d63da224]
+	chromedriver!(No symbol) [0x7ff7d63ca191]
+	chromedriver!(No symbol) [0x7ff7d63cc07f]
+	chromedriver!(No symbol) [0x7ff7d63ca733]
+	chromedriver!(No symbol) [0x7ff7d63c9efb]
+	chromedriver!(No symbol) [0x7ff7d63c9bb1]
+	chromedriver!(No symbol) [0x7ff7d63c77e1]
+	chromedriver!(No symbol) [0x7ff7d63c7f42]
+	chromedriver!(No symbol) [0x7ff7d63e19a6]
+	chromedriver!(No symbol) [0x7ff7d6485664]
+	chromedriver!(No symbol) [0x7ff7d646002a]
+	chromedriver!(No symbol) [0x7ff7d648483b]
+	chromedriver!(No symbol) [0x7ff7d64290e8]
+	chromedriver!(No symbol) [0x7ff7d6429fc3]
+	chromedriver!GetHandleVerifier [0x7ff7d6980149+32a6a9]
+	chromedriver!GetHandleVerifier [0x7ff7d697a715+324c75]
+	chromedriver!GetHandleVerifier [0x7ff7d699c012+346572]
+	chromedriver!GetHandleVerifier [0x7ff7d6687cb5+32215]
+	chromedriver!GetHandleVerifier [0x7ff7d669087c+3addc]
+	chromedriver!GetHandleVerifier [0x7ff7d66740e4+1e644]
+	chromedriver!GetHandleVerifier [0x7ff7d6674296+1e7f6]
+	chromedriver!GetHandleVerifier [0x7ff7d6658737+2c97]
+	KERNEL32!BaseThreadInitThunk [0x7ffdbc2ce8d7+17]
+	ntdll!RtlUserThreadStart [0x7ffdbd6ec3fc+2c]
+
+2026-05-07 11:14:29,845 [ERROR] scraper.base.base_scraper — [SeleniumStrategy] Fallaron los 3 intentos → https://ejemplo-spa.com/
+2026-05-07 11:14:29,847 [ERROR] __main__ — Error en https://ejemplo-spa.com/: Fallaron los 3 intentos
+2026-05-07 11:14:29,869 [INFO] utils.file_exporter — Resultados exportados (4 filas) → C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260507_111429.json
+2026-05-07 11:14:29,869 [INFO] __main__ — Scraping finalizado. Exitosos: 3 | Errores: 1 | Fichero: C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260507_111429.json
+2026-05-07 12:31:41,341 [INFO] utils.url_loader — URL loader: 4 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-07 12:31:41,342 [INFO] __main__ — Iniciando scraping de 4 URL(s).
+2026-05-07 12:31:41,343 [INFO] scraper.context.scraper_context — Ejecutando [BeautifulSoupStrategy] sobre: https://quotes.toscrape.com/
+2026-05-07 12:31:41,344 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Iniciando scraping → https://quotes.toscrape.com/
+2026-05-07 12:32:03,312 [INFO] utils.url_loader — URL loader: 4 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-07 12:32:03,313 [INFO] __main__ — Iniciando scraping de 4 URL(s).
+2026-05-07 12:32:03,313 [INFO] scraper.context.scraper_context — Ejecutando [BeautifulSoupStrategy] sobre: https://quotes.toscrape.com/
+2026-05-07 12:32:03,314 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Iniciando scraping → https://quotes.toscrape.com/
+2026-05-07 12:32:04,814 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Éxito en intento 1/3 → https://quotes.toscrape.com/
+2026-05-07 12:32:04,814 [INFO] scraper.context.scraper_context — Ejecutando [SeleniumStrategy] sobre: https://quotes.toscrape.com/js/
+2026-05-07 12:32:04,814 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://quotes.toscrape.com/js/
+2026-05-07 12:32:14,689 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://quotes.toscrape.com/js/
+2026-05-07 12:32:14,690 [INFO] scraper.context.scraper_context — Ejecutando [BeautifulSoupStrategy] sobre: https://books.toscrape.com/
+2026-05-07 12:32:14,691 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Iniciando scraping → https://books.toscrape.com/
+2026-05-07 12:32:16,433 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Éxito en intento 1/3 → https://books.toscrape.com/
+2026-05-07 12:32:16,433 [INFO] scraper.context.scraper_context — Ejecutando [SeleniumStrategy] sobre: https://www.airbnb.es/
+2026-05-07 12:32:16,434 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://www.airbnb.es/
+2026-05-07 12:32:26,986 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://www.airbnb.es/
+2026-05-07 12:32:27,055 [INFO] utils.file_exporter — Resultados exportados (4 filas) → C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260507_123226.json
+2026-05-07 12:32:27,055 [INFO] __main__ — Scraping finalizado. Exitosos: 4 | Errores: 0 | Fichero: C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260507_123226.json
+2026-05-07 13:06:58,174 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://ejemplo.com
+2026-05-07 13:06:58,176 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://ejemplo.com
+2026-05-07 13:06:58,180 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://ejemplo.com
+2026-05-07 13:06:58,182 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://ejemplo.com
+2026-05-07 13:06:58,185 [WARNING] scraper.base.base_scraper — URL inválida: no-es-una-url
+2026-05-07 13:06:58,192 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://ejemplo.com
+2026-05-07 13:06:58,193 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 1/3 fallido para https://ejemplo.com: Error inesperado
+2026-05-07 13:07:00,194 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 2/3 fallido para https://ejemplo.com: Error inesperado
+2026-05-07 13:07:04,196 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 3/3 fallido para https://ejemplo.com: Error inesperado
+2026-05-07 13:07:04,197 [ERROR] scraper.base.base_scraper — [SeleniumStrategy] Fallaron los 3 intentos → https://ejemplo.com
+2026-05-07 13:07:04,211 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://ejemplo.com
+2026-05-07 13:07:04,213 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 1/3 fallido para https://ejemplo.com: WebDriverException: Message: fallo
+
+2026-05-07 13:07:06,215 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 2/3 fallido para https://ejemplo.com: WebDriverException: Message: fallo
+
+2026-05-07 13:07:10,217 [WARNING] scraper.base.base_scraper — [SeleniumStrategy] Intento 3/3 fallido para https://ejemplo.com: WebDriverException: Message: fallo
+
+2026-05-07 13:07:10,217 [ERROR] scraper.base.base_scraper — [SeleniumStrategy] Fallaron los 3 intentos → https://ejemplo.com
+2026-05-07 13:07:10,280 [INFO] utils.url_loader — URL loader: 2 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-3\test_carga_solo_activas_por_de0\urls.json
+2026-05-07 13:07:10,295 [INFO] utils.url_loader — URL loader: 3 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-3\test_carga_todas_si_only_activ0\urls.json
+2026-05-07 13:07:10,308 [INFO] utils.url_loader — URL loader: 2 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-3\test_devuelve_lista_de_dicts0\urls.json
+2026-05-07 13:07:10,316 [WARNING] utils.url_loader — Entrada ignorada (URL inválida): {'url': 'no-es-url', 'strategy': 'selenium'}
+2026-05-07 13:07:10,316 [INFO] utils.url_loader — URL loader: 0 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-3\test_ignora_url_invalida0\urls.json
+2026-05-07 13:07:10,329 [WARNING] utils.url_loader — Entrada ignorada (estrategia 'phantomjs' desconocida): {'url': 'https://x.com', 'strategy': 'phantomjs'}
+2026-05-07 13:07:10,330 [INFO] utils.url_loader — URL loader: 0 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-3\test_ignora_estrategia_descono0\urls.json
+2026-05-07 13:07:10,428 [INFO] utils.url_loader — URL loader: 2 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-3\test_filtra_por_estrategia0\urls.json
+2026-05-07 13:07:10,439 [INFO] utils.url_loader — URL loader: 2 entradas cargadas desde C:\Users\Usuario\AppData\Local\Temp\pytest-of-Usuario\pytest-3\test_devuelve_vacio_si_no_hay_0\urls.json
+2026-05-07 13:07:15,804 [INFO] utils.url_loader — URL loader: 4 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-07 13:07:15,804 [INFO] __main__ — Iniciando scraping de 4 URL(s).
+2026-05-07 13:07:15,805 [INFO] scraper.context.scraper_context — Ejecutando [BeautifulSoupStrategy] sobre: https://quotes.toscrape.com/
+2026-05-07 13:07:15,805 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Iniciando scraping → https://quotes.toscrape.com/
+2026-05-07 13:07:17,728 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Éxito en intento 1/3 → https://quotes.toscrape.com/
+2026-05-07 13:07:17,786 [INFO] scraper.context.scraper_context — Ejecutando [SeleniumStrategy] sobre: https://quotes.toscrape.com/js/
+2026-05-07 13:07:17,787 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://quotes.toscrape.com/js/
+2026-05-07 13:07:51,074 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://quotes.toscrape.com/js/
+2026-05-07 13:07:51,096 [INFO] scraper.context.scraper_context — Ejecutando [BeautifulSoupStrategy] sobre: https://books.toscrape.com/
+2026-05-07 13:07:51,097 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Iniciando scraping → https://books.toscrape.com/
+2026-05-07 13:07:52,657 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Éxito en intento 1/3 → https://books.toscrape.com/
+2026-05-07 13:07:56,677 [INFO] scraper.context.scraper_context — Ejecutando [SeleniumStrategy] sobre: https://www.airbnb.es/
+2026-05-07 13:07:56,678 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://www.airbnb.es/
+2026-05-07 13:08:08,055 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://www.airbnb.es/
+2026-05-07 13:08:08,975 [INFO] utils.file_exporter — Resultados exportados (4 filas) → C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260507_130808.json
+2026-05-07 13:08:09,008 [INFO] __main__ — Scraping finalizado. Exitosos: 4 | Errores: 0 | Fichero: C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260507_130808.json
+2026-05-07 13:13:13,471 [INFO] utils.url_loader — URL loader: 4 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-07 13:13:13,471 [INFO] __main__ — Iniciando scraping de 4 URL(s).
+2026-05-07 13:13:13,472 [INFO] scraper.context.scraper_context — Ejecutando [BeautifulSoupStrategy] sobre: https://quotes.toscrape.com/
+2026-05-07 13:13:13,472 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Iniciando scraping → https://quotes.toscrape.com/
+2026-05-07 13:13:14,914 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Éxito en intento 1/3 → https://quotes.toscrape.com/
+2026-05-07 13:13:14,928 [INFO] scraper.context.scraper_context — Ejecutando [SeleniumStrategy] sobre: https://quotes.toscrape.com/js/
+2026-05-07 13:13:14,929 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://quotes.toscrape.com/js/
+2026-05-07 13:13:24,596 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://quotes.toscrape.com/js/
+2026-05-07 13:13:24,624 [INFO] scraper.context.scraper_context — Ejecutando [BeautifulSoupStrategy] sobre: https://books.toscrape.com/
+2026-05-07 13:13:24,625 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Iniciando scraping → https://books.toscrape.com/
+2026-05-07 13:13:26,038 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Éxito en intento 1/3 → https://books.toscrape.com/
+2026-05-07 13:13:29,914 [INFO] scraper.context.scraper_context — Ejecutando [SeleniumStrategy] sobre: https://www.airbnb.es/
+2026-05-07 13:13:29,915 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://www.airbnb.es/
+2026-05-07 13:13:39,307 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://www.airbnb.es/
+2026-05-07 13:13:40,123 [INFO] utils.file_exporter — Resultados exportados (4 filas) → C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260507_131340.json
+2026-05-07 13:13:40,124 [INFO] __main__ — Scraping finalizado. Exitosos: 4 | Errores: 0 | Fichero: C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260507_131340.json
+2026-05-07 13:17:30,457 [INFO] utils.url_loader — URL loader: 1 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-07 13:17:30,458 [INFO] __main__ — Iniciando scraping de 1 URL(s).
+2026-05-07 13:17:30,459 [INFO] scraper.context.scraper_context — Ejecutando [BeautifulSoupStrategy] sobre: https://junquero25.es/
+2026-05-07 13:17:30,459 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Iniciando scraping → https://junquero25.es/
+2026-05-07 13:17:34,403 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Éxito en intento 1/3 → https://junquero25.es/
+2026-05-07 13:17:36,027 [INFO] utils.file_exporter — Resultados exportados (1 filas) → C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260507_131736.json
+2026-05-07 13:17:36,028 [INFO] __main__ — Scraping finalizado. Exitosos: 1 | Errores: 0 | Fichero: C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260507_131736.json
+2026-05-07 13:31:32,013 [INFO] utils.url_loader — URL loader: 1 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-07 13:31:32,041 [INFO] __main__ — Iniciando scraping de 1 URL(s).
+2026-05-07 13:31:32,042 [INFO] scraper.context.scraper_context — Ejecutando [BeautifulSoupStrategy] sobre: https://www.linkedin.com/company/apdigroup/
+2026-05-07 13:31:32,043 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Iniciando scraping → https://www.linkedin.com/company/apdigroup/
+2026-05-07 13:31:34,007 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Éxito en intento 1/3 → https://www.linkedin.com/company/apdigroup/
+2026-05-07 13:31:35,301 [INFO] utils.file_exporter — Resultados exportados (1 filas) → C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260507_133135.json
+2026-05-07 13:31:35,301 [INFO] __main__ — Scraping finalizado. Exitosos: 1 | Errores: 0 | Fichero: C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260507_133135.json
+2026-05-07 14:17:40,646 [INFO] utils.url_loader — URL loader: 1 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-07 14:17:40,646 [INFO] __main__ — Iniciando scraping de 1 URL(s).
+2026-05-07 14:17:40,648 [INFO] scraper.context.scraper_context — Ejecutando [BeautifulSoupStrategy] sobre: https://www.linkedin.com/company/apdigroup/
+2026-05-07 14:17:40,648 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Iniciando scraping → https://www.linkedin.com/company/apdigroup/
+2026-05-07 14:17:42,673 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Éxito en intento 1/3 → https://www.linkedin.com/company/apdigroup/
+2026-05-07 14:18:17,691 [INFO] utils.url_loader — URL loader: 1 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-07 14:18:17,692 [INFO] __main__ — Iniciando scraping de 1 URL(s).
+2026-05-07 14:18:17,694 [INFO] scraper.context.scraper_context — Ejecutando [BeautifulSoupStrategy] sobre: https://junquero25.es/
+2026-05-07 14:18:17,694 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Iniciando scraping → https://junquero25.es/
+2026-05-07 14:18:21,363 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Éxito en intento 1/3 → https://junquero25.es/
+2026-05-07 14:19:37,655 [INFO] utils.file_exporter — Resultados exportados (1 filas) → C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260507_141937.json
+2026-05-07 14:19:37,656 [INFO] __main__ — Scraping finalizado. Exitosos: 1 | Errores: 0 | Fichero: C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260507_141937.json
+2026-05-07 14:25:21,590 [INFO] utils.url_loader — URL loader: 1 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-07 14:25:21,590 [INFO] __main__ — Iniciando scraping de 1 URL(s).
+2026-05-07 14:25:21,592 [INFO] scraper.context.scraper_context — Ejecutando [BeautifulSoupStrategy] sobre: https://junquero25.es/
+2026-05-07 14:25:21,592 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Iniciando scraping → https://junquero25.es/
+2026-05-07 14:25:25,499 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Éxito en intento 1/3 → https://junquero25.es/
+2026-05-07 14:27:28,728 [INFO] utils.file_exporter — Resultados exportados (1 filas) → C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260507_142728.json
+2026-05-07 14:27:28,728 [INFO] __main__ — Scraping finalizado. Exitosos: 1 | Errores: 0 | Fichero: C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260507_142728.json

@@ -1732,16 +1732,68 @@ class QualityAuditor:
         button_issues: list[str],
         technical_issues: list[str],
     ) -> int:
+        """
+        Calcula la puntuacion final basandose en la gravedad de los hallazgos.
+        Se han suavizado las penalizaciones para no ser excesivamente estricto
+        con elementos que no son criticos para la funcionalidad o seguridad.
+        """
         score = 100
-        score -= len([i for i in security_issues if "Sin incidencias" not in i]) * 9
-        score -= len([i for i in seo_issues if "Sin incidencias" not in i]) * 6
-        score -= len([i for i in content_issues if "Sin incidencias" not in i]) * 7
-        score -= len([i for i in image_issues if "Sin incidencias" not in i]) * 5
-        score -= len([i for i in structure_issues if "Sin incidencias" not in i]) * 6
-        score -= len([i for i in link_issues if "Sin incidencias" not in i]) * 8
-        score -= len([i for i in button_issues if "Sin incidencias" not in i]) * 6
-        score -= len([i for i in technical_issues if "Sin incidencias" not in i]) * 7
-        return max(0, min(100, score))
+        
+        # Categorizacion de pesos
+        # CRITICO: -5 (Fallo total de funcionalidad, brecha de seguridad real, enlaces rotos)
+        # ALTO: -3 (SEO base, accesibilidad importante, SRI)
+        # MEDIO: -1.5 (Mejoras de rendimiento, metadatos, diseño semantico)
+        # BAJO: -0.5 (Avisos menores, buenas practicas sugeridas)
+
+        all_lists = [
+            security_issues, seo_issues, content_issues, image_issues,
+            structure_issues, link_issues, button_issues, technical_issues
+        ]
+        
+        total_deduction = 0.0
+        
+        for issue_list in all_lists:
+            for issue in issue_list:
+                issue_l = issue.lower()
+                if "sin incidencias" in issue_l:
+                    continue
+                
+                # --- PESO CRITICO (-5) ---
+                critical_keywords = (
+                    "dato sensible", "panel admin", "clave", "password", "token",
+                    "roto", "fallo al", "error de consola", "no existe en el dom",
+                    "bloqueo", "vulnerabilidad", "sin autenticacion", "discurso de odio",
+                    "explicito", "malsonante"
+                )
+                if any(k in issue_l for k in critical_keywords):
+                    total_deduction += 5
+                    continue
+
+                # --- PESO ALTO (-3) ---
+                high_keywords = (
+                    "falta cabecera", "hsts", "csp", "x-frame", "integrity (sri)",
+                    "falta doctype", "falta title", "falta description", "sin label",
+                    "viewport", "mixed content", "id duplicado"
+                )
+                if any(k in issue_l for k in high_keywords):
+                    total_deduction += 3
+                    continue
+
+                # --- PESO MEDIO (-1.5) ---
+                medium_keywords = (
+                    "falta canonical", "favicon", "alt de imagen", "legacy",
+                    "loading=\"lazy\"", "jerarquia", "semantica", "noopener",
+                    "lorem ipsum", "relleno", "hreflang"
+                )
+                if any(k in issue_l for k in medium_keywords):
+                    total_deduction += 1.5
+                    continue
+                
+                # --- PESO BAJO / NOTA (-0.5) ---
+                total_deduction += 0.5
+
+        score = 100 - total_deduction
+        return max(0, min(100, int(score)))
 
     @staticmethod
     def _status_from_score(score: int) -> str:

@@ -180,7 +180,7 @@ def build_audit_dictionaries() -> AuditDictionaries:
             "vagina", "vaginas",
             "vulva",
             "clitoris", "clítoris",
-            "ano ", "ano.",
+            # "ano" removido: genera falsos positivos con "año" (año, daño, etc.)
             "tetas", "teta", "teton", "tetona", "tetonas",
             "pezón", "pezon", "pezones",
             "senos desnudos", "pecho desnudo", "pechos desnudos",

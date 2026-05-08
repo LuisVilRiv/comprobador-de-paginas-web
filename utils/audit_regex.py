@@ -1,5 +1,5 @@
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
@@ -18,9 +18,26 @@ class AuditRegexSet:
     dotted_chars_regex: re.Pattern      # Letras separadas por puntos/guiones: "p.o.r.n"
     leet_chars_regex: re.Pattern        # Presencia de sustituciones leetspeak comunes
     unicode_lookalike_regex: re.Pattern # Caracteres unicode que imitan letras latinas
+    # ── Datos sensibles ───────────────────────────────────────────────────────
+    sensitive_data_regexes: tuple       # Tupla de (nombre, Pattern) para datos sensibles
+    filename_alt_regex: re.Pattern      # Alt de imagen que parece nombre de archivo
+    keyword_density_word_regex: re.Pattern  # Tokenizador para cálculo de keyword density
 
 
 def build_audit_regex_set() -> AuditRegexSet:
+    # Patrones de datos sensibles: cada entrada es (etiqueta, pattern)
+    sensitive_patterns = (
+        ("OpenAI API key",          re.compile(r"sk-[a-zA-Z0-9]{20,}")),
+        ("Bearer token",            re.compile(r"Bearer\s+[a-zA-Z0-9\-._~+/]{20,}")),
+        ("API key genérica",        re.compile(r"(?:API_KEY|APIKEY|api_key)\s*[=:]\s*\S{8,}", re.IGNORECASE)),
+        ("GitHub token",            re.compile(r"ghp_[a-zA-Z0-9]{36}")),
+        ("AWS Access Key",          re.compile(r"AKIA[0-9A-Z]{16}")),
+        ("Contraseña hardcodeada",  re.compile(r"password\s*[=:]\s*['\"]?\S{6,}", re.IGNORECASE)),
+        ("Email expuesto",          re.compile(r"[a-zA-Z0-9._%+\-]{2,}@[a-zA-Z0-9.\-]+\.[a-z]{2,6}")),
+        ("Teléfono ES expuesto",    re.compile(r"(?:\+34|0034)?\s?[6-9]\d{2}[\s\-]?\d{3}[\s\-]?\d{3}")),
+        ("Token genérico",          re.compile(r"(?:token|secret|passwd|pwd)\s*[=:]\s*['\"]?\S{8,}", re.IGNORECASE)),
+    )
+
     return AuditRegexSet(
         # ── Ruido / incoherencia ──────────────────────────────────────────────
         gibberish_regex=re.compile(r"(.)\1{4,}"),
@@ -48,6 +65,20 @@ def build_audit_regex_set() -> AuditRegexSet:
         # Detecta lookalikes unicode frecuentes usados para evadir filtros
         unicode_lookalike_regex=re.compile(
             r"[ａ-ｚＡ-Ｚ０-９\u0400-\u04FF\u0370-\u03FF]"  # Fullwidth + cirílico + griego
+        ),
+
+        # ── Datos sensibles ───────────────────────────────────────────────────
+        sensitive_data_regexes=sensitive_patterns,
+
+        # Alt que parece nombre de archivo: "img_001.jpg", "DSC_2341.png", "photo.jpeg"
+        filename_alt_regex=re.compile(
+            r"^[\w\-]{1,60}\.(jpe?g|png|gif|webp|avif|svg|bmp|tiff?)$",
+            re.IGNORECASE,
+        ),
+
+        # Tokenizador simple para keyword density (palabras de ≥3 chars)
+        keyword_density_word_regex=re.compile(
+            r"[a-záéíóúüñA-ZÁÉÍÓÚÜÑ]{3,}"
         ),
     )
 

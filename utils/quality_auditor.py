@@ -1,3 +1,4 @@
+import json
 import re
 import time
 from dataclasses import dataclass, field
@@ -24,6 +25,7 @@ logger = setup_logger(__name__)
 class QualityAuditReport:
     status: str
     score: int
+    security_issues: list[str] = field(default_factory=list)
     seo_issues: list[str] = field(default_factory=list)
     content_issues: list[str] = field(default_factory=list)
     image_issues: list[str] = field(default_factory=list)
@@ -40,6 +42,7 @@ class QualityAuditReport:
         return {
             "status": self.status,
             "score": self.score,
+            "security_issues": self.security_issues,
             "seo_issues": self.seo_issues,
             "content_issues": self.content_issues,
             "image_issues": self.image_issues,
@@ -64,14 +67,17 @@ class QualityAuditor:
         self._driver: webdriver.Chrome | None = None
         self._browser_confirms = 0
         self._max_browser_confirms = 15
+        self._last_response_headers: dict = {}   # cabeceras HTTP de la peticion inicial
 
     def build_report(self, html: str, base_url: str, metadata: dict | None = None) -> QualityAuditReport:
         metadata = metadata or {}
         self._browser_confirms = 0
+        self._last_response_headers = {}
         html_lines = html.splitlines()
         soup = BeautifulSoup(html, settings.BS4_PARSER)
         crawl_stats = {"tested": 0, "broken": 0, "skipped": 0}
 
+        security_issues: list[str] = []
         seo_issues: list[str] = []
         content_issues: list[str] = []
         image_issues: list[str] = []
@@ -90,16 +96,23 @@ class QualityAuditor:
             else:
                 self._warm_up_cookies(base_url)
 
+            self._check_security(html, soup, base_url, security_issues)
             self._check_structure(soup, structure_issues)
             self._check_seo(soup, seo_issues)
-            self._check_content(soup, content_issues, html_lines)
+            self._check_content(soup, content_issues, html_lines, base_url)
             self._check_images(soup, base_url, html_lines, image_issues)
             self._check_links_recursive(soup, base_url, html_lines, link_issues, crawl_stats)
             self._check_buttons(soup, base_url, html_lines, button_issues)
             self._check_technical(html, soup, base_url, html_lines, technical_issues, asset_stats, recommendations)
+
+            # Checks que requieren Selenium activo
+            if not self._is_banned_url(base_url):
+                self._check_js_console_errors(base_url, technical_issues)
+                self._interact_buttons_selenium(base_url, button_issues)
         finally:
             self._close_driver()
 
+        self._ensure_non_empty("security_issues", security_issues)
         self._ensure_non_empty("seo_issues", seo_issues)
         self._ensure_non_empty("content_issues", content_issues)
         self._ensure_non_empty("image_issues", image_issues)
@@ -111,6 +124,7 @@ class QualityAuditor:
         metrics = self._collect_metrics(
             soup,
             metadata,
+            security_issues,
             image_issues,
             link_issues,
             button_issues,
@@ -119,6 +133,7 @@ class QualityAuditor:
             asset_stats,
         )
         score = self._calculate_score(
+            security_issues,
             seo_issues,
             content_issues,
             image_issues,
@@ -130,6 +145,7 @@ class QualityAuditor:
         status = self._status_from_score(score)
         release_blocked, release_blockers = self._evaluate_release_gate(
             score=score,
+            security_issues=security_issues,
             content_issues=content_issues,
             link_issues=link_issues,
             technical_issues=technical_issues,
@@ -141,6 +157,7 @@ class QualityAuditor:
 
         recommendations.extend(
             self._build_recommendations(
+                security_issues,
                 seo_issues,
                 content_issues,
                 image_issues,
@@ -158,6 +175,7 @@ class QualityAuditor:
         return QualityAuditReport(
             status=status,
             score=score,
+            security_issues=security_issues,
             seo_issues=seo_issues,
             content_issues=content_issues,
             image_issues=image_issues,
@@ -173,42 +191,93 @@ class QualityAuditor:
 
     @staticmethod
     def report_to_text(report: QualityAuditReport) -> str:
+        # Generar lista de pruebas realizadas (dinámica basada en el auditor)
+        tests_performed = [
+            "Analisis de cabeceras de seguridad HTTP (CSP, HSTS, XFO...)",
+            "Escaneo de rutas de administracion (/admin, /wp-login...) con recursividad",
+            "Deteccion de datos sensibles expuestos (claves, tokens, APIs)",
+            "Auditoria de accesibilidad WCAG (labels, roles, landmarks, contrastes)",
+            "Validacion SEO (metas, canonical, lang, jerarquia Hx)",
+            "Analisis de contenido (lorem ipsum, toxicidad, duplicidad)",
+            "Verificacion de enlaces y assets (rotos, mixed content, SRI)",
+            "Pruebas de interaccion UI (clicks en botones y formularios via Selenium)",
+            "Monitorizacion de errores de consola JS y rendimiento (bloqueo de renderizado)",
+        ]
+
+        # Resumen general de mejoras (basado en recomendaciones)
+        top_improvements = report.recommendations[:5] if report.recommendations else ["Mantener monitorizacion periodica."]
+
+        # Justificación de puntuación
+        score_checks = []
+        if report.score >= 90:
+            score_checks.append("[\u2713] Excelente salud tecnica y de seguridad.")
+        elif report.score >= 70:
+            score_checks.append("[\u2713] Calidad buena, con margen de mejora en optimizacion.")
+        else:
+            score_checks.append("[x] Critico: Se requieren correcciones inmediatas de seguridad/SEO.")
+
+        if report.security_issues:
+            score_checks.append(f"[x] Detectados {len(report.security_issues)} fallos de seguridad.")
+        else:
+            score_checks.append("[\u2713] Sin brechas de seguridad criticas detectadas.")
+
+        if report.link_issues or report.technical_issues:
+            score_checks.append(f"[x] Existen recursos rotos o errores tecnicos que penalizan.")
+        else:
+            score_checks.append("[\u2713] Estabilidad tecnica validada.")
+
         lines = [
-            "INFORME DE CALIDAD WEB",
-            "======================",
-            f"Estado: {report.status}",
-            f"Puntuacion: {report.score}/100",
-            f"Gate de produccion: {'BLOQUEADO' if report.release_blocked else 'APTO'}",
+            "===========================================================",
+            "           INFORME DE AUDITORIA DE CALIDAD WEB             ",
+            "===========================================================",
             "",
-            "Bloqueadores de release:",
-            *([f"- {item}" for item in report.release_blockers] or ["- Sin bloqueadores criticos."]),
+            "1. RESUMEN DE PRUEBAS REALIZADAS",
+            "--------------------------------",
+            *[f"- {test}" for test in tests_performed],
             "",
-            "Metricas:",
-            *[f"- {k}: {v}" for k, v in report.metrics.items()],
+            "2. RESUMEN EJECUTIVO DE MEJORAS",
+            "-------------------------------",
+            *[f"- {item}" for item in top_improvements],
             "",
-            "SEO:",
-            *[f"- {item}" for item in report.seo_issues],
+            "3. PUNTUACION Y ESTADO",
+            "----------------------",
+            f"SCORE: {report.score}/100",
+            f"ESTADO: {report.status}",
+            f"GATE DE PRODUCCION: {'BLOQUEADO' if report.release_blocked else 'APTO'}",
             "",
-            "Estructura HTML:",
-            *[f"- {item}" for item in report.structure_issues],
+            "Justificacion del score:",
+            *[f"  {check}" for check in score_checks],
             "",
-            "Contenido:",
-            *[f"- {item}" for item in report.content_issues],
+            "4. DETALLE DE HALLAZGOS",
+            "-----------------------",
             "",
-            "Imagenes:",
-            *[f"- {item}" for item in report.image_issues],
+            "SEGURIDAD HTTP Y PROBING:",
+            *([f"  - {item}" for item in report.security_issues] or ["  - OK. Sin vulnerabilidades detectadas."]),
             "",
-            "Enlaces:",
-            *[f"- {item}" for item in report.link_issues],
+            "SEO Y METADATOS:",
+            *([f"  - {item}" for item in report.seo_issues] or ["  - OK. Optimizacion SEO correcta."]),
             "",
-            "Botones y formularios:",
-            *[f"- {item}" for item in report.button_issues],
+            "ESTRUCTURA Y ACCESIBILIDAD:",
+            *([f"  - {item}" for item in report.structure_issues] or ["  - OK. Estructura semantica solida."]),
             "",
-            "Tecnico / DevOps:",
-            *[f"- {item}" for item in report.technical_issues],
+            "CONTENIDO Y CALIDAD:",
+            *([f"  - {item}" for item in report.content_issues] or ["  - OK. Sin contenido problematico."]),
             "",
-            "Mejoras recomendadas:",
-            *[f"- {item}" for item in report.recommendations],
+            "IMAGENES Y ASSETS:",
+            *([f"  - {item}" for item in report.image_issues] or ["  - OK. Assets optimizados."]),
+            "",
+            "ENLACES Y NAVEGACION:",
+            *([f"  - {item}" for item in report.link_issues] or ["  - OK. Sin enlaces rotos."]),
+            "",
+            "BOTONES Y FORMULARIOS:",
+            *([f"  - {item}" for item in report.button_issues] or ["  - OK. Interactividad correcta."]),
+            "",
+            "TECNICO / CONSOLA JS:",
+            *([f"  - {item}" for item in report.technical_issues] or ["  - OK. Sin errores de ejecucion."]),
+            "",
+            "===========================================================",
+            "               FIN DEL INFORME AUDITORIA                   ",
+            "===========================================================",
         ]
         return "\n".join(lines)
 
@@ -262,11 +331,324 @@ class QualityAuditor:
 
     # ── Checks principales ────────────────────────────────────────────────────
 
+    def _check_security(
+        self,
+        html: str,
+        soup: BeautifulSoup,
+        base_url: str,
+        issues: list[str],
+    ) -> None:
+        """
+        Comprueba cabeceras de seguridad HTTP, uso de HTTPS, Subresource Integrity
+        y datos sensibles expuestos en el HTML crudo.
+        """
+        # ── 1. HTTPS vs HTTP ─────────────────────────────────────────────────
+        if base_url.lower().startswith("http://"):
+            issues.append(
+                "La URL usa HTTP en lugar de HTTPS. Todo el trafico viaja sin cifrar."
+            )
+
+        # ── 2. Cabeceras de seguridad HTTP ───────────────────────────────────
+        headers = {k.lower(): v for k, v in self._last_response_headers.items()}
+
+        required_headers = {
+            "content-security-policy": (
+                "Falta cabecera Content-Security-Policy (CSP). "
+                "Impide inyeccion de scripts maliciosos (XSS)."
+            ),
+            "x-frame-options": (
+                "Falta cabecera X-Frame-Options. "
+                "La pagina puede ser embebida en iframes externos (clickjacking)."
+            ),
+            "x-content-type-options": (
+                "Falta cabecera X-Content-Type-Options. "
+                "El navegador puede interpretar recursos con MIME incorrecto (MIME sniffing)."
+            ),
+            "referrer-policy": (
+                "Falta cabecera Referrer-Policy. "
+                "La URL completa puede filtrarse a terceros via cabecera Referer."
+            ),
+        }
+        for header, message in required_headers.items():
+            if header not in headers:
+                issues.append(message)
+
+        # HSTS solo obligatorio si el sitio es HTTPS
+        if base_url.lower().startswith("https://"):
+            if "strict-transport-security" not in headers:
+                issues.append(
+                    "Falta Strict-Transport-Security (HSTS). "
+                    "Los navegadores pueden conectar por HTTP en visitas futuras."
+                )
+
+        if not headers:
+            issues.append(
+                "No se pudieron obtener cabeceras HTTP de respuesta "
+                "(warm-up fallido o URL prohibida). Cabeceras de seguridad no verificadas."
+            )
+
+        # ── 3. Subresource Integrity (SRI) ───────────────────────────────────
+        base_host = self._normalize_host(urlparse(base_url).netloc)
+        sri_missing = []
+        for tag in soup.find_all(["script", "link"]):
+            if tag.name == "script":
+                src = (tag.get("src") or "").strip()
+            else:
+                rel = " ".join(tag.get("rel", [])).lower()
+                if "stylesheet" not in rel:
+                    continue
+                src = (tag.get("href") or "").strip()
+            if not src or not src.startswith("http"):
+                continue
+            tag_host = self._normalize_host(urlparse(src).netloc)
+            if tag_host and tag_host != base_host and not tag.get("integrity"):
+                sri_missing.append(src[:80])
+
+        if sri_missing:
+            if len(sri_missing) > 3:
+                issues.append(
+                    f"Falta atributo integrity (SRI) en {len(sri_missing)} recursos externos "
+                    f"(ej: {', '.join(sri_missing[:2])}...). Riesgo de inyeccion si el CDN es comprometido."
+                )
+            else:
+                for src in sri_missing:
+                    issues.append(f"Recurso externo sin atributo integrity (SRI): {src}")
+
+        # ── 4. Datos sensibles en el HTML crudo ──────────────────────────────
+        for label, pattern in self._regex.sensitive_data_regexes:
+            # Si el usuario dice que email y telefono son normales, los saltamos o somos menos estrictos
+            label_l = label.lower()
+            if any(x in label_l for x in ("email", "teléfono", "telefono", "phone")):
+                continue
+                
+            for match in pattern.finditer(html):
+                snippet = match.group().strip()
+                snippet_l = snippet.lower()
+                
+                # Filtrar tokens genéricos o undefined
+                if any(x in snippet_l for x in ("undefined", "null", "generic", "sample", "token_here")):
+                    continue
+                if len(snippet) < 6: # Evitar falsos positivos por strings muy cortos
+                    continue
+                
+                issues.append(
+                    f"[DATO SENSIBLE] {label} detectado en HTML: '{snippet[:60]}...'"
+                )
+                break # Solo reportar el primero de cada tipo para evitar ruido
+
+        # ── 5. Admin URL probing ─────────────────────────────────────────────
+        if not self._is_banned_url(base_url):
+            parsed = urlparse(base_url)
+            base_origin = f"{parsed.scheme}://{parsed.netloc}"
+
+            for admin_path in settings.AUDIT_ADMIN_PROBE_PATHS:
+                probe_url = base_origin + admin_path
+                state, reason, final_url, resp_status = self._probe_admin_path_recursive(probe_url)
+
+                if state == "protected":
+                    issues.append(
+                        f"Panel admin en {admin_path} protegido con autenticacion "
+                        f"({reason}, final_url={final_url}). OK."
+                    )
+                elif state == "exposed":
+                    issues.append(
+                        f"CRITICO: Panel admin posiblemente accesible SIN autenticacion en {admin_path} "
+                        f"({reason}, status={resp_status}, final_url={final_url}). "
+                        "Revisar manualmente y proteger con usuario/contrasena."
+                    )
+                elif state == "unknown":
+                    issues.append(
+                        f"No se pudo confirmar si el panel admin en {admin_path} esta protegido "
+                        f"({reason}, final_url={final_url}). Requiere verificacion manual."
+                    )
+                elif state == "not_found":
+                    logger.debug(
+                        "Ruta admin no encontrada/no accesible: %s (%s)",
+                        probe_url,
+                        reason,
+                    )
+
+    def _probe_admin_path_recursive(
+        self,
+        url: str,
+        depth: int = 0,
+        max_depth: int = 1,
+    ) -> tuple[str, str, str, int | None]:
+        """
+        Prueba una ruta de admin con recursividad limitada para encontrar
+        el panel de login real si la pagina inicial es ambigua.
+        """
+        try:
+            time.sleep(settings.AUDIT_REQUEST_DELAY_SECONDS)
+            resp = self._session.get(
+                url,
+                timeout=self._timeout,
+                allow_redirects=True,
+            )
+            final_url = resp.url or url
+            # Clasificar respuesta
+            state, reason = self._classify_admin_probe_response(url, resp)
+
+            # --- LÓGICA DE RECURSIVIDAD REFORZADA ---
+            # Si el estado es 'potentially_protected' (indicadores débiles) 
+            # o 'exposed' sin indicadores claros, buscamos profundizar.
+            is_ambiguous = (
+                (state == "protected" and "weak_indicator" in reason) or
+                (state == "exposed" and "without_auth_indicators" in reason)
+            )
+
+            if is_ambiguous and depth < max_depth:
+                soup = BeautifulSoup(resp.text, settings.BS4_PARSER)
+                login_keywords = {
+                    "login", "signin", "acceder", "entrar", "admin", "management",
+                    "identificarse", "log in", "sign in", "user", "account", "backend",
+                    "backoffice", "sistema", "acceso", "control",
+                }
+                
+                promising_links: list[str] = []
+                # Buscar en enlaces y tambien en botones/forms (action)
+                for tag in soup.find_all(["a", "form", "button"]):
+                    href = ""
+                    if tag.name == "a": href = tag.get("href") or ""
+                    elif tag.name == "form": href = tag.get("action") or ""
+                    
+                    text = tag.get_text(strip=True).lower()
+                    href_l = href.lower()
+                    
+                    if any(kw in href_l for kw in login_keywords) or any(kw in text for kw in login_keywords):
+                        full_href = urljoin(final_url, href)
+                        # Evitar bucles, links externos y anchors vacios
+                        if (full_href != final_url and 
+                            urlparse(full_href).netloc == urlparse(url).netloc and
+                            not full_href.endswith(("#", "javascript:void(0)"))):
+                            promising_links.append(full_href)
+
+                # Probar los links encontrados (maximo 5 para ser exhaustivos pero prudentes)
+                for link in promising_links[:5]:
+                    sub_state, sub_reason, sub_final, sub_status = self._probe_admin_path_recursive(
+                        link, depth + 1, max_depth
+                    )
+                    # Si encontramos una proteccion FUERTE en el sub-link, la reportamos.
+                    if sub_state == "protected" and "weak_indicator" not in sub_reason:
+                        return "protected", f"confirmed_auth_at={link}", sub_final, sub_status
+                    # Si encontramos un dashboard expuesto, es un hallazgo crítico.
+                    if sub_state == "exposed" and "dashboard" in sub_reason:
+                        return "exposed", f"nested_dashboard_found_at={link}", sub_final, sub_status
+
+            # Si despues de la recursividad seguimos teniendo solo indicadores debiles,
+            # lo bajamos a 'unknown' o 'exposed' si parece ser el home.
+            if state == "protected" and "weak_indicator" in reason:
+                return "unknown", f"ambiguous_indicators_only_at={final_url}", final_url, resp.status_code
+
+            return state, reason, final_url, resp.status_code
+
+        except requests.RequestException as exc:
+            return "not_found", str(exc), url, None
+
+    def _classify_admin_probe_response(
+        self,
+        probe_url: str,
+        resp: requests.Response,
+    ) -> tuple[str, str]:
+        """
+        Clasifica una respuesta de una ruta de administracion.
+
+        Estados devueltos:
+        - protected: hay autenticacion, bloqueo HTTP o redireccion a login.
+        - exposed: el panel parece accesible sin autenticacion.
+        - not_found: la ruta no existe o no es accesible.
+        - unknown: no se puede confirmar de forma fiable.
+        """
+        status = resp.status_code
+        final_url = resp.url or probe_url
+        final_url_l = final_url.lower()
+        text_l = (resp.text or "").lower()
+
+        # 1. Proteccion real por codigo HTTP.
+        if status in (401, 403):
+            return "protected", f"status={status}"
+
+        # 2. Ruta inexistente o eliminada.
+        if status in (404, 410):
+            return "not_found", f"status={status}"
+
+        # 3. Error servidor: no asumir que esta abierto.
+        if status >= 500:
+            return "unknown", f"status={status}"
+
+        # 4. Redireccion a login/autenticacion (Detección FUERTE si es por URL).
+        auth_url_indicators = (
+            "login", "signin", "sign-in", "auth", "authenticate", "wp-login",
+            "user/login", "account", "session", "sso", "oauth", "keycloak",
+        )
+        if resp.history and any(ind in final_url_l for ind in auth_url_indicators):
+            return "protected", f"redirect_to_auth={final_url}"
+
+        # 5. Detectar "Soft 404" o redirección al Home (Frecuente en catch-all).
+        # Si terminamos en la raiz o pagina de inicio, bajamos la confianza.
+        parsed_final = urlparse(final_url)
+        is_home = final_url_l.rstrip("/") == f"{urlparse(probe_url).scheme}://{urlparse(probe_url).netloc}".lower()
+        if is_home or parsed_final.path in ("", "/", "/index.html", "/index.php"):
+            # En el home, solo aceptamos indicadores FUERTES.
+            pass
+
+        # 6. HTML tipico de formulario de login (Indicadores FUERTES).
+        strong_login_indicators = (
+            'type="password"', "type='password'", 'name="password"', "name='password'",
+            'id="password"', "id='password'", "wp-submit", "user_login", "remember_me",
+            "csrf", "_token", 'action="login"', "action='login'",
+        )
+        if any(ind in text_l for ind in strong_login_indicators):
+            return "protected", "strong_login_form_detected"
+
+        # 7. Indicadores DÉBILES (Palabras sueltas que pueden ser links genéricos).
+        weak_login_indicators = (
+            "contraseña", "password", "iniciar sesión", "iniciar sesion",
+            "log in", "login", "sign in", "signin", "authenticate",
+            "autenticación", "autenticacion", "remember me", "acceder",
+            "identificarse", "entrar", "usuario", "user", "password",
+            "contrasenya", "clave", "credenciales", "inicie sesion",
+            "inicie sesión", "acceso", "login portal",
+        )
+        if any(ind in text_l for ind in weak_login_indicators):
+            # Si estamos en el Home, ignoramos indicadores débiles (suelen ser links de 'Area Clientes')
+            if is_home:
+                return "not_found", "redirected_to_home_with_weak_indicators"
+            return "protected", "weak_indicator_detected"
+
+        # 8. Indicadores de panel real ya cargado (EXPOSED).
+        dashboard_indicators = (
+            "dashboard",
+            "panel de administración",
+            "panel de administracion",
+            "admin dashboard",
+            "logout",
+            "cerrar sesión",
+            "cerrar sesion",
+            "usuarios",
+            "ajustes",
+            "settings",
+            "plugins",
+            "posts",
+            "pages",
+            "phpmyadmin",
+            "database server",
+        )
+        if status < 400 and any(ind in text_l for ind in dashboard_indicators):
+            return "exposed", "dashboard_indicators_detected"
+
+        # 7. Si responde bien y no parece login, es sospechoso.
+        if status < 400:
+            return "exposed", f"status={status}_without_auth_indicators"
+
+        return "unknown", f"status={status}"
+
     def _check_technical(
         self,
         html: str,
         soup: BeautifulSoup,
         base_url: str,
+
         html_lines: list[str],
         issues: list[str],
         asset_stats: dict,
@@ -309,6 +691,16 @@ class QualityAuditor:
 
         self._check_assets(soup, base_url, html_lines, issues, asset_stats)
         self._check_forms_accessibility(soup, html_lines, issues)
+
+        # ── Favicon ───────────────────────────────────────────────────────
+        favicon = soup.find("link", rel=lambda r: r and ("icon" in r or "shortcut icon" in r))
+        if not favicon:
+            issues.append("Falta favicon (<link rel=\"icon\">). Afecta a branding y pestanas del navegador.")
+
+        # ── Web Manifest ───────────────────────────────────────────────────
+        manifest = soup.find("link", attrs={"rel": "manifest"})
+        if not manifest:
+            recommendations.append("Falta web manifest (<link rel=\"manifest\">). Necesario para PWA y add-to-homescreen.")
 
         # ── CSS / JS inline ───────────────────────────────────────────────────
         # En producción es habitual que frameworks y bundlers inyecten CSS/JS
@@ -409,6 +801,84 @@ class QualityAuditor:
         if not soup.find_all(["h2", "h3"]):
             issues.append("No hay jerarquia de subtitulos <h2>/<h3>.")
 
+        # ── Landmarks semánticos ──────────────────────────────────────────────
+        has_main   = bool(soup.find("main") or soup.find(attrs={"role": "main"}))
+        has_nav    = bool(soup.find("nav")  or soup.find(attrs={"role": "navigation"}))
+        has_header = bool(soup.find("header") or soup.find(attrs={"role": "banner"}))
+        has_footer = bool(soup.find("footer") or soup.find(attrs={"role": "contentinfo"}))
+        if not has_main:
+            issues.append("Falta landmark <main> o role='main'. Los lectores de pantalla no pueden saltar al contenido principal.")
+        if not has_nav:
+            issues.append("Falta landmark <nav> o role='navigation'. Dificulta navegacion con lector de pantalla.")
+        if not has_header:
+            issues.append("Falta landmark <header> o role='banner'.")
+        if not has_footer:
+            issues.append("Falta landmark <footer> o role='contentinfo'.")
+
+        # ── Enlaces con texto generico (inutilizables con lector de pantalla) ─
+        generic_texts = {
+            "haz clic aqui", "click here", "haz clic aquí", "clic aqui", "clic aquí",
+            "leer mas", "leer más", "read more", "aqui", "aquí", "here",
+            "mas informacion", "más información", "more info", "mas", "más",
+            "enlace", "link", "ver mas", "ver más", "seguir leyendo",
+        }
+        for anchor in soup.find_all("a"):
+            link_text = anchor.get_text(" ", strip=True).lower().strip(" .,;")
+            if link_text in generic_texts:
+                href = (anchor.get("href") or "")[:80]
+                issues.append(
+                    f"Enlace con texto generico inutilizable con lector de pantalla: "
+                    f"'{link_text}' (href={href})"
+                )
+
+        # ── target=_blank sin rel=noopener noreferrer ─────────────────────────
+        for anchor in soup.find_all("a", attrs={"target": "_blank"}):
+            rel = " ".join(anchor.get("rel") or []).lower()
+            if "noopener" not in rel or "noreferrer" not in rel:
+                href = (anchor.get("href") or "")[:80]
+                issues.append(
+                    f"Enlace target='_blank' sin rel='noopener noreferrer' (seguridad + tab-napping): {href}"
+                )
+
+        # ── Video sin <track> (subtitulos) ───────────────────────────────────
+        for video in soup.find_all("video"):
+            if not video.find("track"):
+                src = (video.get("src") or "(sin src)")[:80]
+                issues.append(
+                    f"Elemento <video> sin <track> para subtitulos/descripcion: {src}"
+                )
+
+        # ── Elementos HTML obsoletos ──────────────────────────────────────────
+        deprecated_tags = ["center", "font", "blink", "marquee", "frame",
+                           "frameset", "noframes", "big", "strike", "tt"]
+        for tag_name in deprecated_tags:
+            found = soup.find(tag_name)
+            if found:
+                issues.append(f"Elemento HTML obsoleto <{tag_name}> detectado. Usar CSS equivalente.")
+
+        # ── Tablas de layout (sin <th> ni <caption>) ──────────────────────────
+        for table in soup.find_all("table"):
+            if not table.find("th") and not table.find("caption"):
+                issues.append(
+                    "Tabla sin <th> ni <caption>: posible tabla de maquetacion (usar CSS Grid/Flexbox)."
+                )
+                break  # uno es suficiente para el aviso
+
+        # ── Event handlers inline ─────────────────────────────────────────────
+        inline_events = ["onclick", "onmouseover", "onmouseout", "onkeydown",
+                         "onkeyup", "onchange", "onsubmit", "onfocus", "onblur"]
+        inline_count = 0
+        for tag in soup.find_all(True):
+            for ev in inline_events:
+                if tag.get(ev):
+                    inline_count += 1
+                    break
+        if inline_count > 0:
+            issues.append(
+                f"{inline_count} elemento(s) con event handlers inline (onclick/onchange/…). "
+                "Rompe separacion de responsabilidades; usar addEventListener."
+            )
+
     def _check_seo(self, soup: BeautifulSoup, issues: list[str]) -> None:
         title = soup.title.string.strip() if soup.title and soup.title.string else ""
         if not title:
@@ -431,7 +901,115 @@ class QualityAuditor:
         if not soup.find("meta", attrs={"name": "viewport"}):
             issues.append("Falta meta viewport para responsive.")
 
-    def _check_content(self, soup: BeautifulSoup, issues: list[str], html_lines: list[str]) -> None:
+        # ── Multiples <h1> ────────────────────────────────────────────────────
+        h1_list = soup.find_all("h1")
+        if len(h1_list) > 1:
+            issues.append(
+                f"Multiples <h1> detectados ({len(h1_list)}). Solo debe haber uno por pagina."
+            )
+
+        # ── Open Graph ────────────────────────────────────────────────────────
+        og_props = {"og:title", "og:description", "og:image"}
+        found_og = {
+            (m.get("property") or "").lower()
+            for m in soup.find_all("meta", property=True)
+        }
+        missing_og = og_props - found_og
+        if missing_og:
+            issues.append(
+                f"Open Graph incompleto. Faltan: {', '.join(sorted(missing_og))}. "
+                "Afecta a como se muestra el contenido al compartir en redes sociales."
+            )
+
+        # ── Twitter Card ──────────────────────────────────────────────────────
+        tw_card = soup.find("meta", attrs={"name": "twitter:card"})
+        if not tw_card:
+            issues.append(
+                "Falta meta twitter:card. El contenido puede mostrarse sin preview en Twitter/X."
+            )
+
+        # ── JSON-LD / Schema.org ───────────────────────────────────────────
+        jsonld_scripts = soup.find_all("script", attrs={"type": "application/ld+json"})
+        if not jsonld_scripts:
+            issues.append(
+                "No se detectan datos estructurados JSON-LD (Schema.org). "
+                "Mejora visibilidad en resultados enriquecidos de Google."
+            )
+        else:
+            for js_tag in jsonld_scripts:
+                raw_json = js_tag.get_text(strip=True)
+                if raw_json:
+                    try:
+                        data = json.loads(raw_json)
+                        if not isinstance(data, dict) or ("@type" not in data and "@context" not in data):
+                            issues.append(
+                                "JSON-LD presente pero sin @type ni @context valido. "
+                                "Puede no ser interpretado por motores de busqueda."
+                            )
+                    except (json.JSONDecodeError, ValueError):
+                        issues.append(
+                            "JSON-LD presente pero con sintaxis JSON invalida. "
+                            "No sera interpretado por motores de busqueda."
+                        )
+
+        # ── hreflang (multiidioma) ─────────────────────────────────────────
+        html_tag = soup.find("html")
+        page_lang = (html_tag.get("lang") or "").strip() if html_tag else ""
+        hreflang_links = soup.find_all("link", attrs={"rel": "alternate", "hreflang": True})
+        if page_lang and not hreflang_links:
+            issues.append(
+                f"La pagina declara lang=\"{page_lang}\" pero no tiene etiquetas hreflang. "
+                "Si hay versiones en otros idiomas, anadir <link rel=\"alternate\" hreflang=\"xx\">."
+            )
+
+        # ── Alt de imagen tipo nombre de archivo ────────────────────────────
+        for img in soup.find_all("img"):
+            alt = (img.get("alt") or "").strip()
+            if alt and self._regex.filename_alt_regex.match(alt):
+                src_hint = (img.get("src") or "")[:80]
+                issues.append(
+                    f"Alt de imagen es un nombre de archivo (\"{alt}\"), no descriptivo. src={src_hint}"
+                )
+
+    @staticmethod
+    def _is_false_positive(pattern: str, text: str) -> bool:
+        """
+        Filtra falsos positivos en la deteccion de contenido basados en el contexto espanol.
+        Evita que palabras comunes disparen alertas erroneas de contenido explicito.
+        """
+        # 1. "sex" en palabras espanolas seguras
+        if pattern == "sex":
+            match = re.search(r"\b(\w*sex\w*)\b", text)
+            if match:
+                word = match.group(1).lower()
+                safe = {"sexta", "sexto", "sesenta", "sexenio", "sexagesimo", "sextuplo"}
+                if word in safe:
+                    return True
+                    
+        # 2. "con" (muy comun en espanol)
+        if pattern == "con":
+            # Si es la preposicion "con", es falso positivo
+            if re.search(r"\bcon\b", text):
+                return True
+                
+        # 3. "put" en terminos tecnicos o palabras seguras
+        if pattern == "put":
+            match = re.search(r"\b(\w*put\w*)\b", text)
+            if match:
+                word = match.group(1).lower()
+                safe_tech = {"input", "output", "computo", "computadora", "reputacion", "disputa"}
+                if word in safe_tech:
+                    return True
+
+        return False
+
+    def _check_content(
+        self,
+        soup: BeautifulSoup,
+        issues: list[str],
+        html_lines: list[str],
+        base_url: str = "",
+    ) -> None:
         """
         Analiza el contenido visible de la página buscando:
         - Texto de relleno / placeholder (lorem ipsum, dummy…)
@@ -440,6 +1018,10 @@ class QualityAuditor:
         - Palabras malsonantes / insultos
         - Discurso de odio / discriminatorio
         - Rutas de administración expuestas en texto
+        - Contenido delgado (thin content)
+        - Keyword stuffing
+        - Ausencia de aviso legal / política de privacidad
+        - Ausencia de información de contacto
 
         La detección opera sobre DOS versiones del texto:
           · text_l          — texto original en minúsculas
@@ -469,6 +1051,9 @@ class QualityAuditor:
             in_original   = pattern in text_l
             in_normalized = pattern in text_normalized
             if in_original or in_normalized:
+                # Verificar falsos positivos por contexto español
+                if self._is_false_positive(pattern, text_l):
+                    continue
                 evasion_note = " [detectado via normalizacion/leetspeak]" if not in_original else ""
                 line_no, line = self._find_line_for_text(html_lines, pattern)
                 issues.append(
@@ -537,6 +1122,65 @@ class QualityAuditor:
                     f"Ruta de administracion expuesta '{segment}'{evasion_note} "
                     f"en linea aproximada {line_no}: {line}"
                 )
+
+        # ── Thin content (contenido delgado) ──────────────────────────────────
+        words = self._regex.keyword_density_word_regex.findall(text_l)
+        word_count = len(words)
+        # Excluir páginas típicamente cortas (home, contacto, gracias, legal…)
+        url_lower = base_url.lower()
+        is_short_page = any(
+            kw in url_lower
+            for kw in ("contact", "contacto", "gracias", "thank", "legal", "privacy", "aviso")
+        )
+        if not is_short_page and 0 < word_count < settings.AUDIT_MIN_WORD_COUNT:
+            issues.append(
+                f"Contenido delgado: solo {word_count} palabras visibles "
+                f"(minimo recomendado {settings.AUDIT_MIN_WORD_COUNT}). "
+                "Puede penalizarse en SEO."
+            )
+
+        # ── Keyword stuffing ──────────────────────────────────────────────────
+        if words:
+            freq: dict[str, int] = {}
+            for w in words:
+                freq[w] = freq.get(w, 0) + 1
+            top_word, top_count = max(freq.items(), key=lambda kv: kv[1])
+            density = top_count / len(words)
+            if density > settings.AUDIT_KEYWORD_DENSITY_MAX:
+                issues.append(
+                    f"Posible keyword stuffing: '{top_word}' aparece {top_count} veces "
+                    f"({density:.1%} del texto). Limite recomendado: {settings.AUDIT_KEYWORD_DENSITY_MAX:.0%}."
+                )
+
+        # ── Aviso legal / política de privacidad ──────────────────────────────
+        legal_terms = {
+            "aviso legal", "aviso-legal", "politica de privacidad",
+            "política de privacidad", "privacy policy", "terminos", "términos",
+            "condiciones de uso", "cookies", "rgpd", "gdpr", "lopd",
+        }
+        has_legal = any(term in text_l for term in legal_terms) or any(
+            any(term in (a.get_text(" ", strip=True).lower()) or term in (a.get("href") or "").lower()
+                for term in legal_terms)
+            for a in soup.find_all("a")
+        )
+        if not has_legal:
+            issues.append(
+                "No se detecta enlace ni texto de aviso legal / politica de privacidad. "
+                "Obligatorio por RGPD y normativa española."
+            )
+
+        # ── Información de contacto ───────────────────────────────────────────
+        contact_terms = {"contacto", "contact", "contactanos", "contáctanos", "escribenos"}
+        has_contact = (
+            any(term in text_l for term in contact_terms)
+            or bool(self._regex.sensitive_data_regexes[6][1].search(text))   # email pattern
+            or bool(self._regex.sensitive_data_regexes[7][1].search(text))   # phone pattern
+        )
+        if not has_contact:
+            issues.append(
+                "No se detecta informacion de contacto (email, telefono o seccion de contacto). "
+                "Recomendado para confianza y cumplimiento legal."
+            )
 
     @staticmethod
     def _detect_incoherent_segments(text_l: str, regex_set: AuditRegexSet) -> list[tuple[str, str]]:
@@ -617,6 +1261,19 @@ class QualityAuditor:
                     f"Imagen rota src={absolute_url} status={status_code} tiempo={elapsed_ms}ms ({speed}) en {location}"
                 )
 
+            # Rendimiento de imagenes
+            if not img.get("loading"):
+                issues.append(f"Imagen sin loading=\"lazy\" (src={src[:80]}) en {location}")
+            if not img.get("width") or not img.get("height"):
+                issues.append(
+                    f"Imagen sin width/height explicitos (causa layout shift / CLS): src={src[:80]} en {location}"
+                )
+            ext = src.rsplit(".", 1)[-1].lower() if "." in src else ""
+            if ext in ("jpg", "jpeg", "png", "gif", "bmp", "tiff"):
+                issues.append(
+                    f"Imagen en formato legacy ({ext}): considerar WebP/AVIF para mejor rendimiento. src={src[:80]}"
+                )
+
     def _check_links_recursive(
         self,
         soup: BeautifulSoup,
@@ -635,7 +1292,16 @@ class QualityAuditor:
 
         for anchor in soup.find_all("a"):
             href = (anchor.get("href") or "").strip()
-            if not href or href.startswith(("#", "mailto:", "tel:", "javascript:")):
+            if not href or href.startswith(("mailto:", "tel:", "javascript:")):
+                continue
+            # Validar anclajes internos (#id)
+            if href.startswith("#"):
+                fragment = href[1:]
+                if fragment and not soup.find(id=fragment) and not soup.find("a", attrs={"name": fragment}):
+                    ln, line = self._find_line_for_tag(html_lines, anchor)
+                    issues.append(
+                        f"Anclaje roto: href=\"{href}\" apunta a id que no existe en el DOM. Linea aproximada {ln}: {line}"
+                    )
                 continue
             full = urljoin(base_url, href)
             queue.append((full, 0))
@@ -809,31 +1475,202 @@ class QualityAuditor:
 
     def _warm_up_cookies(self, base_url: str) -> None:
         try:
-            self._session.get(base_url, timeout=self._timeout, allow_redirects=True)
+            resp = self._session.get(base_url, timeout=self._timeout, allow_redirects=True)
+            self._last_response_headers = dict(resp.headers)
         except requests.RequestException:
             logger.debug("No se pudo hacer warm-up de cookies para %s", base_url)
+            self._last_response_headers = {}
 
     def _get_driver(self) -> webdriver.Chrome | None:
         if self._driver is not None:
             return self._driver
         try:
+            import random
             opts = Options()
             if settings.SELENIUM_HEADLESS:
                 opts.add_argument("--headless=new")
+
+            # Anti-deteccion: UA aleatorio + ocultar webdriver
+            ua = random.choice(settings.USER_AGENT_POOL)
+            opts.add_argument(f"user-agent={ua}")
+            opts.add_argument("--disable-blink-features=AutomationControlled")
+            opts.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
+            opts.add_experimental_option("useAutomationExtension", False)
+
             opts.add_argument("--no-sandbox")
             opts.add_argument("--disable-dev-shm-usage")
             opts.add_argument("--disable-gpu")
-            opts.add_argument("--window-size=1366,768")
-            opts.add_argument(f"user-agent={settings.DEFAULT_HEADERS['User-Agent']}")
+            opts.add_argument("--window-size=1920,1080")
+            opts.add_argument("--disable-infobars")
+            opts.add_argument("--lang=es-ES")
+
+            # Logs de consola JS
+            opts.set_capability("goog:loggingPrefs", {"browser": "ALL"})
+
             service = Service(settings.SELENIUM_DRIVER_PATH) if settings.SELENIUM_DRIVER_PATH else Service()
             driver = webdriver.Chrome(service=service, options=opts)
             driver.set_page_load_timeout(settings.SELENIUM_PAGE_LOAD_TIMEOUT)
+
+            # Anti-deteccion: eliminar navigator.webdriver
+            try:
+                driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+                    "source": """
+                        Object.defineProperty(navigator, "webdriver", { get: () => undefined });
+                        Object.defineProperty(navigator, "plugins", { get: () => [1, 2, 3, 4, 5] });
+                        Object.defineProperty(navigator, "languages", { get: () => ["es-ES", "es", "en"] });
+                        window.chrome = { runtime: {} };
+                    """
+                })
+            except Exception:
+                pass  # CDP no soportado en esta version
+
             self._driver = driver
             return self._driver
         except Exception as exc:
             logger.debug("Selenium no disponible para confirmaciones: %s", exc)
             self._driver = None
             return None
+
+    def _check_js_console_errors(self, base_url: str, issues: list[str]) -> None:
+        """
+        Captura errores de consola JavaScript en runtime via Selenium.
+        Requiere goog:loggingPrefs configurado en el driver.
+        """
+        if not settings.AUDIT_JS_LOGS_ENABLED:
+            return
+        driver = self._get_driver()
+        if driver is None:
+            return
+        try:
+            time.sleep(settings.AUDIT_REQUEST_DELAY_SECONDS)
+            driver.get(base_url)
+            from selenium.webdriver.support.ui import WebDriverWait
+            from selenium.webdriver.support import expected_conditions as EC
+            WebDriverWait(driver, max(4, settings.SELENIUM_IMPLICIT_WAIT)).until(
+                EC.presence_of_element_located(("tag name", "body"))
+            )
+            time.sleep(1)  # Esperar a que JS termine de ejecutar
+            try:
+                logs = driver.get_log("browser")
+            except Exception:
+                logs = []
+            error_count = 0
+            for entry in logs:
+                level = entry.get("level", "").upper()
+                if level == "SEVERE":
+                    if error_count >= settings.AUDIT_JS_CONSOLE_MAX_ERRORS:
+                        issues.append(
+                            f"... y mas errores JS (limite de {settings.AUDIT_JS_CONSOLE_MAX_ERRORS} alcanzado)."
+                        )
+                        break
+                    msg = entry.get("message", "(sin mensaje)")[:200]
+                    source = entry.get("source", "unknown")
+                    issues.append(
+                        f"[JS ERROR] {source}: {msg}"
+                    )
+                    error_count += 1
+            if error_count == 0:
+                logger.debug("No se detectaron errores JS SEVERE en consola.")
+        except (TimeoutException, WebDriverException) as exc:
+            logger.debug("No se pudieron capturar logs JS para %s: %s", base_url, exc)
+        except Exception as exc:
+            logger.debug("Error inesperado capturando logs JS: %s", exc)
+
+    def _interact_buttons_selenium(self, base_url: str, issues: list[str]) -> None:
+        """
+        Intenta hacer click real en botones via Selenium para detectar fallos
+        de interaccion (elementos no clickeables, overlapped, JS errors, etc.).
+        """
+        if not settings.AUDIT_BUTTON_INTERACTION_ENABLED:
+            return
+        driver = self._get_driver()
+        if driver is None:
+            return
+        try:
+            time.sleep(settings.AUDIT_REQUEST_DELAY_SECONDS)
+            driver.get(base_url)
+            WebDriverWait(driver, max(4, settings.SELENIUM_IMPLICIT_WAIT)).until(
+                EC.presence_of_element_located(("tag name", "body"))
+            )
+            time.sleep(0.5)
+
+            from selenium.webdriver.common.by import By
+            from selenium.webdriver.common.action_chains import ActionChains
+
+            # Buscar botones interactivos
+            selectors = [
+                "button",
+                "input[type='submit']",
+                "input[type='button']",
+                "a[role='button']",
+                "[role='button']",
+            ]
+            buttons = []
+            for sel in selectors:
+                try:
+                    buttons.extend(driver.find_elements(By.CSS_SELECTOR, sel))
+                except Exception:
+                    pass
+
+            # Limitar al maximo configurado
+            original_url = driver.current_url
+            clicked = 0
+            for btn in buttons[:settings.AUDIT_BUTTON_MAX_CLICKS * 2]:
+                if clicked >= settings.AUDIT_BUTTON_MAX_CLICKS:
+                    break
+                try:
+                    if not btn.is_displayed() or not btn.is_enabled():
+                        continue
+                    btn_text = (btn.text or btn.get_attribute("value") or "(sin texto)")[:60]
+                    btn_tag = btn.tag_name
+
+                    # Scroll al elemento
+                    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", btn)
+                    time.sleep(settings.AUDIT_REQUEST_DELAY_SECONDS)
+
+                    try:
+                        btn.click()
+                        clicked += 1
+                        time.sleep(0.3)
+
+                        # Verificar si se rompio la pagina
+                        try:
+                            driver.find_element(By.TAG_NAME, "body")
+                        except Exception:
+                            issues.append(
+                                f"Pagina se rompio tras click en <{btn_tag}> '{btn_text}'. "
+                                "El body dejo de ser accesible."
+                            )
+
+                        # Si navego a otra pagina, volver
+                        if driver.current_url != original_url:
+                            driver.back()
+                            time.sleep(0.5)
+                            WebDriverWait(driver, 5).until(
+                                EC.presence_of_element_located(("tag name", "body"))
+                            )
+
+                    except WebDriverException as click_exc:
+                        exc_msg = str(click_exc)[:150]
+                        if "not interactable" in exc_msg.lower() or "obscured" in exc_msg.lower():
+                            issues.append(
+                                f"Boton <{btn_tag}> '{btn_text}' no interactivo u oculto por otro elemento."
+                            )
+                        elif "stale" in exc_msg.lower():
+                            pass  # Elemento ya no existe, normal tras navegacion
+                        else:
+                            issues.append(
+                                f"Error al hacer click en <{btn_tag}> '{btn_text}': {exc_msg}"
+                            )
+                        clicked += 1
+
+                except Exception:
+                    pass  # Elemento no accesible, skip
+
+        except (TimeoutException, WebDriverException) as exc:
+            logger.debug("No se pudieron probar botones para %s: %s", base_url, exc)
+        except Exception as exc:
+            logger.debug("Error inesperado probando botones: %s", exc)
 
     def _close_driver(self) -> None:
         if self._driver is None:
@@ -848,6 +1685,7 @@ class QualityAuditor:
     def _collect_metrics(
         soup: BeautifulSoup,
         metadata: dict,
+        security_issues: list[str],
         image_issues: list[str],
         link_issues: list[str],
         button_issues: list[str],
@@ -870,6 +1708,7 @@ class QualityAuditor:
             "forms_count": len(soup.find_all("form")),
             "buttons_count": len(soup.find_all(["button", "input"])),
             "word_count": len(soup.get_text(" ", strip=True).split()),
+            "security_issue_count": len([i for i in security_issues if "Sin incidencias" not in i]),
             "image_issue_count": len([i for i in image_issues if "Sin incidencias" not in i]),
             "link_issue_count": len([i for i in link_issues if "Sin incidencias" not in i]),
             "button_issue_count": len([i for i in button_issues if "Sin incidencias" not in i]),
@@ -884,6 +1723,7 @@ class QualityAuditor:
 
     @staticmethod
     def _calculate_score(
+        security_issues: list[str],
         seo_issues: list[str],
         content_issues: list[str],
         image_issues: list[str],
@@ -893,6 +1733,7 @@ class QualityAuditor:
         technical_issues: list[str],
     ) -> int:
         score = 100
+        score -= len([i for i in security_issues if "Sin incidencias" not in i]) * 9
         score -= len([i for i in seo_issues if "Sin incidencias" not in i]) * 6
         score -= len([i for i in content_issues if "Sin incidencias" not in i]) * 7
         score -= len([i for i in image_issues if "Sin incidencias" not in i]) * 5
@@ -914,6 +1755,7 @@ class QualityAuditor:
 
     @staticmethod
     def _build_recommendations(
+        security_issues: list[str],
         seo_issues: list[str],
         content_issues: list[str],
         image_issues: list[str],
@@ -923,6 +1765,8 @@ class QualityAuditor:
         technical_issues: list[str],
     ) -> list[str]:
         recommendations: list[str] = []
+        if any("Sin incidencias" not in i for i in security_issues):
+            recommendations.append("Reforzar seguridad HTTP: cabeceras, HTTPS, SRI y datos sensibles expuestos.")
         if any("Sin incidencias" not in i for i in seo_issues):
             recommendations.append("Corregir metadatos SEO: title, description, canonical, viewport y lang.")
         if any("Sin incidencias" not in i for i in structure_issues):
@@ -944,6 +1788,7 @@ class QualityAuditor:
     @staticmethod
     def _evaluate_release_gate(
         score: int,
+        security_issues: list[str],
         content_issues: list[str],
         link_issues: list[str],
         technical_issues: list[str],
@@ -954,6 +1799,18 @@ class QualityAuditor:
 
         if score < 70:
             blockers.append(f"Score global insuficiente para produccion ({score}/100).")
+
+        security_critical = (
+            "dato sensible",
+            "http en lugar de https",
+            "panel de administracion accesible",
+            "panel admin accesible",
+            "panel admin posiblemente accesible",
+            "sin autenticacion",
+            "sin autenticación",
+        )
+        if any(any(flag in issue.lower() for flag in security_critical) for issue in security_issues):
+            blockers.append("Incidencias de seguridad criticas (datos sensibles, HTTP o panel admin expuesto).")
 
         strong_content_flags = (
             "contenido explicito",

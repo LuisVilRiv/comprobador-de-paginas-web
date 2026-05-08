@@ -24,8 +24,11 @@ class UrlLoader:
           ]
         }
 
-    Campos obligatorios por entrada: `url`, `strategy`.
-    Campos opcionales:               `active` (default True), `id`, `description`.
+    Campos obligatorios por entrada: `url`.
+    Campos opcionales:               `strategy` (default "auto"), `active` (default True), `id`, `description`.
+
+    Si strategy es "auto" o no se especifica, el sistema elige automaticamente
+    la mejor estrategia y hace fallback a la otra si falla.
     """
 
     def __init__(self, path: Path | str = settings.URLS_JSON_PATH):
@@ -92,12 +95,15 @@ class UrlLoader:
         if host in banned_hosts:
             logger.warning("Entrada ignorada (host prohibido '%s'): %s", host, entry)
             return None
-        if entry.get("strategy") not in VALID_STRATEGIES:
+        strategy = entry.get("strategy", "auto")
+        if strategy not in VALID_STRATEGIES and strategy != "auto":
             logger.warning(
-                "Entrada ignorada (estrategia '%s' desconocida): %s",
-                entry.get("strategy"), entry,
+                "Estrategia '%s' desconocida, usando auto: %s",
+                strategy, entry,
             )
-            return None
+            entry["strategy"] = "auto"
+        else:
+            entry["strategy"] = strategy
         entry.setdefault("active", True)
         return entry
 

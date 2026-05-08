@@ -1,3 +1,4 @@
+import re
 import time
 from dataclasses import dataclass, field
 from urllib.parse import urljoin, urlparse
@@ -14,7 +15,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from config import settings
 from config.logging_config import setup_logger
 from utils.audit_dictionaries import build_audit_dictionaries
-from utils.audit_regex import AuditRegexSet, build_audit_regex_set
+from utils.audit_regex import AuditRegexSet, LEET_TRANSLATION_TABLE, build_audit_regex_set
 
 logger = setup_logger(__name__)
 
@@ -95,7 +96,7 @@ class QualityAuditor:
             self._check_images(soup, base_url, html_lines, image_issues)
             self._check_links_recursive(soup, base_url, html_lines, link_issues, crawl_stats)
             self._check_buttons(soup, base_url, html_lines, button_issues)
-            self._check_technical(html, soup, base_url, html_lines, technical_issues, asset_stats)
+            self._check_technical(html, soup, base_url, html_lines, technical_issues, asset_stats, recommendations)
         finally:
             self._close_driver()
 
@@ -211,6 +212,56 @@ class QualityAuditor:
         ]
         return "\n".join(lines)
 
+    # ── Normalización para detección robusta de contenido ─────────────────────
+
+    @staticmethod
+    def _normalize_for_detection(text: str) -> str:
+        """
+        Normaliza el texto antes de comparar contra los patrones de contenido
+        problemático. Detecta variantes de evasión comunes:
+
+        1. Leetspeak: p0rn → porn, s3x → sex, @dul+os → adultos
+        2. Letras separadas por espacios: "p o r n" → "porn"
+        3. Letras separadas por puntuación: "p.o.r.n" / "p-o-r-n" → "porn"
+        4. Lookalikes unicode (fullwidth, cirílico…): ｐｏｒｎ → porn
+        5. Caracteres repetidos entre letras: "p**o**r**n" → "porn"
+        """
+        t = text.lower()
+
+        # 1. Normalizar lookalikes unicode fullwidth (ａ→a, ０→0…)
+        t = t.translate(str.maketrans(
+            "ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ"
+            "ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ"
+            "０１２３４５６７８９",
+            "abcdefghijklmnopqrstuvwxyz"
+            "abcdefghijklmnopqrstuvwxyz"
+            "0123456789",
+        ))
+
+        # 2. Leetspeak: sustituir dígitos/símbolos por su letra equivalente
+        t = t.translate(LEET_TRANSLATION_TABLE)
+
+        # 3. Eliminar puntuación entre letras: "p.o.r.n" → "porn"
+        t = re.sub(r"([a-z])[.\-_*,;:!?'\"\\]([a-z])", r"\1\2", t)
+        # Repetir para cadenas de 3+ separadores: "p.o.r.n.o" necesita dos pasadas
+        t = re.sub(r"([a-z])[.\-_*,;:!?'\"\\]([a-z])", r"\1\2", t)
+
+        # 4. Colapsar letras individuales separadas por espacios: "p o r n" → "porn"
+        #    Un "run" es 3+ letras sueltas consecutivas separadas por 1-2 espacios.
+        t = re.sub(
+            r"(?<!\w)(\w)(?!\w)([ \t]{1,2}(?<!\w)\w(?!\w)){2,}",
+            lambda m: m.group().replace(" ", "").replace("\t", ""),
+            t,
+        )
+
+        # 5. Eliminar caracteres no alfanuméricos que queden entre letras
+        #    tras las transformaciones anteriores (ej: asteriscos residuales)
+        t = re.sub(r"([a-z])\*+([a-z])", r"\1\2", t)
+
+        return t
+
+    # ── Checks principales ────────────────────────────────────────────────────
+
     def _check_technical(
         self,
         html: str,
@@ -219,6 +270,7 @@ class QualityAuditor:
         html_lines: list[str],
         issues: list[str],
         asset_stats: dict,
+        recommendations: list[str],
     ) -> None:
         html_lower = html.lower()
         if "<!doctype html>" not in html_lower[:300]:
@@ -258,15 +310,29 @@ class QualityAuditor:
         self._check_assets(soup, base_url, html_lines, issues, asset_stats)
         self._check_forms_accessibility(soup, html_lines, issues)
 
-        inline_script_chars = sum(len(script.get_text(strip=True)) for script in soup.find_all("script") if not script.get("src"))
-        if inline_script_chars > 4000:
-            issues.append(
-                f"JavaScript inline excesivo ({inline_script_chars} chars). Considerar mover a archivo versionado."
+        # ── CSS / JS inline ───────────────────────────────────────────────────
+        # En producción es habitual que frameworks y bundlers inyecten CSS/JS
+        # directamente en el HTML (SSR, critical CSS, chunks…). Estos bloques
+        # NO se penalizan en el score; se añade una nota informativa suave
+        # solo si el volumen es realmente extremo (>500 KB).
+        inline_script_chars = sum(
+            len(s.get_text(strip=True))
+            for s in soup.find_all("script")
+            if not s.get("src")
+        )
+        inline_style_chars = sum(
+            len(s.get_text(strip=True))
+            for s in soup.find_all("style")
+        )
+        if inline_script_chars > 500_000:
+            recommendations.append(
+                f"JS inline muy voluminoso ({inline_script_chars // 1024} KB). "
+                "Valorar code-splitting o lazy-loading para mejorar TTFB."
             )
-        inline_style_chars = sum(len(style.get_text(strip=True)) for style in soup.find_all("style"))
-        if inline_style_chars > 2500:
-            issues.append(
-                f"CSS inline excesivo ({inline_style_chars} chars). Considerar extraer a stylesheet cacheable."
+        if inline_style_chars > 200_000:
+            recommendations.append(
+                f"CSS inline muy voluminoso ({inline_style_chars // 1024} KB). "
+                "Valorar extraer estilos no-criticos a stylesheet cacheable."
             )
 
     def _check_assets(
@@ -366,34 +432,92 @@ class QualityAuditor:
             issues.append("Falta meta viewport para responsive.")
 
     def _check_content(self, soup: BeautifulSoup, issues: list[str], html_lines: list[str]) -> None:
+        """
+        Analiza el contenido visible de la página buscando:
+        - Texto de relleno / placeholder (lorem ipsum, dummy…)
+        - Contenido incoherente (cadenas de ruido, patrones repetitivos…)
+        - Contenido explícito / sexual
+        - Palabras malsonantes / insultos
+        - Discurso de odio / discriminatorio
+        - Rutas de administración expuestas en texto
+
+        La detección opera sobre DOS versiones del texto:
+          · text_l          — texto original en minúsculas
+          · text_normalized — texto normalizado (anti-leetspeak, anti-evasión)
+        Esto garantiza que variantes como "p0rn", "p.o.r.n", "p o r n" o
+        "ｐｏｒｎ" sean capturadas aunque el diccionario solo contenga "porn".
+        """
         text = soup.get_text(" ", strip=True)
         text_l = text.lower()
-        if not text_l:
+        if not text_l.strip():
             issues.append("No se encontro texto visible en el body.")
             return
 
-        for pattern in (
-            *self._dicts.lorem_patterns,
-            *self._dicts.incoherent_patterns,
-            *self._dicts.explicit_patterns,
-            *self._dicts.profanity_patterns,
-        ):
-            if pattern in text_l:
+        # Versión normalizada para detección de evasiones
+        text_normalized = self._normalize_for_detection(text_l)
+
+        # ── Diccionarios de patrones ──────────────────────────────────────────
+        all_patterns: tuple[tuple[str, str], ...] = (
+            *((p, "contenido de relleno")     for p in self._dicts.lorem_patterns),
+            *((p, "contenido incoherente")    for p in self._dicts.incoherent_patterns),
+            *((p, "contenido explicito")      for p in self._dicts.explicit_patterns),
+            *((p, "palabra malsonante")       for p in self._dicts.profanity_patterns),
+            *((p, "discurso de odio")         for p in self._dicts.hate_patterns),
+        )
+
+        for pattern, category in all_patterns:
+            in_original   = pattern in text_l
+            in_normalized = pattern in text_normalized
+            if in_original or in_normalized:
+                evasion_note = " [detectado via normalizacion/leetspeak]" if not in_original else ""
                 line_no, line = self._find_line_for_text(html_lines, pattern)
                 issues.append(
-                    f"Texto problematico '{pattern}' detectado en linea aproximada {line_no}: {line}"
+                    f"[{category}] Patron '{pattern}'{evasion_note} "
+                    f"en linea aproximada {line_no}: {line}"
                 )
 
+        # ── Detección heurística de ruido / incoherencia ──────────────────────
         if self._regex.gibberish_regex.search(text_l):
-            issues.append("Detectadas secuencias repetitivas anormales (posible contenido incoherente).")
+            issues.append("Secuencias de caracteres repetidos anormales (posible ruido o contenido incoherente).")
         if self._regex.multi_symbol_regex.search(text_l):
-            issues.append("Detectados bloques de simbolos excesivos (posible ruido).")
+            issues.append("Bloques de simbolos excesivos detectados (posible ruido de contenido).")
         if self._regex.character_noise_regex.search(text_l):
-            issues.append("Detectados caracteres repetitivos no lingüisticos (ruido de contenido).")
+            issues.append("Caracteres repetitivos no lingüisticos detectados (ruido de contenido).")
         if len(self._regex.typo_regex.findall(text_l)) >= 5:
-            issues.append("Exceso de tokens posiblemente mal tipados.")
+            issues.append("Exceso de tokens posiblemente mal tipados o generados automaticamente.")
         if len(self._regex.long_token_regex.findall(text_l)) >= 2:
-            issues.append("Detectados tokens extremadamente largos (posible texto sin sentido o hash pegado).")
+            issues.append("Tokens extremadamente largos detectados (posible texto sin sentido o hash pegado).")
+
+        # Letras individuales separadas por espacios (evasión tipo "p o r n")
+        spaced_matches = self._regex.spaced_chars_regex.findall(text_l)
+        if spaced_matches:
+            # Comprobar si al colapsar forman un patrón problemático
+            for match_str in self._regex.spaced_chars_regex.finditer(text_l):
+                collapsed = match_str.group().replace(" ", "").replace("\t", "")
+                for pattern, category in all_patterns:
+                    if pattern in collapsed:
+                        line_no, line = self._find_line_for_text(html_lines, match_str.group().strip())
+                        issues.append(
+                            f"[{category}] Evasion con letras espaciadas '{match_str.group().strip()}' "
+                            f"(colapsa en '{collapsed}') en linea aproximada {line_no}: {line}"
+                        )
+                        break
+
+        # Letras separadas por puntuación (evasión tipo "p.o.r.n")
+        dotted_matches = self._regex.dotted_chars_regex.findall(text_l)
+        if dotted_matches:
+            for raw_match in dotted_matches:
+                collapsed = re.sub(r"[.\-_*]", "", raw_match)
+                for pattern, category in all_patterns:
+                    if pattern in collapsed:
+                        line_no, line = self._find_line_for_text(html_lines, raw_match)
+                        issues.append(
+                            f"[{category}] Evasion con puntuacion intercalada '{raw_match}' "
+                            f"(colapsa en '{collapsed}') en linea aproximada {line_no}: {line}"
+                        )
+                        break
+
+        # Incoherencia semántica profunda (heurísticas de bajo nivel)
         incoherent_samples = self._detect_incoherent_segments(text_l, self._regex)
         if incoherent_samples:
             for reason, token in incoherent_samples[:8]:
@@ -402,11 +526,16 @@ class QualityAuditor:
                     f"Incoherencia heuristica ({reason}) en linea aproximada {line_no}: {line}"
                 )
 
+        # ── Rutas de administración en texto visible ───────────────────────────
         for segment in self._dicts.blocked_admin_segments:
-            if segment in text_l:
+            in_orig = segment in text_l
+            in_norm = segment in text_normalized
+            if in_orig or in_norm:
+                evasion_note = " [detectado via normalizacion]" if not in_orig else ""
                 line_no, line = self._find_line_for_text(html_lines, segment)
                 issues.append(
-                    f"Texto prohibido '{segment}' encontrado en linea aproximada {line_no}: {line}"
+                    f"Ruta de administracion expuesta '{segment}'{evasion_note} "
+                    f"en linea aproximada {line_no}: {line}"
                 )
 
     @staticmethod
@@ -443,7 +572,7 @@ class QualityAuditor:
                 continue
 
             has_letters = any(ch.isalpha() for ch in w)
-            has_digits = any(ch.isdigit() for ch in w)
+            has_digits  = any(ch.isdigit() for ch in w)
             if has_letters and has_digits and len(w) >= 8:
                 alnum_noise_count += 1
 
@@ -679,9 +808,6 @@ class QualityAuditor:
             return False, elapsed_ms
 
     def _warm_up_cookies(self, base_url: str) -> None:
-        """
-        Primer request para poblar cookies y reducir falsos positivos.
-        """
         try:
             self._session.get(base_url, timeout=self._timeout, allow_redirects=True)
         except requests.RequestException:
@@ -733,7 +859,7 @@ class QualityAuditor:
         source_speed = QualityAuditor._classify_speed(source_response_ms) if source_response_ms >= 0 else "sin_dato"
         return {
             "status_code": metadata.get("status_code", "sin_dato"),
-            "release_gate_blocked": False,  # se actualiza al construir el informe final
+            "release_gate_blocked": False,
             "source_response_time_ms": source_response_ms,
             "source_response_speed": source_speed,
             "title_length": len(soup.title.string.strip()) if soup.title and soup.title.string else 0,
@@ -804,7 +930,7 @@ class QualityAuditor:
         if any("Sin incidencias" not in i for i in image_issues):
             recommendations.append("Arreglar imagenes rotas y completar atributos alt con textos descriptivos.")
         if any("Sin incidencias" not in i for i in content_issues):
-            recommendations.append("Eliminar contenido de relleno/incoherente o malsonante.")
+            recommendations.append("Eliminar contenido de relleno, incoherente, malsonante, explicito o de odio.")
         if any("Sin incidencias" not in i for i in link_issues):
             recommendations.append("Corregir enlaces rotos y eliminar rutas admin/wp-admin del sitio.")
         if any("Sin incidencias" not in i for i in button_issues):
@@ -834,11 +960,15 @@ class QualityAuditor:
             "contenido sexual",
             "porno",
             "nsfw",
-            "texto problematico",
+            "patron '",          # Captura todos los patrones del diccionario
             "incoherencia heuristica",
+            "discurso de odio",
+            "palabra malsonante",
+            "evasion con letras",
+            "evasion con puntuacion",
         )
         if any(any(flag in issue.lower() for flag in strong_content_flags) for issue in content_issues):
-            blockers.append("Contenido sensible/incoherente detectado en texto visible.")
+            blockers.append("Contenido sensible, incoherente o inadecuado detectado en texto visible.")
 
         broken_links = [i for i in link_issues if "enlace roto confirmado" in i.lower()]
         if broken_links:

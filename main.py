@@ -43,19 +43,45 @@ def run() -> int:
 
     logger.info("Iniciando scraping de %d URL(s).", len(entries))
 
-    # 2. Ejecutar cada URL con su estrategia
+    # 2. Ejecutar cada URL con su estrategia (auto-deteccion + fallback)
     context  = ScraperContext(STRATEGY_REGISTRY["selenium"])
     auditor  = QualityAuditor()
     results  = []
 
-    for entry in entries:
-        strategy_key = entry["strategy"]
-        if strategy_key not in STRATEGY_REGISTRY:
-            logger.warning("Estrategia '%s' no registrada. Omitiendo.", strategy_key)
-            continue
+    # Orden de preferencia para auto-deteccion:
+    # Selenium primero (soporta JS), BS4 como fallback (mas rapido, sin JS)
+    STRATEGY_ORDER = ["selenium", "beautifulsoup"]
 
-        context.set_strategy(STRATEGY_REGISTRY[strategy_key])
-        result = context.execute(entry["url"])
+    for entry in entries:
+        strategy_key = entry.get("strategy", "auto")
+        url = entry["url"]
+
+        if strategy_key != "auto" and strategy_key in STRATEGY_REGISTRY:
+            # Estrategia fija: intentar esa y fallback a las demas
+            order = [strategy_key] + [s for s in STRATEGY_ORDER if s != strategy_key]
+        else:
+            # Auto: probar en orden de preferencia
+            order = list(STRATEGY_ORDER)
+
+        result = None
+        for strat_name in order:
+            if strat_name not in STRATEGY_REGISTRY:
+                continue
+            context.set_strategy(STRATEGY_REGISTRY[strat_name])
+            result = context.execute(url)
+            if result.status == "success":
+                if strategy_key == "auto":
+                    logger.info("Auto-deteccion: %s funciono para %s", strat_name, url)
+                break
+            else:
+                logger.warning(
+                    "Estrategia %s fallo para %s, probando siguiente...",
+                    strat_name, url,
+                )
+
+        if result is None:
+            logger.error("Ninguna estrategia disponible para %s", url)
+            continue
 
         if result.status == "success":
             report = auditor.build_report(

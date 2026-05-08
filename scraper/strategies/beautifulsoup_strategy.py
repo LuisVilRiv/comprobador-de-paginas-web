@@ -65,8 +65,12 @@ class BeautifulSoupStrategy(BaseScraper):
 
     @staticmethod
     def _build_session() -> requests.Session:
+        import random
         session = requests.Session()
-        session.headers.update(settings.DEFAULT_HEADERS)
+        headers = dict(settings.DEFAULT_HEADERS)
+        # Anti-deteccion: User-Agent aleatorio por sesion
+        headers["User-Agent"] = random.choice(settings.USER_AGENT_POOL)
+        session.headers.update(headers)
         return session
 
     def close(self) -> None:

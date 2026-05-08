@@ -499,3 +499,109 @@ Stacktrace:
 2026-05-07 14:25:25,499 [INFO] scraper.base.base_scraper — [BeautifulSoupStrategy] Éxito en intento 1/3 → https://junquero25.es/
 2026-05-07 14:27:28,728 [INFO] utils.file_exporter — Resultados exportados (1 filas) → C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260507_142728.json
 2026-05-07 14:27:28,728 [INFO] __main__ — Scraping finalizado. Exitosos: 1 | Errores: 0 | Fichero: C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260507_142728.json
+2026-05-08 11:08:11,548 [INFO] utils.url_loader — URL loader: 1 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-08 11:09:03,662 [INFO] utils.url_loader — URL loader: 1 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-08 11:09:03,663 [INFO] __main__ — Iniciando scraping de 1 URL(s).
+2026-05-08 11:09:03,666 [INFO] scraper.context.scraper_context — Ejecutando [SeleniumStrategy] sobre: https://junquero25.es/
+2026-05-08 11:09:03,667 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://junquero25.es/
+2026-05-08 11:09:28,994 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://junquero25.es/
+2026-05-08 11:09:28,995 [INFO] __main__ — Auto-deteccion: selenium funciono para https://junquero25.es/
+2026-05-08 11:12:10,246 [INFO] utils.file_exporter — Resultados exportados (1 filas) → C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260508_111210.json
+2026-05-08 11:12:10,247 [INFO] __main__ — Scraping finalizado. Exitosos: 1 | Errores: 0 | Fichero: C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260508_111210.json
+2026-05-08 11:23:27,005 [INFO] utils.url_loader — URL loader: 1 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-08 11:23:27,005 [INFO] __main__ — Iniciando scraping de 1 URL(s).
+2026-05-08 11:23:27,009 [INFO] scraper.context.scraper_context — Ejecutando [SeleniumStrategy] sobre: https://junquero25.es/
+2026-05-08 11:23:27,009 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://junquero25.es/
+2026-05-08 11:23:40,189 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://junquero25.es/
+2026-05-08 11:23:40,189 [INFO] __main__ — Auto-deteccion: selenium funciono para https://junquero25.es/
+2026-05-08 11:26:01,806 [INFO] utils.file_exporter — Resultados exportados (1 filas) → C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260508_112601.json
+2026-05-08 11:26:01,807 [INFO] __main__ — Scraping finalizado. Exitosos: 1 | Errores: 0 | Fichero: C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260508_112601.json
+2026-05-08 11:38:50,104 [INFO] utils.url_loader — URL loader: 1 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-08 11:38:50,104 [INFO] __main__ — Iniciando scraping de 1 URL(s).
+2026-05-08 11:38:50,108 [INFO] scraper.context.scraper_context — Ejecutando [SeleniumStrategy] sobre: https://junquero25.es/
+2026-05-08 11:38:50,108 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://junquero25.es/
+2026-05-08 11:39:07,444 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://junquero25.es/
+2026-05-08 11:39:07,446 [INFO] __main__ — Auto-deteccion: selenium funciono para https://junquero25.es/
+2026-05-08 11:41:36,996 [INFO] utils.file_exporter — Resultados exportados (1 filas) → C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260508_114136.json
+2026-05-08 11:41:36,996 [INFO] __main__ — Scraping finalizado. Exitosos: 1 | Errores: 0 | Fichero: C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260508_114136.json
+2026-05-08 11:48:03,305 [INFO] utils.url_loader — URL loader: 1 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-08 11:48:03,306 [INFO] __main__ — Iniciando scraping de 1 URL(s).
+2026-05-08 11:48:03,309 [INFO] scraper.context.scraper_context — Ejecutando [SeleniumStrategy] sobre: https://junquero25.es/
+2026-05-08 11:48:03,310 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://junquero25.es/
+2026-05-08 11:48:25,003 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://junquero25.es/
+2026-05-08 11:48:25,003 [INFO] __main__ — Auto-deteccion: selenium funciono para https://junquero25.es/
+2026-05-08 11:50:49,103 [INFO] utils.file_exporter — Resultados exportados (1 filas) → C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260508_115049.json
+2026-05-08 11:50:49,104 [INFO] __main__ — Scraping finalizado. Exitosos: 1 | Errores: 0 | Fichero: C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260508_115049.json
+2026-05-08 12:30:12,988 [INFO] utils.url_loader — URL loader: 1 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-08 12:30:12,998 [INFO] __main__ — Iniciando scraping de 1 URL(s).
+2026-05-08 12:30:13,007 [INFO] scraper.context.scraper_context — Ejecutando [SeleniumStrategy] sobre: https://junquero25.es/
+2026-05-08 12:30:13,008 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://junquero25.es/
+2026-05-08 12:30:50,798 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://junquero25.es/
+2026-05-08 12:30:50,798 [INFO] __main__ — Auto-deteccion: selenium funciono para https://junquero25.es/
+2026-05-08 12:33:28,234 [INFO] utils.file_exporter — Resultados exportados (1 filas) → C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260508_123328.json
+2026-05-08 12:33:28,261 [INFO] __main__ — Scraping finalizado. Exitosos: 1 | Errores: 0 | Fichero: C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260508_123328.json
+2026-05-08 12:52:19,890 [INFO] utils.url_loader — URL loader: 1 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-08 12:52:19,890 [INFO] __main__ — Iniciando scraping de 1 URL(s).
+2026-05-08 12:52:19,894 [INFO] scraper.context.scraper_context — Ejecutando [SeleniumStrategy] sobre: https://junquero25.es/
+2026-05-08 12:52:19,894 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://junquero25.es/
+2026-05-08 12:52:52,885 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://junquero25.es/
+2026-05-08 12:52:52,886 [INFO] __main__ — Auto-deteccion: selenium funciono para https://junquero25.es/
+2026-05-08 12:55:35,406 [INFO] utils.file_exporter — Resultados exportados (1 filas) → C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260508_125535.json
+2026-05-08 12:55:35,408 [INFO] __main__ — Scraping finalizado. Exitosos: 1 | Errores: 0 | Fichero: C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260508_125535.json
+2026-05-08 13:05:36,574 [INFO] utils.url_loader — URL loader: 1 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-08 13:05:36,574 [INFO] __main__ — Iniciando scraping de 1 URL(s).
+2026-05-08 13:05:36,577 [INFO] scraper.context.scraper_context — Ejecutando [SeleniumStrategy] sobre: https://junquero25.es/
+2026-05-08 13:05:36,578 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://junquero25.es/
+2026-05-08 13:05:51,600 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://junquero25.es/
+2026-05-08 13:05:51,600 [INFO] __main__ — Auto-deteccion: selenium funciono para https://junquero25.es/
+2026-05-08 13:08:17,294 [INFO] utils.file_exporter — Resultados exportados (1 filas) → C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260508_130817.json
+2026-05-08 13:08:17,296 [INFO] __main__ — Scraping finalizado. Exitosos: 1 | Errores: 0 | Fichero: C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260508_130817.json
+2026-05-08 13:32:30,943 [WARNING] utils.url_loader — Entrada ignorada (URL inválida): {'id': 1, 'url': 'lvilriv.github.io', 'description': 'Página estática de citas', 'active': True}
+2026-05-08 13:32:30,964 [INFO] utils.url_loader — URL loader: 0 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-08 13:32:30,965 [WARNING] __main__ — No hay URLs activas en urls.json. Saliendo.
+2026-05-08 13:33:16,617 [INFO] utils.url_loader — URL loader: 1 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-08 13:33:16,617 [INFO] __main__ — Iniciando scraping de 1 URL(s).
+2026-05-08 13:33:16,621 [INFO] scraper.context.scraper_context — Ejecutando [SeleniumStrategy] sobre: https://luisvilriv.github.io/
+2026-05-08 13:33:16,621 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://luisvilriv.github.io/
+2026-05-08 13:33:28,717 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://luisvilriv.github.io/
+2026-05-08 13:33:28,717 [INFO] __main__ — Auto-deteccion: selenium funciono para https://luisvilriv.github.io/
+2026-05-08 13:37:18,682 [INFO] utils.url_loader — URL loader: 1 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-08 13:37:18,682 [INFO] __main__ — Iniciando scraping de 1 URL(s).
+2026-05-08 13:37:18,687 [INFO] scraper.context.scraper_context — Ejecutando [SeleniumStrategy] sobre: https://luisvilriv.github.io/
+2026-05-08 13:37:18,687 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://luisvilriv.github.io/
+2026-05-08 13:37:26,303 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://luisvilriv.github.io/
+2026-05-08 13:37:26,304 [INFO] __main__ — Auto-deteccion: selenium funciono para https://luisvilriv.github.io/
+2026-05-08 13:38:10,583 [INFO] utils.file_exporter — Resultados exportados (1 filas) → C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260508_133810.json
+2026-05-08 13:38:10,584 [INFO] __main__ — Scraping finalizado. Exitosos: 1 | Errores: 0 | Fichero: C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260508_133810.json
+2026-05-08 13:38:40,956 [INFO] utils.url_loader — URL loader: 1 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-08 13:38:40,957 [INFO] __main__ — Iniciando scraping de 1 URL(s).
+2026-05-08 13:38:40,960 [INFO] scraper.context.scraper_context — Ejecutando [SeleniumStrategy] sobre: https://luisvilriv.github.io/
+2026-05-08 13:38:40,960 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://luisvilriv.github.io/
+2026-05-08 13:38:49,222 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://luisvilriv.github.io/
+2026-05-08 13:38:49,222 [INFO] __main__ — Auto-deteccion: selenium funciono para https://luisvilriv.github.io/
+2026-05-08 13:39:22,946 [INFO] utils.file_exporter — Resultados exportados (1 filas) → C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260508_133922.json
+2026-05-08 13:39:22,946 [INFO] __main__ — Scraping finalizado. Exitosos: 1 | Errores: 0 | Fichero: C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260508_133922.json
+2026-05-08 13:40:47,431 [INFO] utils.url_loader — URL loader: 1 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-08 13:40:47,432 [INFO] __main__ — Iniciando scraping de 1 URL(s).
+2026-05-08 13:40:47,435 [INFO] scraper.context.scraper_context — Ejecutando [SeleniumStrategy] sobre: https://luisvilriv.github.io/
+2026-05-08 13:40:47,436 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://luisvilriv.github.io/
+2026-05-08 13:40:57,295 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://luisvilriv.github.io/
+2026-05-08 13:40:57,296 [INFO] __main__ — Auto-deteccion: selenium funciono para https://luisvilriv.github.io/
+2026-05-08 13:41:30,896 [INFO] utils.file_exporter — Resultados exportados (1 filas) → C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260508_134130.json
+2026-05-08 13:41:30,898 [INFO] __main__ — Scraping finalizado. Exitosos: 1 | Errores: 0 | Fichero: C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260508_134130.json
+2026-05-08 13:42:02,768 [INFO] utils.url_loader — URL loader: 1 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-08 13:42:02,769 [INFO] __main__ — Iniciando scraping de 1 URL(s).
+2026-05-08 13:42:02,772 [INFO] scraper.context.scraper_context — Ejecutando [SeleniumStrategy] sobre: https://luisvilriv.github.io/
+2026-05-08 13:42:02,773 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://luisvilriv.github.io/
+2026-05-08 13:42:12,806 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://luisvilriv.github.io/
+2026-05-08 13:42:12,806 [INFO] __main__ — Auto-deteccion: selenium funciono para https://luisvilriv.github.io/
+2026-05-08 13:42:46,268 [INFO] utils.file_exporter — Resultados exportados (1 filas) → C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260508_134246.json
+2026-05-08 13:42:46,269 [INFO] __main__ — Scraping finalizado. Exitosos: 1 | Errores: 0 | Fichero: C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260508_134246.json
+2026-05-08 13:47:01,715 [INFO] utils.url_loader — URL loader: 1 entradas cargadas desde C:\Users\Usuario\Documents\comprobador de paginas web\data\urls.json
+2026-05-08 13:47:01,716 [INFO] __main__ — Iniciando scraping de 1 URL(s).
+2026-05-08 13:47:01,720 [INFO] scraper.context.scraper_context — Ejecutando [SeleniumStrategy] sobre: https://www.blindtextgenerator.com/lorem-ipsum
+2026-05-08 13:47:01,721 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Iniciando scraping → https://www.blindtextgenerator.com/lorem-ipsum
+2026-05-08 13:47:11,499 [INFO] scraper.base.base_scraper — [SeleniumStrategy] Éxito en intento 1/3 → https://www.blindtextgenerator.com/lorem-ipsum
+2026-05-08 13:47:11,500 [INFO] __main__ — Auto-deteccion: selenium funciono para https://www.blindtextgenerator.com/lorem-ipsum
+2026-05-08 13:48:54,242 [INFO] utils.file_exporter — Resultados exportados (1 filas) → C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260508_134854.json
+2026-05-08 13:48:54,242 [INFO] __main__ — Scraping finalizado. Exitosos: 1 | Errores: 0 | Fichero: C:\Users\Usuario\Documents\comprobador de paginas web\data\output\results_20260508_134854.json

@@ -1,0 +1,32 @@
+{
+  "urls": [
+    {
+      "id": 1,
+      "url": "https://junquero25.es/",
+      "strategy": "beautifulsoup",
+      "description": "Página estática de citas — ideal para BS4",
+      "active": true
+    },
+    {
+      "id": 2,
+      "url": "https://quotes.toscrape.com/js/",
+      "strategy": "selenium",
+      "description": "Versión renderizada con JS — requiere Selenium",
+      "active": false
+    },
+    {
+      "id": 3,
+      "url": "https://books.toscrape.com/",
+      "strategy": "beautifulsoup",
+      "description": "Catálogo de libros estático",
+      "active": false
+    },
+    {
+      "id": 4,
+      "url": "https://www.airbnb.es/",
+      "strategy": "selenium",
+      "description": "SPA con contenido dinámico",
+      "active": false
+    }
+  ]
+}

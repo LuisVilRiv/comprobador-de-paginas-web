@@ -1,0 +1,15 @@
+nada de admin, ni wpadmin ni en enlaces ni como texto
+url/admin url/wp-admin
+
+
+
+botones intentar interactuar con ellos para deteccion de posibles fallos
+
+
+contenido de relleno, incoherente, malsonante, explicito, 
+
+verificar que los enlaces no esten rotos (recursivamente, prohibido probar jamas apdigroup.com, o, 81.0.54.124)
+
+tiempos de espera entre intentos/acciones + espaciados para evitar bloqueos por parte de la pagina web
+
+tiempos de respuesta (lento, medio, rapido)

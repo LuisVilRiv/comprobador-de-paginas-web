@@ -1,0 +1,9 @@
+# Credenciales reales — nunca al repositorio
+.env
+
+# Artefactos Python locales
+**/__pycache__/
+*.pyc
+
+# Volúmenes de desarrollo local (si se usan bind mounts en lugar de named volumes)
+pg_data/

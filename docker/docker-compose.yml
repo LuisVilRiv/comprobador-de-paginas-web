@@ -1,0 +1,140 @@
+# ══════════════════════════════════════════════════════════════════════════════
+#  web_auditor — Stack Docker
+#  Ubicación: /docker/docker-compose.yml (dentro del repositorio)
+#
+#  Contenedores separados (por defecto solo el stack web):
+#    · db              → PostgreSQL (solo red interna backend)
+#    · dashboard-api   → FastAPI (backend + acceso a BD)
+#    · dashboard       → Node + React (solo red web; no ve el hostname "db")
+#
+#  Scraper (Chrome/Selenium, salida a Internet): perfil "scraper", no arranca con "up".
+#
+#  Redes:
+#    · web_auditor_backend → db + quien necesita PostgreSQL (api, scraper)
+#    · web_auditor_web     → api + frontend (proxy HTTP interno)
+#
+#  Ejecución desde la carpeta /docker:
+#    docker compose up -d
+#
+#  Scraper (un ciclo):
+#    docker compose --profile scraper run --rm scraper
+#
+#  Scraper en segundo plano (daemon):
+#    docker compose --profile scraper up -d scraper
+# ══════════════════════════════════════════════════════════════════════════════
+
+networks:
+  backend:
+    name: web_auditor_backend
+  web:
+    name: web_auditor_web
+
+services:
+
+  # ── 1. Base de datos ────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: web_auditor_db
+    restart: unless-stopped
+    networks:
+      - backend
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB:-web_auditor}
+      POSTGRES_USER:     ${POSTGRES_USER:-auditor}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-auditor_secret}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      # Ruta relativa a docker/ → apunta a docker/db-init/
+      - ./db-init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5432:5432"        # exponer solo en desarrollo; comentar en producción
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-auditor} -d ${POSTGRES_DB:-web_auditor}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── 2. Scraper Python ───────────────────────────────────────────────────────
+  scraper:
+    profiles:
+      - scraper
+    build:
+      # Contexto = raíz del repositorio (../ desde docker/)
+      # Necesario para que el Dockerfile acceda a config/, scraper/, utils/
+      context: ..
+      dockerfile: docker/scraper/Dockerfile
+    container_name: web_auditor_scraper
+    restart: "no"           # se ejecuta bajo demanda; cambiar a "unless-stopped"
+                            # si se quiere modo daemon con cron interno
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Base de datos
+      DB_HOST:     db
+      DB_PORT:     5432
+      DB_NAME:     ${POSTGRES_DB:-web_auditor}
+      DB_USER:     ${POSTGRES_USER:-auditor}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-auditor_secret}
+      # Comportamiento
+      LOG_LEVEL:             ${LOG_LEVEL:-INFO}
+      SELENIUM_HEADLESS:     "true"
+      # Intervalo daemon (0 = ejecutar una vez y salir)
+      RUN_INTERVAL_SECONDS:  ${RUN_INTERVAL_SECONDS:-0}
+    volumes:
+      - scraper_logs:/app/logs
+      # Montar data/ del repo para conservar outputs/raw/reports fuera del contenedor
+      # Las URLs vienen de PostgreSQL; este volumen es solo para ficheros exportados
+      - ../data:/app/data
+    shm_size: "2gb"          # necesario para Chrome dentro de Docker
+    networks:
+      - backend
+
+  # ── 3. Dashboard API (FastAPI) ──────────────────────────────────────────────
+  dashboard-api:
+    build:
+      context: ./dashboard/api
+      dockerfile: Dockerfile
+    container_name: web_auditor_dashboard_api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST:     db
+      DB_PORT:     5432
+      DB_NAME:     ${POSTGRES_DB:-web_auditor}
+      DB_USER:     ${POSTGRES_USER:-auditor}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-auditor_secret}
+    networks:
+      - backend
+      - web
+
+  # ── 4. Dashboard frontend Node + React ──────────────────────────────────────
+  dashboard:
+    build:
+      # Contexto = docker/dashboard/ (no necesita el repo Python)
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: web_auditor_dashboard
+    restart: unless-stopped
+    depends_on:
+      dashboard-api:
+        condition: service_started
+    environment:
+      PORT: 3000
+      API_BASE_URL: http://dashboard-api:8000
+    ports:
+      - "${DASHBOARD_PORT:-3000}:3000"
+    volumes:
+      - ./dashboard/frontend:/app/frontend:ro
+      - ./dashboard/server.js:/app/server.js:ro
+    networks:
+      - web
+
+# ── Volúmenes ────────────────────────────────────────────────────────────────
+volumes:
+  pg_data:
+    driver: local
+  scraper_logs:
+    driver: local

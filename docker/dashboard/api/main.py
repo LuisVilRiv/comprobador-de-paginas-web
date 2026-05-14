@@ -19,9 +19,9 @@ Endpoints CRUD (Escritura):
   PUT    /websites/{website_id}      → actualizar URL (incluyendo active/inactive)
   DELETE /websites/{website_id}      → eliminar URL
 
-Frecuencia de Scraping:
-  - URLs ACTIVAS (active=true):   2 veces a la semana
-  - URLs INACTIVAS (active=false): 1 vez cada 2 meses
+Auditoría bajo demanda:
+  POST   /websites/{website_id}/audit → marcar para auditoría inmediata
+                                        (el scraper la procesará en cuanto arranque)
 """
 import os
 from contextlib import contextmanager
@@ -39,7 +39,6 @@ app = FastAPI(
     docs_url="/docs",
 )
 
-# CORS (frontend servido por Node, también útil para dev local)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -67,7 +66,6 @@ def get_db():
 
 
 def q(conn, sql: str, params: tuple = ()) -> list[dict[str, Any]]:
-    """Ejecuta una query y devuelve lista de dicts."""
     with conn.cursor() as cur:
         cur.execute(sql, params)
         return [dict(r) for r in cur.fetchall()]
@@ -80,7 +78,7 @@ def q_one(conn, sql: str, params: tuple = ()) -> dict[str, Any] | None:
         return dict(row) if row else None
 
 
-# ── Modelos Pydantic para CRUD ─────────────────────────────────────────────────
+# ── Modelos Pydantic ──────────────────────────────────────────────────────────
 class ClientCreate(BaseModel):
     name: str
     email: str | None = None
@@ -98,10 +96,10 @@ class ClientUpdate(BaseModel):
 
 
 class WebsiteCreate(BaseModel):
-    client_id: str  # UUID como string
+    client_id: str
     url: str
     label: str | None = None
-    strategy: str = "auto"  # 'auto', 'selenium', 'beautifulsoup'
+    strategy: str = "auto"
     active: bool = True
 
 
@@ -112,7 +110,7 @@ class WebsiteUpdate(BaseModel):
     active: bool | None = None
 
 
-# ── Endpoints ─────────────────────────────────────────────────────────────────
+# ── Endpoints de lectura ──────────────────────────────────────────────────────
 
 @app.get("/health")
 def health():
@@ -121,7 +119,6 @@ def health():
 
 @app.get("/clients")
 def list_clients():
-    """Lista todos los clientes con el número de páginas web asociadas."""
     sql = """
         SELECT  c.id, c.name, c.email, c.company, c.notes, c.created_at,
                 COUNT(w.id)                             AS website_count,
@@ -137,10 +134,6 @@ def list_clients():
 
 @app.get("/websites")
 def list_websites(client_id: str | None = Query(None)):
-    """
-    Lista páginas web con su estado actual.
-    Filtro opcional por cliente.
-    """
     sql = """
         SELECT
             w.id                    AS website_id,
@@ -148,6 +141,7 @@ def list_websites(client_id: str | None = Query(None)):
             w.label,
             w.active,
             w.strategy,
+            w.pending_audit,
             c.id                    AS client_id,
             c.name                  AS client_name,
             c.company               AS client_company,
@@ -190,7 +184,6 @@ def list_websites(client_id: str | None = Query(None)):
 
 @app.get("/websites/{website_id}/status")
 def website_status(website_id: str):
-    """Estado actual de una página web (último análisis)."""
     sql = """
         SELECT
             w.id                    AS website_id,
@@ -198,6 +191,7 @@ def website_status(website_id: str):
             w.label,
             w.active,
             w.strategy,
+            w.pending_audit,
             c.id                    AS client_id,
             c.name                  AS client_name,
             c.company               AS client_company,
@@ -246,7 +240,6 @@ def website_runs(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
-    """Historial de análisis de una página web, paginado."""
     sql = """
         SELECT  id, started_at, finished_at, status, strategy_used,
                 audit_date, score, previous_score, audit_status, release_blocked,
@@ -270,7 +263,6 @@ def website_runs(
 
 @app.get("/runs/{run_id}")
 def run_detail(run_id: str):
-    """Detalle completo de un análisis (incluye el JSON del informe)."""
     sql = """
         SELECT  r.*, w.url, w.label,
                 c.name AS client_name, c.company AS client_company
@@ -288,7 +280,6 @@ def run_detail(run_id: str):
 
 @app.get("/runs/{run_id}/sections")
 def run_sections(run_id: str):
-    """Detalle por secciones de la auditoría para una ejecución."""
     sql = """
         SELECT
             section_key,
@@ -314,10 +305,6 @@ def run_issues(
     category: str | None = Query(None),
     severity: str | None = Query(None),
 ):
-    """
-    Incidencias de un análisis.
-    Filtros opcionales: category (security|seo|…), severity (critical|high|…).
-    """
     sql = """
         SELECT id, category, severity, message, line_no, line_hint
         FROM   audit_issues
@@ -340,7 +327,6 @@ def run_issues(
 
 @app.get("/summary")
 def global_summary():
-    """Resumen global para las tarjetas del dashboard principal."""
     sql = """
         SELECT
             COUNT(DISTINCT c.id)                                        AS total_clients,
@@ -351,7 +337,8 @@ def global_summary():
             COUNT(r.id) FILTER (WHERE r.audit_status = 'mejorable')     AS fair_count,
             COUNT(r.id) FILTER (WHERE r.audit_status = 'critico')       AS critical_count,
             COUNT(r.id) FILTER (WHERE r.release_blocked = TRUE)         AS blocked_count,
-            ROUND(AVG(r.score))                                         AS avg_score
+            ROUND(AVG(r.score))                                         AS avg_score,
+            COUNT(DISTINCT w.id) FILTER (WHERE w.pending_audit = TRUE)  AS pending_audit_count
         FROM    clients c
         LEFT JOIN websites w ON w.client_id = c.id
         LEFT JOIN LATERAL (
@@ -365,12 +352,55 @@ def global_summary():
 
 
 # ════════════════════════════════════════════════════════════════════════════
-#  CRUD ENDPOINTS — GESTIÓN DE CLIENTES
+#  AUDITORÍA BAJO DEMANDA
+# ════════════════════════════════════════════════════════════════════════════
+
+@app.post("/websites/{website_id}/audit")
+def trigger_manual_audit(website_id: str):
+    """
+    Marca una página web para ser auditada en el próximo ciclo del scraper.
+
+    El scraper procesa primero los websites con pending_audit=TRUE,
+    sin importar si son activos o inactivos. Una vez auditados,
+    el flag se resetea automáticamente.
+    """
+    # Primero verificamos que el website existe
+    check_sql = "SELECT id, url, label FROM websites WHERE id = %s::uuid"
+    update_sql = """
+        UPDATE websites
+        SET pending_audit = TRUE,
+            updated_at    = now()
+        WHERE id = %s::uuid
+        RETURNING id AS website_id, url, label, pending_audit
+    """
+    with get_db() as conn:
+        try:
+            website = q_one(conn, check_sql, (website_id,))
+            if not website:
+                raise HTTPException(status_code=404, detail="Website no encontrado")
+
+            row = q_one(conn, update_sql, (website_id,))
+            conn.commit()
+            return {
+                "message": "Auditoría solicitada. Se ejecutará de manera inmediata.",
+                "website_id": website_id,
+                "url": row["url"],
+                "label": row.get("label"),
+                "pending_audit": True,
+            }
+        except HTTPException:
+            raise
+        except psycopg2.Error as e:
+            conn.rollback()
+            raise HTTPException(status_code=500, detail=f"Error de base de datos: {str(e)}")
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  CRUD — CLIENTES
 # ════════════════════════════════════════════════════════════════════════════
 
 @app.post("/clients")
 def create_client(payload: ClientCreate):
-    """Crear un nuevo cliente."""
     sql = """
         INSERT INTO clients (name, email, phone, company, notes)
         VALUES (%s, %s, %s, %s, %s)
@@ -379,11 +409,8 @@ def create_client(payload: ClientCreate):
     with get_db() as conn:
         try:
             row = q_one(conn, sql, (
-                payload.name,
-                payload.email,
-                payload.phone,
-                payload.company,
-                payload.notes,
+                payload.name, payload.email, payload.phone,
+                payload.company, payload.notes,
             ))
             conn.commit()
             return row
@@ -394,36 +421,20 @@ def create_client(payload: ClientCreate):
 
 @app.put("/clients/{client_id}")
 def update_client(client_id: str, payload: ClientUpdate):
-    """Actualizar datos de un cliente."""
-    # Construir SET dinámicamente según los campos enviados
-    updates = []
-    params = []
-    
-    if payload.name is not None:
-        updates.append("name = %s")
-        params.append(payload.name)
-    if payload.email is not None:
-        updates.append("email = %s")
-        params.append(payload.email)
-    if payload.phone is not None:
-        updates.append("phone = %s")
-        params.append(payload.phone)
-    if payload.company is not None:
-        updates.append("company = %s")
-        params.append(payload.company)
-    if payload.notes is not None:
-        updates.append("notes = %s")
-        params.append(payload.notes)
-    
+    updates, params = [], []
+    if payload.name     is not None: updates.append("name = %s");    params.append(payload.name)
+    if payload.email    is not None: updates.append("email = %s");   params.append(payload.email)
+    if payload.phone    is not None: updates.append("phone = %s");   params.append(payload.phone)
+    if payload.company  is not None: updates.append("company = %s"); params.append(payload.company)
+    if payload.notes    is not None: updates.append("notes = %s");   params.append(payload.notes)
+
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
-    
+
     updates.append("updated_at = now()")
     params.append(client_id)
-    
     sql = f"""
-        UPDATE clients
-        SET {', '.join(updates)}
+        UPDATE clients SET {', '.join(updates)}
         WHERE id = %s::uuid
         RETURNING id, name, email, phone, company, notes, created_at, updated_at
     """
@@ -441,7 +452,6 @@ def update_client(client_id: str, payload: ClientUpdate):
 
 @app.delete("/clients/{client_id}")
 def delete_client(client_id: str):
-    """Eliminar un cliente (y sus websites asociadas)."""
     sql = "DELETE FROM clients WHERE id = %s::uuid RETURNING id"
     with get_db() as conn:
         try:
@@ -456,33 +466,23 @@ def delete_client(client_id: str):
 
 
 # ════════════════════════════════════════════════════════════════════════════
-#  CRUD ENDPOINTS — GESTIÓN DE WEBSITES
+#  CRUD — WEBSITES
 # ════════════════════════════════════════════════════════════════════════════
 
 @app.post("/websites")
 def create_website(payload: WebsiteCreate):
-    """Crear una nueva página web / URL a monitorizar."""
     sql = """
         INSERT INTO websites (client_id, url, label, strategy, active)
         VALUES (%s::uuid, %s, %s, %s, %s)
-        RETURNING 
-            id AS website_id, 
-            client_id, 
-            url, 
-            label, 
-            strategy, 
-            active, 
-            created_at, 
-            updated_at
+        RETURNING
+            id AS website_id, client_id, url, label, strategy,
+            active, pending_audit, created_at, updated_at
     """
     with get_db() as conn:
         try:
             row = q_one(conn, sql, (
-                payload.client_id,
-                payload.url,
-                payload.label,
-                payload.strategy,
-                payload.active,
+                payload.client_id, payload.url, payload.label,
+                payload.strategy, payload.active,
             ))
             conn.commit()
             if not row:
@@ -497,42 +497,23 @@ def create_website(payload: WebsiteCreate):
 
 @app.put("/websites/{website_id}")
 def update_website(website_id: str, payload: WebsiteUpdate):
-    """Actualizar una página web (URL, etiqueta, estrategia, estado active/inactive)."""
-    updates = []
-    params = []
-    
-    if payload.url is not None:
-        updates.append("url = %s")
-        params.append(payload.url)
-    if payload.label is not None:
-        updates.append("label = %s")
-        params.append(payload.label)
-    if payload.strategy is not None:
-        updates.append("strategy = %s")
-        params.append(payload.strategy)
-    if payload.active is not None:
-        updates.append("active = %s")
-        params.append(payload.active)
-    
+    updates, params = [], []
+    if payload.url      is not None: updates.append("url = %s");      params.append(payload.url)
+    if payload.label    is not None: updates.append("label = %s");    params.append(payload.label)
+    if payload.strategy is not None: updates.append("strategy = %s"); params.append(payload.strategy)
+    if payload.active   is not None: updates.append("active = %s");   params.append(payload.active)
+
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
-    
+
     updates.append("updated_at = now()")
     params.append(website_id)
-    
     sql = f"""
-        UPDATE websites
-        SET {', '.join(updates)}
+        UPDATE websites SET {', '.join(updates)}
         WHERE id = %s::uuid
-        RETURNING 
-            id AS website_id, 
-            client_id, 
-            url, 
-            label, 
-            strategy, 
-            active, 
-            created_at, 
-            updated_at
+        RETURNING
+            id AS website_id, client_id, url, label, strategy,
+            active, pending_audit, created_at, updated_at
     """
     with get_db() as conn:
         try:
@@ -550,7 +531,6 @@ def update_website(website_id: str, payload: WebsiteUpdate):
 
 @app.delete("/websites/{website_id}")
 def delete_website(website_id: str):
-    """Eliminar una página web (y su historial de análisis asociado)."""
     sql = "DELETE FROM websites WHERE id = %s::uuid RETURNING id"
     with get_db() as conn:
         try:

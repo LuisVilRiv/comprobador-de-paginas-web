@@ -9,7 +9,6 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";   -- gen_random_uuid()
 
 -- ════════════════════════════════════════════════════════════════════════════
 --  CLIENTES
---  Cada cliente puede tener una o varias páginas web monitorizadas.
 -- ════════════════════════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS clients (
     id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -26,29 +25,29 @@ COMMENT ON TABLE clients IS 'Registro de clientes. Cada cliente puede tener N p�
 
 -- ════════════════════════════════════════════════════════════════════════════
 --  PÁGINAS WEB
---  Equivale al antiguo urls.json, pero en base de datos.
---  Un registro por URL a monitorizar.
 -- ════════════════════════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS websites (
     id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     client_id       UUID        NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
     url             TEXT        NOT NULL UNIQUE,
-    label           TEXT,                       -- nombre amigable para el dashboard
+    label           TEXT,
     strategy        TEXT        NOT NULL DEFAULT 'auto'
                                 CHECK (strategy IN ('selenium','beautifulsoup','auto')),
     active          BOOLEAN     NOT NULL DEFAULT TRUE,
+    -- Columna para auditorías manuales bajo demanda desde el dashboard
+    pending_audit   BOOLEAN     NOT NULL DEFAULT FALSE,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_websites_client  ON websites(client_id);
-CREATE INDEX IF NOT EXISTS idx_websites_active  ON websites(active);
+CREATE INDEX IF NOT EXISTS idx_websites_client        ON websites(client_id);
+CREATE INDEX IF NOT EXISTS idx_websites_active        ON websites(active);
+CREATE INDEX IF NOT EXISTS idx_websites_pending_audit ON websites(pending_audit) WHERE pending_audit = TRUE;
 
 COMMENT ON TABLE websites IS 'Páginas web a auditar. Vinculadas a un cliente.';
 
 -- ════════════════════════════════════════════════════════════════════════════
 --  ANÁLISIS (RUNS)
---  Cada vez que el scraper procesa una URL se crea un registro de ejecución.
 -- ════════════════════════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS audit_runs (
     id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -60,16 +59,14 @@ CREATE TABLE IF NOT EXISTS audit_runs (
     strategy_used   TEXT,
     error_message   TEXT,
 
-    -- ── Puntuación y estado global ─────────────────────────────────────────
     score           SMALLINT    CHECK (score BETWEEN 0 AND 100),
     previous_score  SMALLINT    CHECK (previous_score BETWEEN 0 AND 100),
-    audit_status    TEXT,                       -- excelente | bueno | mejorable | crítico
+    audit_status    TEXT,
     release_blocked BOOLEAN     DEFAULT FALSE,
     audit_date      DATE        NOT NULL DEFAULT CURRENT_DATE,
     sections_passed SMALLINT    NOT NULL DEFAULT 0,
     sections_total  SMALLINT    NOT NULL DEFAULT 10,
 
-    -- ── Métricas de la página ─────────────────────────────────────────────
     response_time_ms    INTEGER,
     status_code         INTEGER,
     word_count          INTEGER,
@@ -78,7 +75,6 @@ CREATE TABLE IF NOT EXISTS audit_runs (
     links_count         SMALLINT,
     forms_count         SMALLINT,
 
-    -- ── Contadores de incidencias por categoría ───────────────────────────
     security_issue_count    SMALLINT DEFAULT 0,
     seo_issue_count         SMALLINT DEFAULT 0,
     content_issue_count     SMALLINT DEFAULT 0,
@@ -88,10 +84,7 @@ CREATE TABLE IF NOT EXISTS audit_runs (
     button_issue_count      SMALLINT DEFAULT 0,
     technical_issue_count   SMALLINT DEFAULT 0,
 
-    -- ── Informe completo en JSON (para el histórico detallado) ────────────
     report_json     JSONB,
-
-    -- ── Texto plano del informe ───────────────────────────────────────────
     report_text     TEXT
 );
 
@@ -104,7 +97,6 @@ COMMENT ON TABLE audit_runs IS 'Histórico de análisis. Un registro por ejecuci
 
 -- ════════════════════════════════════════════════════════════════════════════
 --  RESULTADOS POR SECCIÓN DE AUDITORÍA
---  Estado detallado por cada apartado evaluado (10 secciones estándar).
 -- ════════════════════════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS audit_run_sections (
     id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -129,13 +121,11 @@ COMMENT ON TABLE audit_run_sections IS 'Resultado por sección de auditoría par
 
 -- ════════════════════════════════════════════════════════════════════════════
 --  INCIDENCIAS INDIVIDUALES
---  Cada issue detectado por el auditor se guarda como fila para poder
---  filtrar, comparar entre ejecuciones y visualizar tendencias.
 -- ════════════════════════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS audit_issues (
     id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     run_id      UUID        NOT NULL REFERENCES audit_runs(id) ON DELETE CASCADE,
-    category    TEXT        NOT NULL,   -- security | seo | content | image | structure | link | button | technical
+    category    TEXT        NOT NULL,
     severity    TEXT        NOT NULL DEFAULT 'info'
                             CHECK (severity IN ('critical','high','medium','low','info','ok')),
     message     TEXT        NOT NULL,
@@ -152,8 +142,6 @@ COMMENT ON TABLE audit_issues IS 'Incidencias individuales de cada análisis.';
 
 -- ════════════════════════════════════════════════════════════════════════════
 --  DATOS DE EJEMPLO
---  Clientes y páginas de demo para arrancar el dashboard con contenido.
---  Eliminar o ajustar antes de usar en producción.
 -- ════════════════════════════════════════════════════════════════════════════
 INSERT INTO clients (name, email, company, notes) VALUES
     ('Demo Cliente A', 'cliente-a@ejemplo.com', 'Empresa Alpha S.L.',   'Cliente de prueba para desarrollo'),

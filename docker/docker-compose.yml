@@ -56,8 +56,6 @@ services:
 
   # ── 2. Scraper Python ───────────────────────────────────────────────────────
   scraper:
-    profiles:
-      - scraper
     build:
       # Contexto = raíz del repositorio (../ desde docker/)
       # Necesario para que el Dockerfile acceda a config/, scraper/, utils/

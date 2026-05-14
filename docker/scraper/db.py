@@ -2,9 +2,11 @@
 db.py — Capa de acceso a PostgreSQL para el scraper.
 
 Funciones principales:
-  · get_connection()          → devuelve una conexión psycopg2
-  · get_active_websites()     → lista de páginas activas desde la BD
-  · save_audit_run()          → persiste el resultado completo de un análisis
+  · get_connection()               → devuelve una conexión psycopg2
+  · get_active_websites()          → lista de páginas activas desde la BD
+  · get_pending_audit_websites()   → páginas marcadas para auditoría manual
+  · clear_pending_audit(website_id)→ resetea el flag pending_audit tras procesar
+  · save_audit_run()               → persiste el resultado completo de un análisis
 """
 import json
 import os
@@ -15,7 +17,6 @@ from typing import Any
 import psycopg2
 import psycopg2.extras
 
-# ── Configuración de conexión desde variables de entorno ─────────────────────
 DB_CONFIG = {
     "host":     os.environ.get("DB_HOST", "localhost"),
     "port":     int(os.environ.get("DB_PORT", 5432)),
@@ -27,7 +28,6 @@ DB_CONFIG = {
 
 @contextmanager
 def get_connection():
-    """Context manager que abre y cierra la conexión automáticamente."""
     conn = psycopg2.connect(**DB_CONFIG)
     try:
         yield conn
@@ -43,17 +43,15 @@ def get_connection():
 
 def get_active_websites() -> list[dict[str, Any]]:
     """
-    Devuelve la lista de websites activos tal como hacía UrlLoader,
-    pero leyendo directamente de la base de datos.
-
-    Formato de salida compatible con el pipeline existente:
-        [{ "url": "...", "strategy": "...", "website_id": "..." }, ...]
+    Devuelve la lista de websites activos.
+    Excluye los que ya tienen pending_audit=TRUE (se procesan aparte con prioridad).
     """
     sql = """
         SELECT w.id AS website_id, w.url, w.label, w.strategy, c.name AS client_name
         FROM   websites w
         JOIN   clients  c ON c.id = w.client_id
         WHERE  w.active = TRUE
+          AND  w.pending_audit = FALSE
         ORDER  BY c.name, w.url
     """
     with get_connection() as conn:
@@ -62,35 +60,54 @@ def get_active_websites() -> list[dict[str, Any]]:
             return [dict(row) for row in cur.fetchall()]
 
 
+def get_pending_audit_websites() -> list[dict[str, Any]]:
+    """
+    Devuelve los websites marcados para auditoría manual (pending_audit=TRUE).
+    Se incluyen tanto activos como inactivos — el operador los marcó explícitamente.
+    Ordena por updated_at ASC para respetar el orden de solicitud (FIFO).
+    """
+    sql = """
+        SELECT w.id AS website_id, w.url, w.label, w.strategy, c.name AS client_name
+        FROM   websites w
+        JOIN   clients  c ON c.id = w.client_id
+        WHERE  w.pending_audit = TRUE
+        ORDER  BY w.updated_at ASC
+    """
+    with get_connection() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(sql)
+            return [dict(row) for row in cur.fetchall()]
+
+
+def clear_pending_audit(website_id: str) -> None:
+    """Resetea el flag pending_audit a FALSE una vez procesado el website."""
+    sql = """
+        UPDATE websites
+        SET pending_audit = FALSE,
+            updated_at    = %s
+        WHERE id = %s
+    """
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, (datetime.now(timezone.utc), website_id))
+
+
 # ── Escritura ─────────────────────────────────────────────────────────────────
 
 def create_run(website_id: str, strategy_used: str) -> str:
     """
     Crea un registro de ejecución en estado 'running' y devuelve su UUID.
-    Llamar antes de ejecutar el scraping.
     """
     sql = """
         INSERT INTO audit_runs (
-            website_id,
-            strategy_used,
-            status,
-            started_at,
-            audit_date,
-            previous_score
+            website_id, strategy_used, status, started_at, audit_date, previous_score
         )
         VALUES (
-            %s,
-            %s,
-            'running',
-            %s,
-            CURRENT_DATE,
+            %s, %s, 'running', %s, CURRENT_DATE,
             (
-                SELECT score
-                FROM audit_runs
-                WHERE website_id = %s
-                  AND status = 'success'
-                ORDER BY started_at DESC
-                LIMIT 1
+                SELECT score FROM audit_runs
+                WHERE website_id = %s AND status = 'success'
+                ORDER BY started_at DESC LIMIT 1
             )
         )
         RETURNING id
@@ -114,21 +131,10 @@ def save_audit_run(
     """
     Actualiza el registro de ejecución con los resultados completos.
     También inserta todas las incidencias individuales en audit_issues.
-
-    Args:
-        run_id:          UUID del run creado con create_run().
-        website_id:      UUID del website.
-        status:          'success' | 'error'
-        strategy_used:   Nombre de la estrategia usada.
-        report:          dict con el QualityAuditReport.to_dict() (puede ser None si hubo error).
-        report_text:     Texto plano del informe.
-        error_message:   Mensaje de error si status == 'error'.
-        scrape_metadata: metadata del ScrapeResult (status_code, response_time_ms…).
     """
     metrics = (report or {}).get("metrics", {})
-
     sections = _build_audit_sections(report, scrape_metadata)
-    sections_passed = sum(1 for s in sections if s["passed"])
+    sections_passed = sum(1 for s in sections if not s["details_json"].get("is_blocked", False))
 
     update_sql = """
         UPDATE audit_runs SET
@@ -172,17 +178,15 @@ def save_audit_run(
         (report or {}).get("score"),
         (report or {}).get("status"),
         (report or {}).get("release_blocked", False),
-        rt,
-        sc,
+        rt, sc,
         metrics.get("word_count"),
         metrics.get("h1_count"),
         metrics.get("image_count"),
         metrics.get("links_count"),
         metrics.get("forms_count"),
         metrics.get("security_issue_count", 0),
-        # seo no existe en metrics directamente, se calcula desde el report
         len((report or {}).get("seo_issues", [])),
-        metrics.get("content_issue_count", 0),  # no hay en metrics, calculamos
+        metrics.get("content_issue_count", 0),
         metrics.get("image_issue_count", 0),
         len((report or {}).get("structure_issues", [])),
         metrics.get("link_issue_count", 0),
@@ -195,24 +199,27 @@ def save_audit_run(
         run_id,
     )
 
-    # Mapeo de categorías a listas del report
     issue_categories = {
         "security":  (report or {}).get("security_issues", []),
         "seo":       (report or {}).get("seo_issues", []),
         "content":   (report or {}).get("content_issues", []),
-        "image":     (report or {}).get("image_issues", []),
+        "images":    (report or {}).get("image_issues", []),
         "structure": (report or {}).get("structure_issues", []),
-        "link":      (report or {}).get("link_issues", []),
-        "button":    (report or {}).get("button_issues", []),
+        "links":     (report or {}).get("link_issues", []),
+        "buttons":   (report or {}).get("button_issues", []),
         "technical": (report or {}).get("technical_issues", []),
     }
 
     with get_connection() as conn:
         with conn.cursor() as cur:
-            # 1. Actualizar el run
             cur.execute(update_sql, params)
 
-            # 2. Insertar incidencias individuales
+            # Si el rowcount es 0, significa que el registro en audit_runs fue eliminado
+            # (ej. borrado en cascada si el usuario eliminó la URL o el Cliente en el dashboard
+            # mientras el scraper estaba analizando la página). Salimos para evitar errores de Foreign Key.
+            if cur.rowcount == 0:
+                return
+
             if report:
                 issues_rows = []
                 for category, issues_list in issue_categories.items():
@@ -223,51 +230,36 @@ def save_audit_run(
                 if issues_rows:
                     psycopg2.extras.execute_values(
                         cur,
-                        """
-                        INSERT INTO audit_issues (run_id, category, severity, message)
-                        VALUES %s
-                        """,
+                        "INSERT INTO audit_issues (run_id, category, severity, message) VALUES %s",
                         issues_rows,
                     )
 
-            # 3. Insertar tabla descriptiva por secciones de auditoría
             if sections:
                 section_rows = [
                     (
                         run_id,
-                        section["section_key"],
-                        section["section_label"],
-                        section["passed"],
-                        section["status"],
-                        section["issue_count"],
-                        section["check_description"],
-                        section["result_description"],
-                        json.dumps(section["details_json"], ensure_ascii=False),
+                        s["section_key"], s["section_label"], s["passed"],
+                        s["status"], s["issue_count"],
+                        s["check_description"], s["result_description"],
+                        json.dumps(s["details_json"], ensure_ascii=False),
                     )
-                    for section in sections
+                    for s in sections
                 ]
                 psycopg2.extras.execute_values(
                     cur,
                     """
                     INSERT INTO audit_run_sections (
-                        run_id,
-                        section_key,
-                        section_label,
-                        passed,
-                        status,
-                        issue_count,
-                        check_description,
-                        result_description,
-                        details_json
+                        run_id, section_key, section_label, passed, status,
+                        issue_count, check_description, result_description, details_json
                     ) VALUES %s
                     ON CONFLICT (run_id, section_key) DO UPDATE SET
-                        section_label = EXCLUDED.section_label,
-                        passed = EXCLUDED.passed,
-                        status = EXCLUDED.status,
-                        issue_count = EXCLUDED.issue_count,
-                        check_description = EXCLUDED.check_description,
+                        section_label      = EXCLUDED.section_label,
+                        passed             = EXCLUDED.passed,
+                        status             = EXCLUDED.status,
+                        issue_count        = EXCLUDED.issue_count,
+                        check_description  = EXCLUDED.check_description,
                         result_description = EXCLUDED.result_description,
-                        details_json = EXCLUDED.details_json
+                        details_json       = EXCLUDED.details_json
                     """,
                     section_rows,
                 )
@@ -283,7 +275,6 @@ def _safe_int(value: Any) -> int | None:
 
 
 def _classify_severity(message: str) -> str:
-    """Clasifica la gravedad de un issue basándose en palabras clave."""
     m = message.lower()
     if any(k in m for k in ("critico", "crítico", "dato sensible", "panel admin",
                               "sin autenticacion", "enlace roto confirmado", "imagen rota")):
@@ -352,15 +343,23 @@ def _build_audit_sections(report: dict | None, scrape_metadata: dict) -> list[di
         else:
             section_issues = report.get(report_key, [])
             issue_count = len([i for i in section_issues if "sin incidencias" not in i.lower()])
-            passed = issue_count == 0
-            status = "ok" if passed else ("warning" if issue_count <= 2 else "failed")
+            
+            # Detectar si esta sección está bloqueada
+            is_section_blocked = any(kw in " ".join(section_issues).lower() for kw in ["bloqueada", "firewall", "403", "forbidden"])
+            
+            passed = not is_section_blocked
+            status = "failed" if is_section_blocked else ("ok" if issue_count == 0 else "warning")
             result_description = (
                 "Comprobacion correcta sin incidencias."
-                if passed else f"Se detectaron {issue_count} incidencia(s) en esta seccion."
+                if issue_count == 0 and not is_section_blocked else (
+                    f"BLOQUEADO: La prueba fue impedida por la web o firewall." if is_section_blocked
+                    else f"Se detectaron {issue_count} incidencia(s) en esta seccion."
+                )
             )
             details_json = {
                 "sample_issues": section_issues[:3],
                 "metric_issue_count": metrics.get(f"{section_key.rstrip('s')}_issue_count"),
+                "is_blocked": is_section_blocked
             }
 
         sections.append({

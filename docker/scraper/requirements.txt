@@ -6,7 +6,7 @@ selenium>=4.20.0
 webdriver-manager>=4.0.0      # gestión automática de ChromeDriver
 
 # ── Base de datos ─────────────────────────────────────────────────────────────
-psycopg2-binary>=2.9.9         # driver PostgreSQL para Python
-
+psycopg2-binary>=2.9.9         # driver PostgreSQL para PythonSQLAlchemy>=2.0,<3
 # ── Utilidades ───────────────────────────────────────────────────────────────
 python-dotenv>=1.0.0           # carga de .env
+croniter>=2.0.0                # parser de expresiones cron

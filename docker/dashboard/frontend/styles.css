@@ -6,8 +6,11 @@ body {
 }
 
 .app {
-  padding: 16px;
+  padding: 24px;
+  max-width: 1600px;
+  margin: 0 auto;
 }
+
 
 h2 {
   margin-top: 0;
@@ -138,14 +141,16 @@ tr:hover {
 }
 
 .modal-content {
-  width: min(600px, 95vw);
-  max-height: 85vh;
+  width: min(1100px, 95vw);
+  max-height: 90vh;
   overflow: auto;
   background: #11131a;
-  border: 2px solid #3498db;
-  border-radius: 6px;
-  padding: 20px;
+  border: 1px solid #3498db;
+  box-shadow: 0 0 30px rgba(52, 152, 219, 0.2);
+  border-radius: 8px;
+  padding: 30px;
 }
+
 
 .form-group {
   margin-bottom: 12px;
@@ -180,10 +185,11 @@ tr:hover {
 
 .form-actions {
   display: flex;
-  gap: 8px;
-  margin-top: 16px;
+  gap: 12px;
+  margin-top: 24px;
   justify-content: flex-end;
 }
+
 
 .form-actions button {
   flex: 1;

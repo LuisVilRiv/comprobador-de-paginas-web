@@ -15,8 +15,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from config import settings
 from config.logging_config import setup_logger
-from utils.audit_dictionaries import build_audit_dictionaries
-from utils.audit_regex import AuditRegexSet, LEET_TRANSLATION_TABLE, build_audit_regex_set
+from .dictionaries import build_audit_dictionaries
+from .regex import AuditRegexSet, LEET_TRANSLATION_TABLE, build_audit_regex_set
 
 logger = setup_logger(__name__)
 

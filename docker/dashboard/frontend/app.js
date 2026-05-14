@@ -69,6 +69,19 @@ function App() {
   const [formError, setFormError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
+  // ── Modal de Edición ──────────────────────────────────────────────────────
+  const [showEditClient, setShowEditClient] = useState(false);
+  const [showEditWebsite, setShowEditWebsite] = useState(false);
+  const [editClientForm, setEditClientForm] = useState(null);
+  const [editWebsiteForm, setEditWebsiteForm] = useState(null);
+
+  // ── Configuración de Ciclos ───────────────────────────────────────────────
+  const [showSettings, setShowSettings] = useState(false);
+  const [settings, setSettings] = useState({ cron_active: "", cron_inactive: "" });
+  const [settingsMode, setSettingsMode] = useState("simple"); // 'simple' o 'expert'
+
+
+
   const loadAll = async () => {
     setLoading(true);
     try {
@@ -88,36 +101,30 @@ function App() {
     }
   };
 
-  useEffect(() => { loadAll(); }, [clientId]);
+  const loadSettings = async () => {
+    try {
+      const data = await api("/settings");
+      setSettings(data);
+    } catch (err) {
+      console.error("Error cargando settings", err);
+    }
+  };
+
+  useEffect(() => { 
+    loadAll();
+    loadSettings();
+  }, [clientId]);
+
 
   useEffect(() => {
     const updateTimers = () => {
       const now = new Date();
       
-      // Activos (Miércoles y Domingo a las 00:00)
-      let nextActive = new Date(now);
-      nextActive.setHours(0, 0, 0, 0);
-      let daysToAddActive = 0;
-      if (now.getDay() === 0) daysToAddActive = (now.getHours() > 0 || now.getMinutes() > 0 || now.getSeconds() > 0) ? 3 : 0;
-      else if (now.getDay() < 3) daysToAddActive = 3 - now.getDay();
-      else if (now.getDay() === 3) daysToAddActive = (now.getHours() > 0 || now.getMinutes() > 0 || now.getSeconds() > 0) ? 4 : 0;
-      else daysToAddActive = 7 - now.getDay();
-      if (daysToAddActive > 0) nextActive.setDate(now.getDate() + daysToAddActive);
-      
-      // Inactivos (Día 1 meses pares: Feb, Abr, Jun, Ago, Oct, Dic)
-      let nextInactive = new Date(now);
-      nextInactive.setHours(0, 0, 0, 0);
-      nextInactive.setDate(1);
-      let currentMonth = now.getMonth();
-      let targetMonth = currentMonth + (currentMonth % 2 === 0 ? 1 : 2);
-      if (now.getMonth() % 2 !== 0 && now.getDate() === 1 && now.getHours() === 0 && now.getMinutes() === 0 && now.getSeconds() === 0) {
-        targetMonth = currentMonth; 
-      }
-      nextInactive.setMonth(targetMonth);
-
-      const formatDiff = (target) => {
-        const diff = target - new Date();
-        if (diff <= 0) return "¡En ejecución!";
+      const formatDiff = (timestamp) => {
+        if (!timestamp) return "-";
+        const target = new Date(timestamp * 1000);
+        const diff = target - now;
+        if (diff <= 0) return "🔄 Procesando...";
         const d = Math.floor(diff / (1000 * 60 * 60 * 24));
         const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
         const m = Math.floor((diff / 1000 / 60) % 60);
@@ -125,13 +132,17 @@ function App() {
         return `${d}d ${h}h ${m}m ${s}s`;
       };
 
-      setTimers({ active: formatDiff(nextActive), inactive: formatDiff(nextInactive) });
+      setTimers({ 
+        active: formatDiff(settings.next_active), 
+        inactive: formatDiff(settings.next_inactive) 
+      });
     };
 
     updateTimers();
     const interval = setInterval(updateTimers, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [settings]);
+
 
   const filtered = useMemo(
     () => websites.filter((w) => {
@@ -188,6 +199,43 @@ function App() {
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (err) { setFormError(err.message); }
   };
+
+  const handleUpdateClient = async (e) => {
+    e.preventDefault();
+    setFormError("");
+    try {
+      await api(`/clients/${editClientForm.id}`, "PUT", editClientForm);
+      setSuccessMessage("✓ Cliente actualizado");
+      setShowEditClient(false);
+      await loadAll();
+      setTimeout(() => setSuccessMessage(""), 3000);
+    } catch (err) { setFormError(err.message); }
+  };
+
+  const handleUpdateWebsite = async (e) => {
+    e.preventDefault();
+    setFormError("");
+    try {
+      await api(`/websites/${editWebsiteForm.website_id}`, "PUT", editWebsiteForm);
+      setSuccessMessage("✓ URL actualizada");
+      setShowEditWebsite(false);
+      await loadAll();
+      setTimeout(() => setSuccessMessage(""), 3000);
+    } catch (err) { setFormError(err.message); }
+  };
+
+  const handleUpdateSettings = async (e) => {
+    e.preventDefault();
+    setFormError("");
+    try {
+      await api("/settings", "PUT", settings);
+      setSuccessMessage("✓ Configuración de ciclos guardada");
+      setShowSettings(false);
+      loadSettings();
+      setTimeout(() => setSuccessMessage(""), 3000);
+    } catch (err) { setFormError(err.message); }
+  };
+
 
   const handleToggleActive = async (website) => {
     try {
@@ -314,8 +362,13 @@ function App() {
         React.createElement("button", {
           onClick: () => { setShowAddWebsite(true); setFormError(""); },
           style: { backgroundColor: "#3498db" },
-        }, "+ URL")
+        }, "+ URL"),
+        React.createElement("button", {
+          onClick: () => { setShowSettings(true); setFormError(""); },
+          style: { backgroundColor: "#6c5ce7" },
+        }, "⚙️ Configurar Ciclos")
       ),
+
       React.createElement(
         "div",
         { className: "topbar-center" },
@@ -328,14 +381,31 @@ function App() {
           )
         ),
         clientId && React.createElement(
-          "button",
-          {
-            onClick: () => triggerDeleteClient(clientId, clients.find(c => c.id === clientId)?.name),
-            style: { backgroundColor: "#c0392b" },
-            title: "Eliminar Cliente Seleccionado"
-          },
-          "🗑️ Eliminar Cliente"
+          "div", { style: { display: "flex", gap: "4px" } },
+          React.createElement(
+            "button",
+            {
+              onClick: () => { 
+                const c = clients.find(cl => cl.id === clientId);
+                setEditClientForm(c);
+                setShowEditClient(true);
+              },
+              style: { backgroundColor: "#f39c12" },
+              title: "Editar Cliente"
+            },
+            "✏️ Editar"
+          ),
+          React.createElement(
+            "button",
+            {
+              onClick: () => triggerDeleteClient(clientId, clients.find(c => c.id === clientId)?.name),
+              style: { backgroundColor: "#c0392b" },
+              title: "Eliminar Cliente Seleccionado"
+            },
+            "🗑️ Eliminar"
+          )
         )
+
       ),
       React.createElement(
         "div",
@@ -421,6 +491,11 @@ function App() {
                   opacity: (isAuditing || w.pending_audit) ? 0.6 : 1,
                 },
               }, isAuditing ? "..." : w.pending_audit ? "⏳" : "Auditar"),
+              // ── Botón Editar ──────────────────────────────────────────
+              React.createElement("button", {
+                onClick: () => { setEditWebsiteForm(w); setShowEditWebsite(true); },
+                style: { backgroundColor: "#f39c12", padding: "4px 8px", marginRight: "4px" },
+              }, "Editar"),
               // ── Botón Desactivar / Activar ────────────────────────────
               React.createElement("button", {
                 onClick: () => handleToggleActive(w),
@@ -731,7 +806,7 @@ function App() {
                 type: "checkbox", checked: newWebsiteForm.active,
                 onChange: (e) => setNewWebsiteForm({ ...newWebsiteForm, active: e.target.checked }),
               }),
-              React.createElement("span", { style: { marginLeft: "8px" } }, "Activa (auditará 2 veces/semana)")
+              React.createElement("span", { style: { marginLeft: "8px" } }, "Activa (auditará según programación)")
             ),
             React.createElement("div", { className: "form-actions" },
               React.createElement("button", { type: "submit", style: { backgroundColor: "#3498db" } }, "Agregar URL"),
@@ -778,7 +853,327 @@ function App() {
             }, "Cancelar")
           )
         )
-      )
+      ),
+
+    // ── Modal: Editar cliente ─────────────────────────────────────────────
+    showEditClient && editClientForm &&
+      React.createElement(
+        "div",
+        { className: "modal", onClick: () => setShowEditClient(false) },
+        React.createElement(
+          "div",
+          { className: "modal-content", onClick: (e) => e.stopPropagation() },
+          React.createElement("h3", null, `Editar cliente: ${editClientForm.name}`),
+          React.createElement(
+            "form",
+            { onSubmit: handleUpdateClient },
+            React.createElement("div", { className: "form-group" },
+              React.createElement("label", null, "Nombre *"),
+              React.createElement("input", {
+                type: "text", value: editClientForm.name, required: true,
+                onChange: (e) => setEditClientForm({ ...editClientForm, name: e.target.value }),
+              })
+            ),
+            React.createElement("div", { className: "form-group" },
+              React.createElement("label", null, "Email"),
+              React.createElement("input", {
+                type: "email", value: editClientForm.email || "",
+                onChange: (e) => setEditClientForm({ ...editClientForm, email: e.target.value }),
+              })
+            ),
+            React.createElement("div", { className: "form-group" },
+              React.createElement("label", null, "Teléfono"),
+              React.createElement("input", {
+                type: "tel", value: editClientForm.phone || "",
+                onChange: (e) => setEditClientForm({ ...editClientForm, phone: e.target.value }),
+              })
+            ),
+            React.createElement("div", { className: "form-group" },
+              React.createElement("label", null, "Empresa"),
+              React.createElement("input", {
+                type: "text", value: editClientForm.company || "",
+                onChange: (e) => setEditClientForm({ ...editClientForm, company: e.target.value }),
+              })
+            ),
+            React.createElement("div", { className: "form-group" },
+              React.createElement("label", null, "Notas"),
+              React.createElement("textarea", {
+                value: editClientForm.notes || "", rows: 3,
+                onChange: (e) => setEditClientForm({ ...editClientForm, notes: e.target.value }),
+              })
+            ),
+            React.createElement("div", { className: "form-actions" },
+              React.createElement("button", { type: "submit", style: { backgroundColor: "#f39c12" } }, "Guardar cambios"),
+              React.createElement("button", {
+                type: "button", style: { backgroundColor: "#95a5a6" },
+                onClick: () => setShowEditClient(false),
+              }, "Cancelar")
+            )
+          )
+        )
+      ),
+
+    // ── Modal: Editar website ─────────────────────────────────────────────
+    showEditWebsite && editWebsiteForm &&
+      React.createElement(
+        "div",
+        { className: "modal", onClick: () => setShowEditWebsite(false) },
+        React.createElement(
+          "div",
+          { className: "modal-content", onClick: (e) => e.stopPropagation() },
+          React.createElement("h3", null, `Editar URL: ${editWebsiteForm.url}`),
+          React.createElement(
+            "form",
+            { onSubmit: handleUpdateWebsite },
+            React.createElement("div", { className: "form-group" },
+              React.createElement("label", null, "URL *"),
+              React.createElement("input", {
+                type: "url", value: editWebsiteForm.url, required: true,
+                onChange: (e) => setEditWebsiteForm({ ...editWebsiteForm, url: e.target.value }),
+              })
+            ),
+            React.createElement("div", { className: "form-group" },
+              React.createElement("label", null, "Etiqueta"),
+              React.createElement("input", {
+                type: "text", value: editWebsiteForm.label || "",
+                onChange: (e) => setEditWebsiteForm({ ...editWebsiteForm, label: e.target.value }),
+              })
+            ),
+            React.createElement("div", { className: "form-group" },
+              React.createElement("label", null, "Estrategia"),
+              React.createElement(
+                "select",
+                {
+                  value: editWebsiteForm.strategy,
+                  onChange: (e) => setEditWebsiteForm({ ...editWebsiteForm, strategy: e.target.value }),
+                },
+                React.createElement("option", { value: "auto" }, "Auto"),
+                React.createElement("option", { value: "beautifulsoup" }, "BeautifulSoup"),
+                React.createElement("option", { value: "selenium" }, "Selenium")
+              )
+            ),
+            React.createElement("div", { className: "form-group" },
+              React.createElement("label", null),
+              React.createElement("input", {
+                type: "checkbox", checked: editWebsiteForm.active,
+                onChange: (e) => setEditWebsiteForm({ ...editWebsiteForm, active: e.target.checked }),
+              }),
+              React.createElement("span", { style: { marginLeft: "8px" } }, "URL Activa")
+            ),
+            React.createElement("div", { className: "form-actions" },
+              React.createElement("button", { type: "submit", style: { backgroundColor: "#f39c12" } }, "Guardar cambios"),
+              React.createElement("button", {
+                type: "button", style: { backgroundColor: "#95a5a6" },
+                onClick: () => setShowEditWebsite(false),
+              }, "Cancelar")
+            )
+          )
+        )
+      ),
+
+    // ── Modal: Configuración de Ciclos ────────────────────────────────────
+    showSettings &&
+      (() => {
+        const parseCron = (c) => {
+          const parts = (c && c.split(" ").length === 5 ? c : "0 0 * * *").split(" ");
+          return {
+            min: parts[0],
+            hour: parts[1],
+            dom: parts[2],
+            month: parts[3],
+            dow: parts[4]
+          };
+        };
+
+        const activeParts = parseCron(settings.cron_active);
+        const inactiveParts = parseCron(settings.cron_inactive);
+
+        const updateActive = (newParts) => {
+          const p = { ...activeParts, ...newParts };
+          setSettings({ ...settings, cron_active: `${p.min} ${p.hour} ${p.dom} ${p.month} ${p.dow}` });
+        };
+
+        const updateInactive = (newParts) => {
+          const p = { ...inactiveParts, ...newParts };
+          setSettings({ ...settings, cron_inactive: `${p.min} ${p.hour} ${p.dom} ${p.month} ${p.dow}` });
+        };
+
+        const renderFlexibleSection = (label, parts, updateFn, color) => {
+          let freq = "daily";
+          if (parts.dow !== "*") freq = "weekly";
+          else if (parts.month.includes("/")) freq = "monthly_periodic";
+          else if (parts.dom.includes("/")) freq = "daily_periodic";
+          else if (parts.dom !== "*" && parts.month === "*") freq = "monthly";
+          else if (parts.dom !== "*" && parts.month !== "*") freq = "yearly";
+
+          return React.createElement("div", { style: { background: "#1c1e26", padding: "20px", borderRadius: "12px", marginBottom: "20px", border: `1px solid ${color}` } },
+            React.createElement("h4", { style: { marginTop: 0, color: color, display: "flex", alignItems: "center", gap: "10px" } }, label),
+            settingsMode === "simple" ? 
+              React.createElement("div", null,
+                React.createElement("div", { className: "form-group" },
+                  React.createElement("label", null, "¿Con qué frecuencia?"),
+                  React.createElement("select", {
+                    value: freq,
+                    onChange: (e) => {
+                      const f = e.target.value;
+                      if (f === "daily") updateFn({ dom: "*", month: "*", dow: "*" });
+                      else if (f === "daily_periodic") updateFn({ dom: "*/2", month: "*", dow: "*" });
+                      else if (f === "weekly") updateFn({ dom: "*", month: "*", dow: "1" });
+                      else if (f === "monthly") updateFn({ dom: "1", month: "*", dow: "*" });
+                      else if (f === "monthly_periodic") updateFn({ dom: "1", month: "*/3", dow: "*" });
+                      else if (f === "yearly") updateFn({ dom: "1", month: "1", dow: "*" });
+                    }
+                  },
+                    React.createElement("option", { value: "daily" }, "🕒 Diario (Todos los días)"),
+                    React.createElement("option", { value: "daily_periodic" }, "🔄 Cada X días"),
+                    React.createElement("option", { value: "weekly" }, "📅 Semanal (Días específicos)"),
+                    React.createElement("option", { value: "monthly" }, "📆 Mensual (Un día al mes)"),
+                    React.createElement("option", { value: "monthly_periodic" }, "📅 Periódico (Cada X meses)"),
+                    React.createElement("option", { value: "yearly" }, "🗓️ Anual (Una vez al año)")
+                  )
+                ),
+
+                freq === "daily_periodic" && React.createElement("div", { className: "form-group" },
+                  React.createElement("label", null, "¿Cada cuántos días?"),
+                  React.createElement("input", {
+                    type: "number", min: "2", max: "30",
+                    value: parts.dom.replace("*/", ""),
+                    onChange: (e) => updateFn({ dom: `*/${e.target.value}`, month: "*", dow: "*" })
+                  })
+                ),
+                freq === "weekly" && React.createElement("div", { className: "form-group" },
+                  React.createElement("label", null, "Días de la semana"),
+                  React.createElement("div", { style: { display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "8px" } },
+                    [
+                      { id: "1", n: "Lun" }, { id: "2", n: "Mar" }, { id: "3", n: "Mié" }, 
+                      { id: "4", n: "Jue" }, { id: "5", n: "Vie" }, { id: "6", n: "Sáb" }, { id: "0", n: "Dom" }
+                    ].map(d => {
+                      const isSelected = parts.dow.split(",").includes(d.id);
+                      return React.createElement("button", {
+                        key: d.id, type: "button",
+                        onClick: () => {
+                          let current = parts.dow.split(",");
+                          if (current.includes(d.id)) current = current.filter(x => x !== d.id);
+                          else current.push(d.id);
+                          updateFn({ dow: current.length === 0 ? "1" : current.sort().join(",") });
+                        },
+                        style: { 
+                          backgroundColor: isSelected ? color : "#2c2f39",
+                          color: isSelected ? "#fff" : "#7f8c8d",
+                          padding: "5px 10px", fontSize: "12px",
+                          border: "1px solid " + (isSelected ? color : "#444")
+                        }
+                      }, d.n);
+                    })
+                  )
+                ),
+
+                freq === "monthly_periodic" && React.createElement("div", { style: { display: "flex", gap: "10px" } },
+                   React.createElement("div", { className: "form-group", style: { flex: 1 } },
+                    React.createElement("label", null, "¿Cada cuántos meses?"),
+                    React.createElement("input", {
+                      type: "number", min: "2", max: "12",
+                      value: parts.month.replace("*/", ""),
+                      onChange: (e) => updateFn({ month: `*/${e.target.value}`, dom: "1", dow: "*" })
+                    })
+                  ),
+                  React.createElement("div", { className: "form-group", style: { flex: 1 } },
+                    React.createElement("label", null, "Día del mes"),
+                    React.createElement("input", {
+                      type: "number", min: "1", max: "28",
+                      value: parts.dom === "*" ? "1" : parts.dom,
+                      onChange: (e) => updateFn({ dom: e.target.value })
+                    })
+                  )
+                ),
+
+                (freq === "monthly" || freq === "yearly") && React.createElement("div", { style: { display: "flex", gap: "10px" } },
+                  freq === "yearly" && React.createElement("div", { className: "form-group", style: { flex: 1 } },
+                    React.createElement("label", null, "Mes"),
+                    React.createElement("select", {
+                      value: parts.month,
+                      onChange: (e) => updateFn({ month: e.target.value })
+                    },
+                      ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"].map((m, i) => 
+                        React.createElement("option", { key: i+1, value: i+1 }, m)
+                      )
+                    )
+                  ),
+                  React.createElement("div", { className: "form-group", style: { flex: 1 } },
+                    React.createElement("label", null, "Día"),
+                    React.createElement("input", {
+                      type: "number", min: "1", max: "28",
+                      value: parts.dom === "*" ? "1" : parts.dom,
+                      onChange: (e) => updateFn({ dom: e.target.value })
+                    })
+                  )
+                ),
+                React.createElement("div", { className: "form-group", style: { marginTop: "10px" } },
+                  React.createElement("label", null, "Hora de ejecución"),
+                  React.createElement("input", {
+                    type: "time",
+                    value: `${parts.hour.padStart(2, '0')}:${parts.min.padStart(2, '0')}`,
+                    onChange: (e) => {
+                      const [h, m] = e.target.value.split(":");
+                      updateFn({ hour: parseInt(h).toString(), min: parseInt(m).toString() });
+                    },
+                    style: { maxWidth: "120px" }
+                  })
+                )
+              )
+            : 
+              React.createElement("div", { className: "form-group" },
+                React.createElement("label", null, "Expresión Cron"),
+                React.createElement("input", {
+                  type: "text", value: label.includes("Activas") ? settings.cron_active : settings.cron_inactive,
+                  onChange: (e) => {
+                    if (label.includes("Activas")) setSettings({ ...settings, cron_active: e.target.value });
+                    else setSettings({ ...settings, cron_inactive: e.target.value });
+                  },
+                })
+              )
+          );
+        };
+
+        return React.createElement(
+          "div",
+          { className: "modal", onClick: () => setShowSettings(false) },
+          React.createElement(
+            "div",
+            { className: "modal-content", style: { maxWidth: "850px" }, onClick: (e) => e.stopPropagation() },
+            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" } },
+              React.createElement("h3", { style: { margin: 0 } }, "📅 Programación de Auditorías"),
+              React.createElement("button", { 
+                onClick: () => setSettingsMode(settingsMode === "simple" ? "expert" : "simple"),
+                style: { backgroundColor: "#444", fontSize: "11px" }
+              }, settingsMode === "simple" ? "💻 Modo Experto" : "✨ Modo Simple")
+            ),
+            React.createElement("form", { onSubmit: handleUpdateSettings },
+              renderFlexibleSection("🚀 Webs Activas", activeParts, updateActive, "#3498db"),
+              renderFlexibleSection("💤 Webs Inactivas", inactiveParts, updateInactive, "#9b59b6"),
+              React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "10px", padding: "15px", background: "rgba(52, 152, 219, 0.1)", borderRadius: "8px", fontSize: "14px", border: "1px dashed #3498db" } },
+                React.createElement("span", { style: { fontSize: "20px" } }, "📋"),
+                React.createElement("div", null, 
+                  React.createElement("div", { style: { fontWeight: "bold", marginBottom: "4px" } }, "Resumen de ejecución:"),
+                  React.createElement("div", { style: { opacity: 0.8 } }, 
+                    `• Las webs activas se analizarán con cron: [${settings.cron_active}]`,
+                    React.createElement("br"),
+                    `• Las webs inactivas se analizarán con cron: [${settings.cron_inactive}]`
+                  )
+                )
+              ),
+              React.createElement("div", { className: "form-actions", style: { marginTop: "30px" } },
+                React.createElement("button", { type: "submit", style: { backgroundColor: "#2ecc71", fontSize: "18px", padding: "15px", fontWeight: "bold" } }, "💾 Guardar Nueva Programación"),
+                React.createElement("button", {
+                  type: "button", style: { backgroundColor: "#95a5a6" },
+                  onClick: () => setShowSettings(false),
+                }, "Cancelar")
+              )
+            )
+          )
+        );
+      })()
+
   );
 }
 

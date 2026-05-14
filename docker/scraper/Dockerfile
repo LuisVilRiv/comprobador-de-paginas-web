@@ -49,11 +49,10 @@ RUN pip install --no-cache-dir --upgrade pip \
 # Nota: "scraper/" aquí es el paquete Python del repo, no la carpeta docker/scraper/
 COPY config/   ./config/
 COPY scraper/  ./scraper/
-COPY utils/    ./utils/
+COPY shared/   ./shared/
 
 # ── Ficheros específicos del contenedor Docker ───────────────────────────────
 COPY docker/scraper/entrypoint.py ./entrypoint.py
-COPY docker/scraper/db.py         ./db.py
 
 # ── Directorios de datos y logs ──────────────────────────────────────────────
 # En producción estos directorios son volúmenes montados desde el host

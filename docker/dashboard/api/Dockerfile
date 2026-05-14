@@ -9,10 +9,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev gcc \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+# Note: Build context is expected to be the root of the repo
+COPY docker/dashboard/api/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# Copy shared logic
+COPY shared/ ./shared/
+
+# Copy API logic
+COPY docker/dashboard/api/main.py ./main.py
 
 EXPOSE 8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

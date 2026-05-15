@@ -11,6 +11,7 @@ from .structure import check_structure
 from .links     import check_links_recursive
 from .buttons   import check_buttons
 from .technical import check_technical
+from .browser   import check_js_console_errors, interact_buttons_selenium
 
 __all__ = [
     "check_security",

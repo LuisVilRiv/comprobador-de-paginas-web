@@ -3,8 +3,7 @@ scoring.py — Cálculo de puntuación, estado y gate de release.
 Extraído de QualityAuditor._calculate_score, _status_from_score
 y _evaluate_release_gate.
 """
-from __future__ import annotations
-
+from config import settings
 
 def calculate_score(
     security_issues:  list[str],
@@ -75,8 +74,8 @@ def calculate_score(
 
 
 def status_from_score(score: int) -> str:
-    if score >= 85: return "excelente"
-    if score >= 70: return "bueno"
+    if score >= settings.AUDIT_SCORE_EXCELLENT_THRESHOLD: return "excelente"
+    if score >= settings.AUDIT_SCORE_GOOD_THRESHOLD: return "bueno"
     if score >= 50: return "mejorable"
     return "crítico"
 
@@ -92,8 +91,8 @@ def evaluate_release_gate(
 ) -> tuple[bool, list[str]]:
     blockers: list[str] = []
 
-    if score < 70:
-        blockers.append(f"Puntuación global insuficiente para producción ({score}/100).")
+    if score < settings.AUDIT_RELEASE_GATE_MIN_SCORE:
+        blockers.append(f"Puntuación global insuficiente para producción ({score}/{settings.AUDIT_RELEASE_GATE_MIN_SCORE}).")
 
     security_critical = (
         "dato sensible", "http en lugar de https",

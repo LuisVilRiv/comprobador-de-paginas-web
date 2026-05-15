@@ -79,7 +79,7 @@ def _check_assets(
         if base_is_https and full.lower().startswith("http://"):
             asset_stats["mixed_content"] += 1
             issues.append(f"Contenido mixto CSS: {full} (línea {ln})")
-        ok, elapsed_ms, status_code = check_url_fn(full)
+        ok, elapsed_ms, status_code, _ = check_url_fn(full)
         asset_stats["checked"] += 1
         if not ok:
             asset_stats["broken"] += 1
@@ -94,7 +94,7 @@ def _check_assets(
         if base_is_https and full.lower().startswith("http://"):
             asset_stats["mixed_content"] += 1
             issues.append(f"Contenido mixto JS: {full} (línea {ln})")
-        ok, elapsed_ms, status_code = check_url_fn(full)
+        ok, elapsed_ms, status_code, _ = check_url_fn(full)
         asset_stats["checked"] += 1
         if not ok:
             asset_stats["broken"] += 1

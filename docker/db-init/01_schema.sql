@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS clients (
     phone       TEXT,
     company     TEXT,
     notes       TEXT,
+    custom_cron JSONB,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -36,6 +37,7 @@ CREATE TABLE IF NOT EXISTS websites (
     active          BOOLEAN     NOT NULL DEFAULT TRUE,
     -- Columna para auditorías manuales bajo demanda desde el dashboard
     pending_audit   BOOLEAN     NOT NULL DEFAULT FALSE,
+    custom_cron     JSONB,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );

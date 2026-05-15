@@ -6,7 +6,7 @@
 #  El contexto debe ser la raíz para poder copiar:
 #    config/   → configuración del proyecto
 #    scraper/  → paquete Python principal (estrategias, modelos, contexto)
-#    utils/    → auditor, exportador, cargador de URLs
+#    shared/   → modelos, repositorios, auditor y utilidades compartidas
 #
 #  Ficheros específicos de Docker (entrypoint, db.py) se copian
 #  desde docker/scraper/ dentro del mismo contexto.
@@ -52,7 +52,7 @@ COPY scraper/  ./scraper/
 COPY shared/   ./shared/
 
 # ── Ficheros específicos del contenedor Docker ───────────────────────────────
-COPY docker/scraper/entrypoint.py ./entrypoint.py
+COPY docker/scraper/*.py ./
 
 # ── Directorios de datos y logs ──────────────────────────────────────────────
 # En producción estos directorios son volúmenes montados desde el host

@@ -20,14 +20,17 @@ from config.logging_config import setup_logger
 from ..dictionaries import build_audit_dictionaries
 from ..models import QualityAuditReport
 from ..regex import AuditRegexSet, LEET_TRANSLATION_TABLE, build_audit_regex_set
-from .checks import (
+from ..checks import (
     check_security, check_structure, check_seo, check_content, check_images,
     check_links_recursive, check_buttons, check_technical, check_js_console_errors,
     interact_buttons_selenium
 )
 from .helpers import (
     is_banned_url, warm_up_cookies, close_driver, ensure_non_empty,
-    collect_metrics, calculate_score, status_from_score, evaluate_release_gate,
+    collect_metrics, check_url, classify_speed, find_line
+)
+from ..scoring import (
+    calculate_score, status_from_score, evaluate_release_gate,
     build_recommendations
 )
 
@@ -43,17 +46,28 @@ class QualityAuditor:
         self._regex = build_audit_regex_set()
         self._driver: webdriver.Chrome | None = None
         self._browser_confirms = 0
-        self._max_browser_confirms = 15
+        self._max_browser_confirms = settings.AUDIT_MAX_BROWSER_CONFIRMS
         self._last_response_headers: dict = {}
 
-    def build_report(self, html: str, base_url: str, metadata: dict | None = None) -> QualityAuditReport:
+    def build_report(self, html: str, base_url: str, metadata: dict | None = None, on_progress: callable = None) -> QualityAuditReport:
         metadata = metadata or {}
         self._browser_confirms = 0
         self._last_response_headers = {}
-        html_lines = html.splitlines()
-        soup = BeautifulSoup(html, settings.BS4_PARSER)
-        crawl_stats = {"tested": 0, "broken": 0, "skipped": 0}
+        
+        total_steps = 8
+        current_step = 0
 
+        def update_progress():
+            nonlocal current_step
+            current_step += 1
+            if on_progress:
+                on_progress(current_step, total_steps)
+
+        # 1. Notificar inicio inmediato (0/8)
+        if on_progress:
+            on_progress(0, total_steps)
+
+        # Inicialización de recolectores
         security_issues: list[str] = []
         seo_issues: list[str] = []
         content_issues: list[str] = []
@@ -64,30 +78,82 @@ class QualityAuditor:
         technical_issues: list[str] = []
         recommendations: list[str] = []
         asset_stats = {"checked": 0, "broken": 0, "mixed_content": 0}
+        crawl_stats = {"tested": 0, "broken": 0, "skipped": 0}
 
         try:
+            # Parseo inicial
+            html_lines = html.splitlines()
+            soup = BeautifulSoup(html, settings.BS4_PARSER)
+
             if is_banned_url(base_url):
                 warning = f"URL prohibida para pruebas de red por politica: {base_url}"
                 link_issues.append(warning)
-                recommendations.append(
-                    "Cambiar URL objetivo por un dominio permitido para validar "
-                    "enlaces e imagenes."
-                )
+                recommendations.append("Cambiar URL objetivo por un dominio permitido.")
             else:
                 warm_up_cookies(self._session, base_url)
 
-            check_security(self, html, soup, base_url, security_issues)
-            check_structure(self, soup, structure_issues)
-            check_seo(self, soup, seo_issues)
-            check_content(self, soup, content_issues, html_lines, base_url)
-            check_images(self, soup, base_url, html_lines, image_issues)
-            check_links_recursive(self, soup, base_url, html_lines, link_issues, crawl_stats)
-            check_buttons(self, soup, base_url, html_lines, button_issues)
-            check_technical(self, html, soup, base_url, html_lines, technical_issues, asset_stats, recommendations)
+            # Fase 1: Seguridad
+            check_security(
+                html=html, soup=soup, base_url=base_url, issues=security_issues,
+                session=self._session, last_response_headers=self._last_response_headers,
+                timeout=self._timeout, regex_set=self._regex, driver_factory=self._get_driver
+            )
+            update_progress()
 
+            # Fase 2: Estructura y SEO
+            check_structure(soup=soup, issues=structure_issues)
+            update_progress()
+            check_seo(soup=soup, issues=seo_issues, regex_set=self._regex)
+            update_progress()
+
+            # Fase 3: Contenido
+            check_content(
+                soup=soup, issues=content_issues, html_lines=html_lines, base_url=base_url,
+                dicts=self._dicts, regex_set=self._regex, 
+                normalize_fn=self._normalize_for_detection, find_line_fn=find_line
+            )
+            update_progress()
+
+            # Fase 4: Imagenes
+            check_images(
+                soup=soup, base_url=base_url, html_lines=html_lines, issues=image_issues,
+                is_banned_fn=is_banned_url, check_url_fn=lambda url, **kwargs: check_url(self._session, url, **kwargs),
+                classify_speed_fn=classify_speed, find_line_fn=find_line
+            )
+            update_progress()
+
+            # Fase 5: Enlaces
+            check_links_recursive(
+                soup=soup, base_url=base_url, html_lines=html_lines, issues=link_issues,
+                crawl_stats=crawl_stats, is_banned_fn=is_banned_url,
+                check_url_fn=lambda url, **kwargs: check_url(self._session, url, **kwargs),
+                classify_speed_fn=classify_speed, find_line_fn=find_line,
+                blocked_admin_segments=settings.AUDIT_ADMIN_PROBE_PATHS
+            )
+            update_progress()
+
+            # Fase 6: Botones
+            check_buttons(
+                soup=soup, base_url=base_url, html_lines=html_lines, issues=button_issues,
+                is_banned_fn=is_banned_url, check_url_fn=lambda url, **kwargs: check_url(self._session, url, **kwargs),
+                classify_speed_fn=classify_speed, find_line_fn=find_line,
+                blocked_admin_segments=settings.AUDIT_ADMIN_PROBE_PATHS
+            )
+            update_progress()
+
+            # Fase 7: Tecnico + Browser
+            check_technical(
+                html=html, soup=soup, base_url=base_url, html_lines=html_lines,
+                issues=technical_issues, asset_stats=asset_stats, recommendations=recommendations,
+                is_banned_fn=is_banned_url, check_url_fn=lambda url, **kwargs: check_url(self._session, url, **kwargs),
+                classify_speed_fn=classify_speed, find_line_fn=find_line
+            )
             if not is_banned_url(base_url):
-                check_js_console_errors(self, base_url, technical_issues)
-                interact_buttons_selenium(self, base_url, button_issues)
+                driver = self._get_driver()
+                check_js_console_errors(driver, base_url, technical_issues)
+                interact_buttons_selenium(driver, base_url, button_issues, self)
+            update_progress()
+
         finally:
             close_driver(self)
 
@@ -100,41 +166,34 @@ class QualityAuditor:
         ensure_non_empty("button_issues", button_issues)
         ensure_non_empty("technical_issues", technical_issues)
 
-        metrics = collect_metrics(
-            soup, metadata, security_issues, image_issues, link_issues,
-            button_issues, technical_issues, crawl_stats, asset_stats,
-        )
+        # Calcular score y estado final
         score = calculate_score(
             security_issues, seo_issues, content_issues, image_issues,
-            structure_issues, link_issues, button_issues, technical_issues,
+            structure_issues, link_issues, button_issues, technical_issues
         )
         status = status_from_score(score)
-        release_blocked, release_blockers = evaluate_release_gate(
+        
+        is_blocked, blockers = evaluate_release_gate(
             score=score,
             security_issues=security_issues,
             content_issues=content_issues,
             link_issues=link_issues,
             technical_issues=technical_issues,
             image_issues=image_issues,
-            button_issues=button_issues,
+            button_issues=button_issues
         )
-        metrics["release_gate_blocked"] = release_blocked
-        metrics["release_blockers_count"] = len(release_blockers)
 
-        recommendations.extend(
-            build_recommendations(
-                security_issues, seo_issues, content_issues, image_issues,
-                structure_issues, link_issues, button_issues, technical_issues,
-            )
+        final_recommendations = build_recommendations(
+            security_issues=security_issues, 
+            seo_issues=seo_issues, 
+            content_issues=content_issues, 
+            image_issues=image_issues, 
+            structure_issues=structure_issues, 
+            link_issues=link_issues, 
+            button_issues=button_issues, 
+            technical_issues=technical_issues
         )
-        if not recommendations:
-            recommendations.append(
-                "No se detectan mejoras criticas. Mantener monitorizacion periodica."
-            )
-        if release_blocked:
-            recommendations.insert(
-                0, "BLOQUEAR despliegue a produccion hasta resolver los blockers del gate."
-            )
+        final_recommendations.extend(recommendations)
 
         return QualityAuditReport(
             status=status,
@@ -147,10 +206,14 @@ class QualityAuditor:
             link_issues=link_issues,
             button_issues=button_issues,
             technical_issues=technical_issues,
-            release_blocked=release_blocked,
-            release_blockers=release_blockers,
-            recommendations=recommendations,
-            metrics=metrics,
+            release_blocked=is_blocked,
+            release_blockers=blockers,
+            recommendations=list(set(final_recommendations)),
+            metrics=collect_metrics(
+                soup, metadata, security_issues, image_issues, 
+                link_issues, button_issues, technical_issues,
+                crawl_stats, asset_stats
+            )
         )
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -282,6 +345,34 @@ class QualityAuditor:
             "===========================================================",
         ]
         return "\n".join(lines)
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # SELENIUM HELPERS
+    # ──────────────────────────────────────────────────────────────────────────
+
+    def _get_driver(self):
+        if self._driver:
+            return self._driver
+        
+        options = Options()
+        if settings.SELENIUM_HEADLESS:
+            options.add_argument("--headless=new")
+        
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=1920,1080")
+        options.add_argument(f"user-agent={settings.USER_AGENT_POOL[0]}")
+        options.set_capability("goog:loggingPrefs", {"browser": "ALL"})
+        
+        try:
+            self._driver = webdriver.Chrome(options=options)
+            self._driver.set_page_load_timeout(settings.SELENIUM_PAGE_LOAD_TIMEOUT)
+            self._driver.implicitly_wait(settings.SELENIUM_IMPLICIT_WAIT)
+            return self._driver
+        except Exception as e:
+            logger.error("No se pudo iniciar el driver de Selenium: %s", e)
+            return None
 
     # ──────────────────────────────────────────────────────────────────────────
     # NORMALIZACION ANTI-LEETSPEAK

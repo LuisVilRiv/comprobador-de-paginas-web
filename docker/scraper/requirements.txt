@@ -11,3 +11,4 @@ SQLAlchemy>=2.0,<3
 # ── Utilidades ───────────────────────────────────────────────────────────────
 python-dotenv>=1.0.0           # carga de .env
 croniter>=2.0.0                # parser de expresiones cron
+watchdog>=4.0.0                # hot reload / restart en desarrollo

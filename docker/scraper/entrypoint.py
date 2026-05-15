@@ -14,7 +14,8 @@ import sys
 from config.logging_config import setup_logger
 from scraper import ScraperContext, SeleniumStrategy, BeautifulSoupStrategy
 from shared.auditor import QualityAuditor
-from shared.database import repo_scraper as db
+from shared.database.repositories import scraper as db
+from service import AuditService
 
 logger = setup_logger(__name__)
 
@@ -25,73 +26,16 @@ STRATEGY_REGISTRY = {
 STRATEGY_ORDER = ["selenium", "beautifulsoup"]
 
 
-# ── Pipeline de ejecución por URL ─────────────────────────────────────────────
+# ── Orquestación de Ciclos ──────────────────────────────────────────────────
 
-def _audit_entry(entry: dict, context: ScraperContext, auditor: QualityAuditor) -> bool:
-    url          = entry["url"]
-    website_id   = entry["website_id"]
-    strategy_key = entry.get("strategy", "auto")
-
-    order = (
-        [strategy_key] + [s for s in STRATEGY_ORDER if s != strategy_key]
-        if strategy_key != "auto" and strategy_key in STRATEGY_REGISTRY
-        else list(STRATEGY_ORDER)
-    )
-
-    run_id = db.create_run(website_id, strategy_key)
-    result, used_strat = None, None
-
-    for strat_name in order:
-        if strat_name not in STRATEGY_REGISTRY:
-            continue
-        context.set_strategy(STRATEGY_REGISTRY[strat_name])
-        result = context.execute(url)
-        if result.status == "success":
-            used_strat = strat_name
-            break
-        logger.warning("Estrategia %s falló para %s", strat_name, url)
-
-    if result is None or result.status != "success":
-        err_msg = result.error if result else "Sin resultado"
-        logger.error("Error en %s: %s", url, err_msg)
-        db.save_audit_run(run_id=run_id, website_id=website_id, status="error",
-                          strategy_used=strategy_key, report=None, report_text="",
-                          error_message=err_msg, scrape_metadata={})
-        return False
-
-    try:
-        report_obj  = auditor.build_report(html=result.content, base_url=url, metadata=result.metadata)
-        report_dict = report_obj.to_dict()
-        report_text = auditor.report_to_text(report_obj)
-    except Exception as exc:
-        logger.error("Error en auditoría de %s: %s", url, exc)
-        report_dict = None
-        report_text = f"Error durante auditoría: {exc}"
-
-    db.save_audit_run(run_id=run_id, website_id=website_id, status="success",
-                      strategy_used=used_strat or strategy_key,
-                      report=report_dict, report_text=report_text,
-                      error_message=None, scrape_metadata=result.metadata)
-    logger.info("✓ %s → score=%s estado=%s", url,
-                (report_dict or {}).get("score", "N/A"),
-                (report_dict or {}).get("status", "N/A"))
-    return True
-
-
-# ── Funciones de ciclo ────────────────────────────────────────────────────────
-
-def _make_context_and_auditor():
-    return ScraperContext(STRATEGY_REGISTRY["selenium"]), QualityAuditor()
-
-
-def run_pending_audits(context, auditor) -> int:
+def run_pending_audits(service: AuditService) -> int:
     entries = db.get_pending_audit_websites()
     if not entries:
         return 0
     logger.info("⚡ [MANUAL] %d auditoría(s) pendiente(s).", len(entries))
     successes = 0
     for entry in entries:
-        if _audit_entry(entry, context, auditor):
+        if service.process_website(entry):
             successes += 1
         try:
             db.clear_pending_audit(entry["website_id"])
@@ -100,35 +44,39 @@ def run_pending_audits(context, auditor) -> int:
     return successes
 
 
-def run_active_cycle(context, auditor) -> int:
+def run_active_cycle(service: AuditService) -> int:
     entries = db.get_active_websites()
     if not entries:
         logger.info("No hay URLs activas para el ciclo programado.")
         return 0
     logger.info("Ciclo ACTIVOS: %d URLs.", len(entries))
-    successes = sum(1 for e in entries if _audit_entry(e, context, auditor))
+    successes = sum(1 for e in entries if service.process_website(e))
     logger.info("Ciclo ACTIVOS finalizado. Éxitos: %d", successes)
     return successes
 
 
-def run_inactive_cycle(context, auditor) -> int:
+def run_inactive_cycle(service: AuditService) -> int:
     entries = db.get_inactive_websites()
     if not entries:
         return 0
     logger.info("Ciclo INACTIVOS: %d URLs.", len(entries))
-    return sum(1 for e in entries if _audit_entry(e, context, auditor))
+    return sum(1 for e in entries if service.process_website(e))
 
 
 # ── Punto de entrada ──────────────────────────────────────────────────────────
 
 def main():
     interval = int(os.environ.get("RUN_INTERVAL_SECONDS", "0"))
-    context, auditor = _make_context_and_auditor()
+    
+    # Inicializar componentes
+    context = ScraperContext(STRATEGY_REGISTRY["selenium"])
+    auditor = QualityAuditor()
+    service = AuditService(context, auditor, STRATEGY_REGISTRY, STRATEGY_ORDER)
 
     if interval <= 0:
         logger.info("Ejecución única (RUN_INTERVAL_SECONDS=0).")
-        run_pending_audits(context, auditor)
-        run_active_cycle(context, auditor)
+        run_pending_audits(service)
+        run_active_cycle(service)
         sys.exit(0)
 
     logger.info("Modo daemon — poll manual: 5s, ciclos por cron.")
@@ -136,9 +84,12 @@ def main():
     from scheduler import AuditScheduler
 
     scheduler = AuditScheduler(
-        run_pending_fn  = lambda: run_pending_audits(context, auditor),
-        run_active_fn   = lambda: run_active_cycle(context, auditor),
-        run_inactive_fn = lambda: run_inactive_cycle(context, auditor),
+        run_pending_fn  = lambda: run_pending_audits(service),
+        run_active_fn   = lambda: run_active_cycle(service),
+        run_inactive_fn = lambda: run_inactive_cycle(service),
+        run_single_fn   = lambda entry: service.process_website(entry),
+        get_active_fn   = db.get_active_websites,
+        get_inactive_fn = db.get_inactive_websites,
         settings_fn     = db.get_settings,
         poll_interval   = 5,
     )

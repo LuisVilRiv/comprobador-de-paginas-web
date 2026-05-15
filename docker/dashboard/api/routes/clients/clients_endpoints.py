@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from sqlalchemy.exc import IntegrityError
 
-from shared.database import repository as repo
+from shared.database.repositories import dashboard as repo
 from schemas.clients import ClientCreate, ClientUpdate
 
 router = APIRouter(prefix="/clients", tags=["clients"])
@@ -21,6 +21,7 @@ def create_client(payload: ClientCreate):
             payload.phone,
             payload.company,
             payload.notes,
+            payload.custom_cron,
         )
     except IntegrityError as exc:
         raise HTTPException(status_code=400, detail=f"Error: {str(exc)}")

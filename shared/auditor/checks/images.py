@@ -41,7 +41,7 @@ def check_images(
         if src.startswith("data:"):
             continue
 
-        ok, elapsed_ms, status_code = check_url_fn(absolute_url)
+        ok, elapsed_ms, status_code, _ = check_url_fn(absolute_url)
         speed = classify_speed_fn(elapsed_ms)
         if not ok:
             issues.append(

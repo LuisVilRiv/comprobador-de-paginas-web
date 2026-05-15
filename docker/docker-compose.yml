@@ -78,15 +78,36 @@ services:
       TZ: Europe/Madrid
       # Comportamiento
       LOG_LEVEL:             ${LOG_LEVEL:-INFO}
-      SELENIUM_HEADLESS:     "true"
-      # Intervalo daemon (0 = ejecutar una vez y salir)
-      RUN_INTERVAL_SECONDS:  ${RUN_INTERVAL_SECONDS:-0}
+      RUN_INTERVAL_SECONDS:  ${RUN_INTERVAL_SECONDS:-3600}
+      REQUEST_TIMEOUT:       ${REQUEST_TIMEOUT:-15}
+      MAX_RETRIES:           ${MAX_RETRIES:-3}
+      # Selenium
+      SELENIUM_HEADLESS:     ${SELENIUM_HEADLESS:-true}
+      SELENIUM_IMPLICIT_WAIT: ${SELENIUM_IMPLICIT_WAIT:-5}
+      SELENIUM_PAGE_LOAD_TIMEOUT: ${SELENIUM_PAGE_LOAD_TIMEOUT:-30}
+      # Auditor Logic
+      AUDIT_MIN_WORD_COUNT:  ${AUDIT_MIN_WORD_COUNT:-150}
+      AUDIT_MAX_LINKS:       ${AUDIT_MAX_LINKS:-40}
+      AUDIT_MAX_DEPTH:       ${AUDIT_MAX_DEPTH:-1}
+      AUDIT_REQUEST_DELAY:   ${AUDIT_REQUEST_DELAY:-0.35}
+      AUDIT_BUTTONS_ENABLED: ${AUDIT_BUTTONS_ENABLED:-true}
+      AUDIT_JS_LOGS_ENABLED: ${AUDIT_JS_LOGS_ENABLED:-true}
+      AUDIT_BANNED_HOSTS:    ${AUDIT_BANNED_HOSTS:-apdigroup.com,81.0.54.124}
+      AUDIT_MAX_BROWSER_CONFIRMS: ${AUDIT_MAX_BROWSER_CONFIRMS:-15}
+      # Thresholds
+      AUDIT_SCORE_EXCELLENT: ${AUDIT_SCORE_EXCELLENT:-85}
+      AUDIT_SCORE_GOOD:      ${AUDIT_SCORE_GOOD:-70}
+      AUDIT_RELEASE_GATE_MIN_SCORE: ${AUDIT_RELEASE_GATE_MIN_SCORE:-70}
     volumes:
       - scraper_logs:/app/logs
-      # Montar data/ del repo para conservar outputs/raw/reports fuera del contenedor
-      # Las URLs vienen de PostgreSQL; este volumen es solo para ficheros exportados
       - ../data:/app/data
-    shm_size: "2gb"          # necesario para Chrome dentro de Docker
+      # Hot reload: Montar el código fuente para reflejar cambios al vuelo
+      - ../config:/app/config:ro
+      - ../scraper:/app/scraper:ro
+      - ../shared:/app/shared:ro
+      - ./scraper/entrypoint.py:/app/entrypoint.py:ro
+    command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python entrypoint.py
+    shm_size: "2gb"
     networks:
       - backend
 
@@ -107,6 +128,14 @@ services:
       DB_USER:     ${POSTGRES_USER:-auditor}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-auditor_secret}
       TZ: Europe/Madrid
+    volumes:
+      # Montar código fuente para hot reload
+      - ../shared:/app/shared:ro
+      - ./dashboard/api/main.py:/app/main.py:ro
+      - ./dashboard/api/app.py:/app/app.py:ro
+      - ./dashboard/api/schemas:/app/schemas:ro
+      - ./dashboard/api/routes:/app/routes:ro
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     networks:
       - backend
       - web
@@ -128,6 +157,7 @@ services:
       TZ: Europe/Madrid
     ports:
       - "${DASHBOARD_PORT:-3000}:3000"
+    command: npx nodemon server.js
     volumes:
       - ./dashboard/frontend:/app/frontend:ro
       - ./dashboard/server.js:/app/server.js:ro

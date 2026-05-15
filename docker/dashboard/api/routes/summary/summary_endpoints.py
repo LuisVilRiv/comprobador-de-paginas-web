@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from shared.database import repository as repo
+from shared.database.repositories import dashboard as repo
 
 router = APIRouter(tags=["summary"])
 

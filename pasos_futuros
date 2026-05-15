@@ -1,0 +1,26 @@
+Revisando el código, el ORM está en shared/database/models.py — ahí están el engine, SessionLocal, Base y todos los modelos (Client, Website, AuditRun, etc.).
+En cuanto a problemas, sí encuentro varios:
+🔴 Crítico — docker/scraper/requirements.txt
+psycopg2-binary>=2.9.9         # driver PostgreSQL para PythonSQLAlchemy>=2.0,<3
+El comentario se come la dependencia. SQLAlchemy nunca se instala en el contenedor del scraper, que revienta en runtime con ModuleNotFoundError.
+Debe ser dos líneas separadas:
+psycopg2-binary>=2.9.9
+SQLAlchemy>=2.0,<3
+
+🔴 Crítico — global_summary() incompleto
+El frontend usa excellent_count, critical_count, blocked_count y pending_audit_count, pero repo_dashboard.global_summary() solo devuelve total_clients, total_websites, active_websites y total_runs. Las tarjetas del dashboard siempre mostrarán -.
+
+🟡 Medio — timers del dashboard siempre en -
+get_settings() devuelve solo las strings cron (cron_active, cron_inactive), pero el frontend espera también next_active y next_inactive (timestamps Unix). El scheduler los calcula internamente pero nunca los expone vía API. Los cronómetros nunca arrancarán.
+
+🟡 Medio — QualityAuditReport duplicado
+Está definido en shared/auditor/quality_auditor.py Y en shared/auditor/models.py. El __init__.py importa del segundo, pero quality_auditor.py usa el suyo propio. Si algo compara tipos con isinstance, fallará silenciosamente.
+
+🟢 Menor — _classify_cpanel_response con resp=None
+En _probe_with_browser se llama _classify_cpanel_response(None, ...) pasando None como response, pero el método accede a resp.status_code sin guard. Lanza AttributeError cuando Selenium audita rutas cPanel.
+separar rutas del main.py para que esten por modelos en subcarpetaas
+
+main solo la funcion principal, limpio, y con importaciones
+
+orm, hot reload, posterior
+

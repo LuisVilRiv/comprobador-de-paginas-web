@@ -17,7 +17,11 @@ RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -r re
 COPY shared/ ./shared/
 
 # Copy API logic
+COPY docker/dashboard/api/requirements.txt ./requirements.txt
 COPY docker/dashboard/api/main.py ./main.py
+COPY docker/dashboard/api/app.py ./app.py
+COPY docker/dashboard/api/schemas.py ./schemas.py
+COPY docker/dashboard/api/routes ./routes/
 
 EXPOSE 8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

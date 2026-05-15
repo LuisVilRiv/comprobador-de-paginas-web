@@ -10,7 +10,8 @@ from typing import Any
 
 from sqlalchemy import select, update
 
-from .models import AuditIssue, AuditRun, AuditRunSection, Client, GlobalSetting, Website, get_db
+from .models import AuditIssue, AuditRun, AuditRunSection, Client, GlobalSetting, Website
+from ..connection import get_db
 
 
 # ── Lectura de websites ───────────────────────────────────────────────────────

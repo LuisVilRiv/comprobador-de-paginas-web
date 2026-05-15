@@ -36,8 +36,14 @@ def check_content(
     )
 
     for pattern, category in all_patterns:
-        in_original   = pattern in text_l
-        in_normalized = pattern in text_normalized
+        if len(pattern) <= 4:
+            regex_p = rf"\b{re.escape(pattern)}\b"
+            in_original = re.search(regex_p, text_l) is not None
+            in_normalized = re.search(regex_p, text_normalized) is not None
+        else:
+            in_original = pattern in text_l
+            in_normalized = pattern in text_normalized
+
         if in_original or in_normalized:
             if _is_false_positive(pattern, text_l):
                 continue
@@ -134,15 +140,20 @@ def check_content(
 
 
 def _is_false_positive(pattern: str, text: str) -> bool:
+    t_l = text.lower()
     if pattern == "sex":
-        match = re.search(r"\b(\w*sex\w*)\b", text)
-        if match and match.group(1).lower() in {"sexta", "sexto", "sesenta", "sexenio"}:
+        match = re.search(r"\b(\w*sex\w*)\b", t_l)
+        if match and match.group(1) in {"sexta", "sexto", "sesenta", "sexenio"}:
             return True
-    if pattern == "con" and re.search(r"\bcon\b", text):
+    if pattern == "con" and re.search(r"\bcon\b", t_l):
         return True
     if pattern == "put":
-        match = re.search(r"\b(\w*put\w*)\b", text)
-        if match and match.group(1).lower() in {"input", "output", "cómputo", "reputación"}:
+        match = re.search(r"\b(\w*put\w*)\b", t_l)
+        if match and match.group(1) in {"input", "output", "cómputo", "computo", "reputación", "reputacion"}:
+            return True
+    if pattern == "pene":
+        match = re.search(r"\b(\w*pene\w*)\b", t_l)
+        if match and match.group(1) in {"opened", "depend", "depends", "dependence"}:
             return True
     return False
 

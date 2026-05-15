@@ -50,7 +50,7 @@ def check_buttons(
             issues.append(f"Formulario apunta a una ruta prohibida ({target}) en línea {ln}: {line}")
             continue
 
-        ok, elapsed_ms, status_code = check_url_fn(target, method=method)
+        ok, elapsed_ms, status_code, _ = check_url_fn(target, method=method)
         speed = classify_speed_fn(elapsed_ms)
         if not ok:
             issues.append(

@@ -7,6 +7,7 @@ class WebsiteCreate(BaseModel):
     label: str | None = None
     strategy: str = "auto"
     active: bool = True
+    custom_cron: str | list[str] | None = None
 
 
 class WebsiteUpdate(BaseModel):
@@ -14,3 +15,4 @@ class WebsiteUpdate(BaseModel):
     label: str | None = None
     strategy: str | None = None
     active: bool | None = None
+    custom_cron: str | list[str] | None = None

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from shared.database import repository as repo
+from shared.database.repositories import dashboard as repo
 from schemas.settings import SettingsUpdate
 
 router = APIRouter(prefix="/settings", tags=["settings"])

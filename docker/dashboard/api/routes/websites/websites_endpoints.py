@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query
 
-from shared.database import repository as repo
+from shared.database.repositories import dashboard as repo
 from schemas.websites import WebsiteCreate, WebsiteUpdate
 
 router = APIRouter(prefix="/websites", tags=["websites"])
@@ -37,6 +37,7 @@ def create_website(payload: WebsiteCreate):
             payload.label,
             payload.strategy,
             payload.active,
+            payload.custom_cron,
         )
     except Exception as exc:
         message = str(exc)

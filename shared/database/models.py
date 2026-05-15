@@ -31,6 +31,7 @@ class Client(Base):
     phone = Column(Text)
     company = Column(Text)
     notes = Column(Text)
+    custom_cron = Column(JSONB)  # Soporta lista de strings: ["cron1", "cron2"]
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -47,6 +48,7 @@ class Website(Base):
     strategy = Column(Text, nullable=False, default="auto")
     active = Column(Boolean, nullable=False, default=True)
     pending_audit = Column(Boolean, nullable=False, default=False)
+    custom_cron = Column(JSONB)  # Prioridad sobre el del cliente y global
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

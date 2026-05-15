@@ -7,6 +7,7 @@ class ClientCreate(BaseModel):
     phone: str | None = None
     company: str | None = None
     notes: str | None = None
+    custom_cron: str | list[str] | None = None
 
 
 class ClientUpdate(BaseModel):
@@ -15,3 +16,4 @@ class ClientUpdate(BaseModel):
     phone: str | None = None
     company: str | None = None
     notes: str | None = None
+    custom_cron: str | list[str] | None = None

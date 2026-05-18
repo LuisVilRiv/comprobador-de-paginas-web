@@ -29,7 +29,7 @@ COMMENT ON TABLE clients IS 'Registro de clientes. Cada cliente puede tener N p�
 -- ════════════════════════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS websites (
     id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    client_id       UUID        NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    client_id       UUID        REFERENCES clients(id) ON DELETE SET NULL,
     url             TEXT        NOT NULL UNIQUE,
     label           TEXT,
     strategy        TEXT        NOT NULL DEFAULT 'auto'

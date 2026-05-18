@@ -59,3 +59,12 @@ export const fetchSummary = () => apiFetch("/summary");
 
 export const fetchSettings = () => apiFetch("/settings");
 export const saveSettings = (data) => apiFetch("/settings", "PUT", data);
+
+export const exportClientReport = async (clientId) => {
+  const res = await fetch(`/api/clients/${clientId}/export`);
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`API ${res.status}: ${err}`);
+  }
+  return await res.blob();
+};

@@ -1,27 +1,28 @@
 /**
  * audit.js — Componente de detalle de runs y secciones de auditoría.
- * Renderiza el historial de runs de un website y el detalle de cada run.
  */
 import React from "https://esm.sh/react@18.3.1";
 import { fetchWebsiteRuns, fetchRunSections, fetchRunIssues, triggerAudit } from "./api.js";
+import { useI18n } from "./i18n.js";
 
 /**
  * Panel informativo sobre el propósito de cada tipo de prueba.
  */
 export function AuditInfoPanel() {
+  const { t } = useI18n();
   return React.createElement(
     "div",
     { className: "info-panel" },
-    React.createElement("h4", null, "ℹ️ Pruebas Realizadas y su Propósito"),
+    React.createElement("h4", null, t("audit.info_title")),
     React.createElement(
       "ul",
       null,
-      React.createElement("li", null, React.createElement("strong", null, "🛡️ Seguridad:"), " Verifica cabeceras HTTP, exposición de servidor y configuraciones contra ataques comunes."),
-      React.createElement("li", null, React.createElement("strong", null, "🔍 SEO:"), " Evalúa metaetiquetas (Title, Description) para asegurar correcta indexación en buscadores."),
-      React.createElement("li", null, React.createElement("strong", null, "⚡ Rendimiento:"), " Comprueba tiempos de respuesta y estado del servidor para garantizar velocidad."),
-      React.createElement("li", null, React.createElement("strong", null, "🏗️ Estructura HTML:"), " Analiza la jerarquía de encabezados (H1, H2) y el uso correcto de semántica web."),
-      React.createElement("li", null, React.createElement("strong", null, "♿ Contenido y Accesibilidad:"), " Revisa atributos 'alt' en imágenes, densidad de texto y contrastes."),
-      React.createElement("li", null, React.createElement("strong", null, "🔗 Enlaces y Navegación:"), " Detecta enlaces rotos (404) y verifica que los elementos interactivos funcionen.")
+      React.createElement("li", null, React.createElement("strong", null, t("audit.info_sec")), t("audit.info_sec_desc")),
+      React.createElement("li", null, React.createElement("strong", null, t("audit.info_seo")), t("audit.info_seo_desc")),
+      React.createElement("li", null, React.createElement("strong", null, t("audit.info_perf")), t("audit.info_perf_desc")),
+      React.createElement("li", null, React.createElement("strong", null, t("audit.info_html")), t("audit.info_html_desc")),
+      React.createElement("li", null, React.createElement("strong", null, t("audit.info_acc")), t("audit.info_acc_desc")),
+      React.createElement("li", null, React.createElement("strong", null, t("audit.info_nav")), t("audit.info_nav_desc"))
     )
   );
 }
@@ -30,21 +31,23 @@ export function AuditInfoPanel() {
  * Fila de issue individual dentro de una sección.
  */
 function IssueRow({ issue }) {
+  const { t } = useI18n();
   const severityColor =
-    issue.severity === "critical" ? "#c0392b" :
-    issue.severity === "high"     ? "#d35400" : "#2c3e50";
+    issue.severity === "critical" ? "var(--danger)" :
+    issue.severity === "high"     ? "var(--warning)" : "var(--text-dim)";
+  const diffIcon = issue.diff_status === "new" ? "🔴" : issue.diff_status === "resolved" ? "🟢" : "⚪";
 
   return React.createElement(
     "div",
     { style: { marginBottom: "6px", lineHeight: "1.4" } },
     React.createElement("span", {
-      style: { color: severityColor, fontWeight: "bold", marginRight: "8px", fontSize: "11px" }
-    }, `[${issue.severity.toUpperCase()}]`),
-    React.createElement("span", { style: { color: "#2c3e50" } }, issue.message),
+      style: { color: severityColor, fontWeight: "bold", marginRight: "8px", fontSize: "11px", display: "inline-flex", alignItems: "center", gap: "8px" }
+    }, React.createElement("span", { style: { fontSize: "12px" } }, diffIcon), `[${issue.severity.toUpperCase()}]`),
+    React.createElement("span", { style: { color: "var(--text-main)" } }, issue.message),
     issue.line_no && React.createElement(
       "span",
-      { style: { color: "#7f8c8d", marginLeft: "10px", fontSize: "11px", fontStyle: "italic" } },
-      `(Fila: ${issue.line_no})`
+      { style: { color: "var(--text-dim)", marginLeft: "10px", fontSize: "11px", fontStyle: "italic" } },
+      `(${t("audit.line")}: ${issue.line_no})`
     )
   );
 }
@@ -53,6 +56,11 @@ function IssueRow({ issue }) {
  * Tabla de secciones de un run con sus issues.
  */
 function RunSectionsTable({ sections, issues }) {
+  const { t } = useI18n();
+  // issues can be an array or an object { current: [], resolved: [] }
+  const currentIssues = issues && issues.current ? issues.current : (issues || []);
+  const resolvedIssues = issues && issues.resolved ? issues.resolved : [];
+
   return React.createElement(
     "div", { className: "table-container" },
     React.createElement(
@@ -60,7 +68,7 @@ function RunSectionsTable({ sections, issues }) {
       React.createElement(
         "thead", null,
         React.createElement("tr", null,
-          ["Sección", "Ejecución", "Issues", "Descripción", "Detalle"].map(
+          [t("audit.col_section"), t("audit.col_execution"), t("audit.issues"), t("audit.col_desc"), t("audit.col_detail")].map(
             (h) => React.createElement("th", { key: h }, h)
           )
         )
@@ -68,7 +76,8 @@ function RunSectionsTable({ sections, issues }) {
       React.createElement(
         "tbody", null,
         sections.map((s) => {
-          const sectionIssues = (issues || []).filter(i => i.category === s.section_key);
+          const sectionIssues = currentIssues.filter(i => i.category === s.section_key);
+          const resolvedForSection = resolvedIssues.filter(i => i.category === s.section_key);
           const isBlocked = s.status === "failed" &&
             (s.result_description.toLowerCase().includes("bloqueado") ||
              s.result_description.toLowerCase().includes("firewall") ||
@@ -83,27 +92,30 @@ function RunSectionsTable({ sections, issues }) {
             React.createElement("tr", { className: "section-row" },
               React.createElement("td", { style: { fontWeight: "bold" } },
                 s.section_label,
-                !s.passed && React.createElement("span", { style: { color: "#e74c3c", marginLeft: "6px" }, title: "Incidencias detectadas" }, "⚠️")
+                !s.passed && React.createElement("span", { style: { color: "var(--danger)", marginLeft: "6px" }, title: t("audit.issues") }, "⚠️")
               ),
               React.createElement("td", null,
                 React.createElement("span", {
                   className: `status-badge ${isBlocked ? "blocked" : s.status === "failed" ? "failed" : s.passed ? "passed" : "warn"}`,
-                }, isBlocked ? "BLOQUEADO" : s.status === "failed" ? "FALLIDO" : "OK")
+                }, isBlocked ? t("audit.status_blocked") : s.status === "failed" ? t("audit.status_failed") : t("audit.status_ok"))
               ),
-              React.createElement("td", { style: { color: s.passed ? "#2ecc71" : "#e67e22", fontWeight: "bold" } }, s.issue_count),
+              React.createElement("td", { style: { color: s.passed ? "var(--success)" : "var(--warning)", fontWeight: "bold" } }, s.issue_count),
               React.createElement("td", { style: { fontSize: "11px", opacity: 0.8 } }, s.check_description),
               React.createElement("td", null, s.result_description)
             ),
-            sectionIssues.length > 0 && React.createElement("tr", null,
+            (sectionIssues.length > 0 || resolvedForSection.length > 0) && React.createElement("tr", null,
               React.createElement("td", {
                 colSpan: 5,
-                style: { padding: "10px 10px 10px 40px", backgroundColor: "#fff", borderBottom: "1px solid #eee" }
+                style: { padding: "10px 10px 10px 40px", backgroundColor: "var(--bg-accent)", borderBottom: "1px solid rgba(0,0,0,0.06)" }
               },
                 React.createElement("div", {
-                  style: { borderLeft: "3px solid #34495e", paddingLeft: "15px", color: "#2c3e50" }
+                  style: { borderLeft: "3px solid rgba(59,130,246,0.2)", paddingLeft: "15px", color: "var(--text-main)" }
                 },
                   sectionIssues.map((issue, idx) =>
-                    React.createElement(IssueRow, { key: idx, issue })
+                    React.createElement(IssueRow, { key: `curr-${idx}`, issue })
+                  ),
+                  resolvedForSection.length > 0 && React.createElement("div", { style: { marginTop: "8px", paddingTop: "8px", borderTop: "1px dashed rgba(255,255,255,0.04)" } },
+                    resolvedForSection.map((issue, idx) => React.createElement(IssueRow, { key: `res-${idx}`, issue }))
                   )
                 )
               )
@@ -119,29 +131,30 @@ function RunSectionsTable({ sections, issues }) {
  * Tarjeta de un run individual con su historial de secciones.
  */
 function RunCard({ run, sections, issues, onToggleSections }) {
+  const { t } = useI18n();
   const scoreClass = run.score >= 80 ? "good" : run.score >= 50 ? "warn" : "bad";
   const hasDetail = !!sections;
 
   return React.createElement(
     "div", { className: "card", style: { marginBottom: "8px" } },
     React.createElement("div", { className: "run-header" },
-      React.createElement("span", { className: "run-date" }, `Fecha: ${run.started_at ? new Date(run.started_at).toLocaleString() : run.audit_date || "-"}`),
-      React.createElement("span", { className: `run-score ${scoreClass}` }, `Puntuación: ${run.score ?? "-"}/100`),
+      React.createElement("span", { className: "run-date" }, `${t("audit.date")}: ${run.started_at ? new Date(run.started_at).toLocaleString() : run.audit_date || "-"}`),
+      React.createElement("span", { className: `run-score ${scoreClass}` }, `${t("audit.score")}: ${run.score ?? "-"}/100`),
       React.createElement("span", { className: "run-metrics" },
-        `Anterior: ${run.previous_score ?? "-"} | Secciones: ${run.sections_passed ?? 0}/${run.sections_total ?? 10}`
+        `${t("audit.prev")}: ${run.previous_score ?? "-"} | ${t("audit.col_section")}s: ${run.sections_passed ?? 0}/${run.sections_total ?? 10}`
       )
     ),
     React.createElement("div", { style: { display: "flex", gap: "8px", marginTop: "12px" } },
       React.createElement("button", {
         onClick: () => onToggleSections(run.id),
         className: "btn-outline"
-      }, hasDetail ? "Ocultar detalles" : "Ver detalle de pruebas"),
-      React.createElement("a", {
+      }, hasDetail ? t("audit.hide_details") : t("audit.show_details")),
+        React.createElement("a", {
         href: `/api/runs/${run.id}/export`,
         target: "_blank",
         className: "btn-outline",
-        style: { textDecoration: "none", color: "#3498db", borderColor: "#3498db", display: "flex", alignItems: "center" }
-      }, "Exportar PDF")
+        style: { textDecoration: "none", color: "var(--primary)", borderColor: "var(--primary)", display: "flex", alignItems: "center" }
+      }, t("audit.export_pdf"))
     ),
     hasDetail && React.createElement(RunSectionsTable, { sections, issues })
   );
@@ -171,8 +184,26 @@ export function useAuditDetail() {
         fetchRunSections(runId),
         fetchRunIssues(runId),
       ]);
+
+      // Intentamos obtener el run anterior para comparar diferencias
+      const idx = runs.findIndex(r => r.id === runId);
+      let prevIssues = [];
+      if (idx >= 0 && idx + 1 < runs.length) {
+        try {
+          prevIssues = await fetchRunIssues(runs[idx + 1].id);
+        } catch (e) { prevIssues = []; }
+      }
+
+      // Normalizar claves para diffing
+      const keyFor = (i) => `${i.category}||${i.message}||${i.line_no || ""}`;
+      const prevSet = new Set((prevIssues || []).map(keyFor));
+      const currSet = new Set((issues || []).map(keyFor));
+
+      const currentWithStatus = (issues || []).map(i => ({ ...i, diff_status: prevSet.has(keyFor(i)) ? "persistent" : "new" }));
+      const resolved = (prevIssues || []).filter(i => !currSet.has(keyFor(i))).map(i => ({ ...i, diff_status: "resolved" }));
+
       setRunSections(prev => ({ ...prev, [runId]: sections || [] }));
-      setRunIssues(prev => ({ ...prev, [runId]: issues || [] }));
+      setRunIssues(prev => ({ ...prev, [runId]: { current: currentWithStatus, resolved } }));
     }
   };
 
@@ -183,7 +214,8 @@ export function useAuditDetail() {
  * Lista de runs de un website.
  */
 export function RunList({ runs, runSections, runIssues, onToggleSections }) {
-  if (!runs.length) return React.createElement("p", { style: { opacity: 0.6 } }, "Sin análisis registrados.");
+  const { t } = useI18n();
+  if (!runs.length) return React.createElement("p", { style: { opacity: 0.6 } }, t("audit.no_history"));
   return React.createElement(
     React.Fragment, null,
     runs.map(r =>

@@ -51,13 +51,23 @@ def export_run_pdf(run_id: str):
         run = db.get(AuditRun, run_id)
         if not run:
             raise HTTPException(status_code=404, detail="Run no encontrado")
-        
+
         website = db.get(Website, run.website_id)
-        pdf_buffer = generate_audit_pdf(run, website)
-        
-        filename = f"auditoria_{run.started_at.strftime('%Y%m%d')}.pdf"
-        return StreamingResponse(
-            pdf_buffer,
-            media_type="application/pdf",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
-        )
+
+    # Historial de las últimas 4 auditorías previas con datos por sección
+    history = repo.runs_history_for_pdf(
+        website_id=str(run.website_id),
+        exclude_run_id=run_id,
+        limit=4,
+    )
+
+    with get_db() as db:
+        run = db.get(AuditRun, run_id)   # re-fetch dentro del contexto para el PDF
+        pdf_buffer = generate_audit_pdf(run, website, history=history)
+
+    filename = f"auditoria_{run.started_at.strftime('%Y%m%d')}.pdf"
+    return StreamingResponse(
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )

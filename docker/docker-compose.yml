@@ -47,69 +47,17 @@ services:
       - pg_data:/var/lib/postgresql/data
       # Ruta relativa a docker/ → apunta a docker/db-init/
       - ./db-init:/docker-entrypoint-initdb.d:ro
-    ports:
-      - "5432:5432"        # exponer solo en desarrollo; comentar en producción
+    # No publicar el puerto en el host para evitar acceso externo.
+    # Containers en la misma red 'backend' pueden seguir conectándose.
+    expose:
+      - "5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-auditor} -d ${POSTGRES_DB:-web_auditor}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # ── 2. Scraper Python ───────────────────────────────────────────────────────
-  scraper:
-    build:
-      # Contexto = raíz del repositorio (../ desde docker/)
-      # Necesario para que el Dockerfile acceda a config/, scraper/, utils/
-      context: ..
-      dockerfile: docker/scraper/Dockerfile
-    container_name: web_auditor_scraper
-    restart: "no"           # se ejecuta bajo demanda; cambiar a "unless-stopped"
-                            # si se quiere modo daemon con cron interno
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      # Base de datos
-      DB_HOST:     db
-      DB_PORT:     5432
-      DB_NAME:     ${POSTGRES_DB:-web_auditor}
-      DB_USER:     ${POSTGRES_USER:-auditor}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-auditor_secret}
-      TZ: Europe/Madrid
-      # Comportamiento
-      LOG_LEVEL:             ${LOG_LEVEL:-INFO}
-      RUN_INTERVAL_SECONDS:  ${RUN_INTERVAL_SECONDS:-3600}
-      REQUEST_TIMEOUT:       ${REQUEST_TIMEOUT:-15}
-      MAX_RETRIES:           ${MAX_RETRIES:-3}
-      # Selenium
-      SELENIUM_HEADLESS:     ${SELENIUM_HEADLESS:-true}
-      SELENIUM_IMPLICIT_WAIT: ${SELENIUM_IMPLICIT_WAIT:-5}
-      SELENIUM_PAGE_LOAD_TIMEOUT: ${SELENIUM_PAGE_LOAD_TIMEOUT:-30}
-      # Auditor Logic
-      AUDIT_MIN_WORD_COUNT:  ${AUDIT_MIN_WORD_COUNT:-150}
-      AUDIT_MAX_LINKS:       ${AUDIT_MAX_LINKS:-40}
-      AUDIT_MAX_DEPTH:       ${AUDIT_MAX_DEPTH:-1}
-      AUDIT_REQUEST_DELAY:   ${AUDIT_REQUEST_DELAY:-0.35}
-      AUDIT_BUTTONS_ENABLED: ${AUDIT_BUTTONS_ENABLED:-true}
-      AUDIT_JS_LOGS_ENABLED: ${AUDIT_JS_LOGS_ENABLED:-true}
-      AUDIT_BANNED_HOSTS:    ${AUDIT_BANNED_HOSTS:-apdigroup.com,81.0.54.124}
-      AUDIT_MAX_BROWSER_CONFIRMS: ${AUDIT_MAX_BROWSER_CONFIRMS:-15}
-      # Thresholds
-      AUDIT_SCORE_EXCELLENT: ${AUDIT_SCORE_EXCELLENT:-85}
-      AUDIT_SCORE_GOOD:      ${AUDIT_SCORE_GOOD:-70}
-      AUDIT_RELEASE_GATE_MIN_SCORE: ${AUDIT_RELEASE_GATE_MIN_SCORE:-70}
-    volumes:
-      - scraper_logs:/app/logs
-      - ../data:/app/data
-      # Hot reload: Montar el código fuente para reflejar cambios al vuelo
-      - ../config:/app/config:ro
-      - ../scraper:/app/scraper:ro
-      - ../shared:/app/shared:ro
-      - ./scraper/entrypoint.py:/app/entrypoint.py:ro
-    command: watchmedo auto-restart --recursive --pattern="*.py" --directory="." python entrypoint.py
-    shm_size: "2gb"
-    networks:
-      - backend
+  # (scraper service merged into `dashboard-api` below)
 
   # ── 3. Dashboard API (FastAPI) ──────────────────────────────────────────────
   dashboard-api:
@@ -127,6 +75,8 @@ services:
       DB_NAME:     ${POSTGRES_DB:-web_auditor}
       DB_USER:     ${POSTGRES_USER:-auditor}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-auditor_secret}
+      # Intervalo en segundos; <=0 = ejecución única en arranque. Establecer >0 para modo daemon.
+      RUN_INTERVAL_SECONDS: ${RUN_INTERVAL_SECONDS:-60}
       TZ: Europe/Madrid
     volumes:
       # Montar código fuente para hot reload
@@ -135,7 +85,16 @@ services:
       - ./dashboard/api/app.py:/app/app.py:ro
       - ./dashboard/api/schemas:/app/schemas:ro
       - ./dashboard/api/routes:/app/routes:ro
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+      # Scraper-related mounts (merged)
+      - scraper_logs:/app/logs
+      - ../data:/app/data
+      - ../config:/app/config:ro
+      - ../scraper:/app/scraper:ro
+      - ./scraper/entrypoint.py:/app/entrypoint.py:ro
+    # Also run the scraper process in the same container (development-friendly)
+    # Runs scraper in background and then starts uvicorn (hot-reload for API)
+    command: sh -c "python /app/entrypoint.py & uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+    shm_size: "2gb"
     networks:
       - backend
       - web

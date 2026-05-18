@@ -83,3 +83,40 @@ def run_issues(run_id: str, category: str | None = None, severity: str | None = 
             }
             for i in db.execute(stmt).scalars().all()
         ]
+
+def runs_history_for_pdf(website_id: str, exclude_run_id: str, limit: int = 4) -> list[dict]:
+    """Devuelve los últimos `limit` runs del website (excluyendo el actual),
+    con el issue_count desglosado por section_key. Usado para la gráfica del PDF."""
+    with get_db() as db:
+        stmt = (
+            select(AuditRun)
+            .where(
+                AuditRun.website_id == website_id,
+                AuditRun.id != exclude_run_id,
+                AuditRun.status == "success",
+            )
+            .order_by(AuditRun.started_at.desc())
+            .limit(limit)
+        )
+        runs = db.execute(stmt).scalars().all()
+
+        result = []
+        for r in reversed(runs):  # orden cronológico
+            sections_stmt = (
+                select(AuditRunSection.section_key, AuditRunSection.section_label, AuditRunSection.issue_count)
+                .where(AuditRunSection.run_id == r.id)
+            )
+            sections = {
+                row.section_key: {
+                    "label": row.section_label or row.section_key,
+                    "issue_count": row.issue_count or 0,
+                }
+                for row in db.execute(sections_stmt).all()
+            }
+            result.append({
+                "run_id":     str(r.id),
+                "date":       r.audit_date.isoformat() if r.audit_date else str(r.started_at.date()),
+                "sections":   sections,
+            })
+        return result
+

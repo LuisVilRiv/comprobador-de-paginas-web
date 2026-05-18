@@ -35,19 +35,67 @@ def list_websites(client_id: str | None = None) -> list[dict]:
                 Website.active, Website.strategy, Website.pending_audit,
                 Website.custom_cron.label("website_cron"),
                 Client.id.label("client_id"), Client.name.label("client_name"),
+                Client.custom_cron.label("client_cron"),
                 AuditRun.id.label("last_run_id"), AuditRun.audit_date,
                 AuditRun.score, AuditRun.previous_score, AuditRun.audit_status,
                 AuditRun.release_blocked, AuditRun.sections_passed,
                 AuditRun.sections_total, AuditRun.status.label("run_status"),
                 AuditRun.error_message,
             )
-            .join(Client, Website.client_id == Client.id)
+            .outerjoin(Client, Website.client_id == Client.id)
             .outerjoin(AuditRun, (AuditRun.website_id == Website.id) & (AuditRun.id.in_(latest_run_id_sub)))
             .order_by(Client.name, Website.url)
         )
         if client_id is not None:
             stmt = stmt.where(Client.id == client_id)
-        return [row_to_dict(r) for r in db.execute(stmt).all()]
+            
+        # Obtener configuración global para fallback
+        from shared.database.models import GlobalSetting
+        settings = {
+            row.key: row.value
+            for row in db.execute(select(GlobalSetting)).scalars().all()
+        }
+        global_active = settings.get("cron_active", "0 0 * * 0,3")
+        global_inactive = settings.get("cron_inactive", "0 0 1 2,4,6,8,10,12 *")
+
+        res = []
+        for r in db.execute(stmt).all():
+            row_dict = row_to_dict(r)
+            
+            # Lógica de precedencia de crons (idéntica a scheduler.py)
+            web_cron = row_dict.get("website_cron")
+            cli_cron = row_dict.get("client_cron")
+            is_active = row_dict.get("active")
+            
+            if web_cron:
+                crons = web_cron
+                source = "website"
+            elif cli_cron:
+                crons = cli_cron
+                source = "client"
+            else:
+                crons = global_active if is_active else global_inactive
+                source = "global"
+                
+            # Calcular siguiente ejecución
+            from shared.database.repositories.dashboard.helpers import cron_next_timestamp
+            cron_list = [c.strip() for c in (crons or "").split(",") if c.strip()]
+            next_ts = None
+            if cron_list:
+                ts_list = []
+                for c in cron_list:
+                    ts = cron_next_timestamp(c)
+                    if ts is not None:
+                        ts_list.append(ts)
+                if ts_list:
+                    next_ts = min(ts_list)
+                    
+            row_dict["next_audit"] = next_ts
+            row_dict["cron_source"] = source
+            row_dict["resolved_cron"] = crons
+            res.append(row_dict)
+            
+        return res
 
 def website_status(website_id: str) -> dict | None:
     # Optimización: buscar solo la web específica en lugar de listar todas

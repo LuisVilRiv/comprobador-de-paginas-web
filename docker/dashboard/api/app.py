@@ -1,5 +1,16 @@
 """app.py — FastAPI app entrypoint for dashboard API."""
 
+# Ensure project root (containing `shared/`) is on sys.path so imports work
+import sys
+from pathlib import Path
+
+root = Path(__file__).resolve()
+for _ in range(8):
+    root = root.parent
+    if (root / "shared").is_dir():
+        sys.path.insert(0, str(root))
+        break
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 

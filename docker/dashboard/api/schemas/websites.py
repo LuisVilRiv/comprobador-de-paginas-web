@@ -2,7 +2,7 @@ from pydantic import BaseModel
 
 
 class WebsiteCreate(BaseModel):
-    client_id: str
+    client_id: str | None = None
     url: str
     label: str | None = None
     strategy: str = "auto"
@@ -11,6 +11,7 @@ class WebsiteCreate(BaseModel):
 
 
 class WebsiteUpdate(BaseModel):
+    client_id: str | None = None
     url: str | None = None
     label: str | None = None
     strategy: str | None = None

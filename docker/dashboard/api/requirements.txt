@@ -6,3 +6,4 @@ SQLAlchemy>=2.0,<3
 croniter>=2.0.5
 watchdog>=4.0.0
 reportlab>=4.0.0
+matplotlib>=3.8.0

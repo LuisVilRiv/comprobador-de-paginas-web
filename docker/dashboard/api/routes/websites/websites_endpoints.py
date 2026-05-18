@@ -48,7 +48,10 @@ def create_website(payload: WebsiteCreate):
 
 @router.put("/{website_id}")
 def update_website(website_id: str, payload: WebsiteUpdate):
-    data = {k: v for k, v in payload.dict().items() if v is not None}
+    # Incluimos solo los campos que el cliente envió explícitamente.
+    # Usamos model_fields_set para distinguir "no enviado" de "enviado como null"
+    # (e.g. client_id=null es válido para desasociar un cliente).
+    data = {k: v for k, v in payload.dict().items() if k in payload.model_fields_set}
     if not data:
         raise HTTPException(status_code=400, detail="No fields to update")
 

@@ -42,7 +42,7 @@ class Website(Base):
     __tablename__ = "websites"
 
     id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
-    client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id", ondelete="CASCADE"), nullable=False)
+    client_id = Column(UUID(as_uuid=True), ForeignKey("clients.id", ondelete="SET NULL"), nullable=True)
     url = Column(Text, nullable=False)
     label = Column(Text)
     strategy = Column(Text, nullable=False, default="auto")

@@ -5,6 +5,9 @@ Extraído de QualityAuditor._check_security y métodos auxiliares de admin probi
 from __future__ import annotations
 
 import time
+import ssl
+import socket
+from datetime import datetime
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -54,6 +57,58 @@ _REQUIRED_HEADERS = {
 
 
 # ── Helpers internos ─────────────────────────────────────────────────────────
+
+def _verify_tls(url: str, issues: list[str], timeout: int = 5) -> None:
+    """Verifica la validez y expiración del certificado SSL/TLS del sitio web."""
+    parsed = urlparse(url)
+    if parsed.scheme.lower() != "https":
+        return
+
+    hostname = parsed.hostname
+    if not hostname:
+        return
+
+    context = ssl.create_default_context()
+    try:
+        with socket.create_connection((hostname, 443), timeout=timeout) as sock:
+            with context.wrap_socket(sock, server_hostname=hostname) as ssock:
+                cert = ssock.getpeercert()
+                if cert and "notAfter" in cert:
+                    not_after_str = cert["notAfter"]
+                    try:
+                        # Formato: 'May 18 07:19:26 2026 GMT'
+                        expire_date = datetime.strptime(not_after_str, "%b %d %H:%M:%S %Y %Z")
+                        days_left = (expire_date - datetime.utcnow()).days
+                        if days_left < 0:
+                            issues.append(
+                                f"El certificado SSL/TLS para {hostname} ha EXPIRADO "
+                                f"el {expire_date.strftime('%d/%m/%Y')}."
+                            )
+                        elif days_left <= 14:
+                            issues.append(
+                                f"ADVERTENCIA: El certificado SSL/TLS para {hostname} expirará pronto, "
+                                f"en {days_left} días ({expire_date.strftime('%d/%m/%Y')})."
+                            )
+                    except Exception:
+                        pass
+    except ssl.SSLCertVerificationError as exc:
+        issues.append(
+            f"Error de verificación SSL/TLS en {hostname}: El certificado no es de confianza "
+            f"o no coincide con el nombre de host (Detalle: {exc.reason})."
+        )
+    except ssl.SSLError as exc:
+        issues.append(
+            f"Error de protocolo SSL/TLS al conectar a {hostname}: {str(exc)}."
+        )
+    except (socket.timeout, TimeoutError):
+        issues.append(
+            f"Tiempo de espera agotado al verificar el certificado SSL/TLS en {hostname}."
+        )
+    except Exception as exc:
+        issues.append(
+            f"No se pudo establecer una conexión SSL/TLS segura con {hostname} (Error: {str(exc)})."
+        )
+
 
 def _normalize_host(host: str) -> str:
     host = host.lower().strip()
@@ -117,6 +172,9 @@ def check_security(
             "La URL usa HTTP en lugar de HTTPS. "
             "Todo el tráfico viaja sin cifrar."
         )
+    else:
+        # Verificación exhaustiva de SSL/TLS
+        _verify_tls(base_url, issues, timeout=timeout)
 
     headers = {k.lower(): v for k, v in last_response_headers.items()}
     for header, message in _REQUIRED_HEADERS.items():
@@ -293,6 +351,18 @@ def _probe_cpanel(
             continue
 
     port_host = base_origin.replace("https://", "").replace("http://", "").split("/")[0]
+    
+    # Pre-comprobación de socket súper rápida para evitar que Selenium se cuelgue 30s si el puerto está cerrado/bloqueado
+    port_open = False
+    try:
+        with socket.create_connection((port_host, 2083), timeout=1.8):
+            port_open = True
+    except Exception:
+        pass
+
+    if not port_open:
+        return "not_found", "cpanel_port_2083_closed_or_filtered", f"https://{port_host}:2083/", None
+
     return _probe_with_browser(f"https://{port_host}:2083/", driver_factory)
 
 
@@ -371,13 +441,22 @@ def _probe_with_browser(url: str, driver_factory) -> tuple[str, str, str, int | 
     driver = driver_factory()
     if not driver:
         return "unknown", "selenium_not_available", url, None
+    
+    orig_timeout = settings.SELENIUM_PAGE_LOAD_TIMEOUT
     try:
+        # Timeout ultra-rápido de 5 segundos para sondeos del navegador
+        try:
+            driver.set_page_load_timeout(5)
+        except Exception:
+            pass
+
         time.sleep(settings.AUDIT_REQUEST_DELAY_SECONDS)
         driver.get(url)
-        time.sleep(2)
+        time.sleep(1)
         final_url = driver.current_url
         html_text = driver.page_source or ""
         title = driver.title or ""
+        
         if "cpanel" in url.lower() or ":208" in url:
             class _FakeSession:
                 cookies = []
@@ -385,11 +464,19 @@ def _probe_with_browser(url: str, driver_factory) -> tuple[str, str, str, int | 
                 None, html_text, title, final_url, url, _FakeSession()
             )
             return state, f"browser_{reason}", f_url, status
+        
         class MockResponse:
             def __init__(self, text, url):
                 self.text = text; self.url = url
                 self.status_code = 200; self.history = []
+        
         state, reason = _classify_admin_response(url, MockResponse(html_text, final_url))
         return state, f"browser_{reason}", final_url, 200
     except Exception as exc:
         return "unknown", f"browser_error={str(exc)[:50]}", url, None
+    finally:
+        # Restaurar el timeout original del pool de Selenium
+        try:
+            driver.set_page_load_timeout(orig_timeout)
+        except Exception:
+            pass

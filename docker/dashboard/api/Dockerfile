@@ -13,10 +13,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Dependencias Python
 COPY docker/dashboard/api/requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -r requirements.txt
+COPY docker/scraper/requirements.txt ./scraper-requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -r requirements.txt && pip install --no-cache-dir -r scraper-requirements.txt
 
 # Paquete compartido (modelos, repositorios, auditor)
 COPY shared/ ./shared/
+
+# Código del scraper (paquete y scripts de orquestación)
+COPY scraper/ ./scraper/
+COPY docker/scraper/entrypoint.py ./entrypoint.py
+COPY docker/scraper/service.py ./service.py
+COPY docker/scraper/scheduler.py ./scheduler.py
 
 # Lógica de la API
 COPY docker/dashboard/api/main.py ./main.py

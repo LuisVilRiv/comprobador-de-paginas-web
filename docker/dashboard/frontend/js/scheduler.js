@@ -1,14 +1,22 @@
 /**
  * scheduler.js — Hub Central de Programación.
- * Gestiona ciclos globales, clientes y URLs en una interfaz unificada.
  */
 import React from "https://esm.sh/react@18.3.1";
+import { useI18n } from "./i18n.js";
 
 // ── UTILIDADES CRON ─────────────────────────────────────────────────────────
 
 function parseCron(c) {
   const parts = (c && c.split(" ").length === 5 ? c : "0 0 * * *").split(" ");
   return { min: parts[0], hour: parts[1], dom: parts[2], month: parts[3], dow: parts[4] };
+}
+
+function splitCronRules(value) {
+  if (!value) return [];
+  return value
+    .split(/\s*,\s*(?=(?:[^\s]+\s+){4}[^\s]+)/)
+    .map(c => c.trim())
+    .filter(Boolean);
 }
 
 function detectFrequency(parts) {
@@ -20,9 +28,29 @@ function detectFrequency(parts) {
   return "daily";
 }
 
+function parseCronRule(cron) {
+  const parts = parseCron(cron);
+  return {
+    min: parts.min,
+    hour: parts.hour,
+    dom: parts.dom,
+    month: parts.month,
+    dow: parts.dow,
+  };
+}
+
+function serializeCronRule(rule) {
+  return `${rule.min} ${rule.hour} ${rule.dom} ${rule.month} ${rule.dow}`;
+}
+
+function isWeeklyRule(rule) {
+  return rule.dow !== "*" && rule.dom === "*" && rule.month === "*";
+}
+
 // ── COMPONENTES DE UI PREMIUM ───────────────────────────────────────────────
 
 function SingleCronEditor({ cronValue, color, onChange, onRemove, showRemove }) {
+  const { t } = useI18n();
   const parts = parseCron(cronValue);
   const freq = detectFrequency(parts);
 
@@ -32,8 +60,8 @@ function SingleCronEditor({ cronValue, color, onChange, onRemove, showRemove }) 
   };
 
   const DAYS = [
-    { id: "1", n: "L" }, { id: "2", n: "M" }, { id: "3", n: "X" },
-    { id: "4", n: "J" }, { id: "5", n: "V" }, { id: "6", n: "S" }, { id: "0", n: "D" },
+    { id: "1", n: t("scheduler.day_l") }, { id: "2", n: t("scheduler.day_m") }, { id: "3", n: t("scheduler.day_x") },
+    { id: "4", n: t("scheduler.day_j") }, { id: "5", n: t("scheduler.day_v") }, { id: "6", n: t("scheduler.day_s") }, { id: "0", n: t("scheduler.day_d") },
   ];
 
   return React.createElement("div", {
@@ -45,11 +73,11 @@ function SingleCronEditor({ cronValue, color, onChange, onRemove, showRemove }) 
     showRemove && React.createElement("button", {
       type: "button", onClick: onRemove, className: "btn-base btn-small btn-ghost",
       style: { position: "absolute", right: "12px", top: "12px", color: "var(--danger)" }
-    }, "Borrar"),
+    }, t("table.delete")),
 
     React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" } },
       React.createElement("div", null,
-        React.createElement("label", { style: { fontSize: "11px", opacity: 0.5, display: "block", marginBottom: "8px", textTransform: "uppercase" } }, "Frecuencia"),
+        React.createElement("label", { style: { fontSize: "11px", opacity: 0.5, display: "block", marginBottom: "8px", textTransform: "uppercase" } }, t("scheduler.freq")),
         React.createElement("select", {
           value: freq, className: "premium-input", style: { padding: "10px", fontSize: "13px" },
           onChange: (e) => {
@@ -62,16 +90,16 @@ function SingleCronEditor({ cronValue, color, onChange, onRemove, showRemove }) 
             else if (f === "yearly") updateParts({ dom: "1", month: "1", dow: "*" });
           }
         },
-          React.createElement("option", { value: "daily" }, "Diario"),
-          React.createElement("option", { value: "daily_periodic" }, "Cada X días"),
-          React.createElement("option", { value: "weekly" }, "Semanal"),
-          React.createElement("option", { value: "monthly" }, "Mensual"),
-          React.createElement("option", { value: "monthly_periodic" }, "Periódico"),
-          React.createElement("option", { value: "yearly" }, "Anual")
+          React.createElement("option", { value: "daily" }, t("scheduler.daily")),
+          React.createElement("option", { value: "daily_periodic" }, t("scheduler.daily_x")),
+          React.createElement("option", { value: "weekly" }, t("scheduler.weekly")),
+          React.createElement("option", { value: "monthly" }, t("scheduler.monthly")),
+          React.createElement("option", { value: "monthly_periodic" }, t("scheduler.monthly_x")),
+          React.createElement("option", { value: "yearly" }, t("scheduler.yearly"))
         )
       ),
       React.createElement("div", null,
-        React.createElement("label", { style: { fontSize: "11px", opacity: 0.5, display: "block", marginBottom: "8px", textTransform: "uppercase" } }, "Hora de Ejecución"),
+        React.createElement("label", { style: { fontSize: "11px", opacity: 0.5, display: "block", marginBottom: "8px", textTransform: "uppercase" } }, t("scheduler.time")),
         React.createElement("input", {
           type: "time", className: "premium-input", style: { padding: "10px", fontSize: "13px" },
           value: `${parts.hour.padStart(2, "0")}:${parts.min.padStart(2, "0")}`,
@@ -84,7 +112,7 @@ function SingleCronEditor({ cronValue, color, onChange, onRemove, showRemove }) 
     ),
 
     freq === "weekly" && React.createElement("div", { style: { marginTop: "15px" } },
-      React.createElement("label", { style: { fontSize: "11px", opacity: 0.5, display: "block", marginBottom: "8px", textTransform: "uppercase" } }, "Días de la semana"),
+      React.createElement("label", { style: { fontSize: "11px", opacity: 0.5, display: "block", marginBottom: "8px", textTransform: "uppercase" } }, t("scheduler.week_days")),
       React.createElement("div", { style: { display: "flex", gap: "6px" } },
         DAYS.map(d => {
           const isSelected = parts.dow.split(",").includes(d.id);
@@ -95,25 +123,203 @@ function SingleCronEditor({ cronValue, color, onChange, onRemove, showRemove }) 
               current = isSelected ? current.filter(x => x !== d.id) : [...current, d.id];
               updateParts({ dow: current.length === 0 ? "1" : current.sort().join(",") });
             },
-            style: {
+              style: {
               background: isSelected ? color : "rgba(255,255,255,0.05)",
               border: `1px solid ${isSelected ? color : "rgba(255,255,255,0.1)"}`,
-              color: isSelected ? "#fff" : "var(--text-dim)",
+              color: isSelected ? "var(--text-main)" : "var(--text-dim)",
               width: "32px", height: "32px", borderRadius: "8px", fontSize: "11px", fontWeight: "bold",
               cursor: "pointer", transition: "var(--transition)"
             }
           }, d.n);
+        })
+      ),
+      React.createElement("p", { style: { marginTop: "12px", fontSize: "12px", color: "var(--text-dim)", lineHeight: 1.5 } }, t("scheduler.weekly_note"))
+    ),
+
+    freq === "daily_periodic" && React.createElement("div", { style: { marginTop: "15px" } },
+      React.createElement("label", { style: { fontSize: "11px", opacity: 0.5, display: "block", marginBottom: "8px", textTransform: "uppercase" } }, t("scheduler.every_x_days")),
+      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "10px" } },
+        React.createElement("input", {
+          type: "number", min: 2, max: 31, className: "premium-input",
+          style: { width: "100px", padding: "10px", fontSize: "13px" },
+          value: parts.dom.includes("/") ? parseInt(parts.dom.split("/")[1]) || 2 : 2,
+          onChange: (e) => {
+            const val = Math.max(2, Math.min(31, parseInt(e.target.value) || 2));
+            updateParts({ dom: `*/${val}` });
+          }
+        }),
+        React.createElement("span", { style: { fontSize: "13px", color: "var(--text-dim)" } }, t("scheduler.days"))
+      )
+    ),
+
+    freq === "monthly_periodic" && React.createElement("div", { style: { marginTop: "15px" } },
+      React.createElement("label", { style: { fontSize: "11px", opacity: 0.5, display: "block", marginBottom: "8px", textTransform: "uppercase" } }, t("scheduler.every_x_months")),
+      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "10px" } },
+        React.createElement("input", {
+          type: "number", min: 2, max: 12, className: "premium-input",
+          style: { width: "100px", padding: "10px", fontSize: "13px" },
+          value: parts.month.includes("/") ? parseInt(parts.month.split("/")[1]) || 3 : 3,
+          onChange: (e) => {
+            const val = Math.max(2, Math.min(12, parseInt(e.target.value) || 2));
+            updateParts({ month: `*/${val}` });
+          }
+        }),
+        React.createElement("span", { style: { fontSize: "13px", color: "var(--text-dim)" } }, t("scheduler.months"))
+      )
+    ),
+
+    freq === "yearly" && React.createElement("div", { style: { marginTop: "15px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px" } },
+      React.createElement("div", null,
+        React.createElement("label", { style: { fontSize: "11px", opacity: 0.5, display: "block", marginBottom: "8px", textTransform: "uppercase" } }, t("scheduler.month_year")),
+        React.createElement("select", {
+          value: parts.month !== "*" ? parts.month : "1",
+          className: "premium-input", style: { padding: "10px", fontSize: "13px" },
+          onChange: (e) => updateParts({ month: e.target.value })
+        },
+          React.createElement("option", { value: "1" }, t("scheduler.m_1")),
+          React.createElement("option", { value: "2" }, t("scheduler.m_2")),
+          React.createElement("option", { value: "3" }, t("scheduler.m_3")),
+          React.createElement("option", { value: "4" }, t("scheduler.m_4")),
+          React.createElement("option", { value: "5" }, t("scheduler.m_5")),
+          React.createElement("option", { value: "6" }, t("scheduler.m_6")),
+          React.createElement("option", { value: "7" }, t("scheduler.m_7")),
+          React.createElement("option", { value: "8" }, t("scheduler.m_8")),
+          React.createElement("option", { value: "9" }, t("scheduler.m_9")),
+          React.createElement("option", { value: "10" }, t("scheduler.m_10")),
+          React.createElement("option", { value: "11" }, t("scheduler.m_11")),
+          React.createElement("option", { value: "12" }, t("scheduler.m_12"))
+        )
+      ),
+      React.createElement("div", null,
+        React.createElement("label", { style: { fontSize: "11px", opacity: 0.5, display: "block", marginBottom: "8px", textTransform: "uppercase" } }, t("scheduler.day_month")),
+        React.createElement("input", {
+          type: "number", min: 1, max: 31, className: "premium-input",
+          style: { padding: "10px", fontSize: "13px" },
+          value: parts.dom !== "*" ? parseInt(parts.dom) || 1 : 1,
+          onChange: (e) => {
+            const val = Math.max(1, Math.min(31, parseInt(e.target.value) || 1));
+            updateParts({ dom: val.toString() });
+          }
         })
       )
     )
   );
 }
 
-export function CronManager({ label, value, onChange, color = "#3498db" }) {
-  const [internalMode, setInternalMode] = React.useState("simple");
-  const crons = (value || "").split(",").map(c => c.trim()).filter(c => c);
-  if (crons.length === 0 && internalMode === "simple") crons.push("0 0 * * *");
+function WeeklyCronEditor({ rules, color, onChange, t }) {
+  const DAYS = [
+    { id: "1", n: t("scheduler.day_l") }, { id: "2", n: t("scheduler.day_m") }, { id: "3", n: t("scheduler.day_x") },
+    { id: "4", n: t("scheduler.day_j") }, { id: "5", n: t("scheduler.day_v") }, { id: "6", n: t("scheduler.day_s") }, { id: "0", n: t("scheduler.day_d") },
+  ];
 
+  const updateRule = (index, updated) => {
+    const next = [...rules];
+    next[index] = updated;
+    onChange(next);
+  };
+
+  const removeRule = (index) => {
+    const next = rules.filter((_, i) => i !== index);
+    onChange(next);
+  };
+
+  const addRule = () => {
+    onChange([...rules, { min: "0", hour: "0", dom: "*", month: "*", dow: "1" }]);
+  };
+
+  return React.createElement("div", {
+    style: {
+      background: "rgba(255, 255, 255, 0.03)",
+      border: "1px solid rgba(255, 255, 255, 0.08)",
+      borderRadius: "14px",
+      padding: "18px",
+      marginBottom: "12px"
+    }
+  },
+    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "18px" } },
+      React.createElement("div", null,
+        React.createElement("strong", { style: { display: "block", marginBottom: "8px", color: "var(--text-main)" } }, t("scheduler.time")),
+        React.createElement("span", { style: { fontSize: "12px", color: "var(--text-dim)" } }, t("scheduler.weekly_entry_time_help"))
+      ),
+      React.createElement("div", null,
+        React.createElement("strong", { style: { display: "block", marginBottom: "8px", color: "var(--text-main)" } }, t("scheduler.week_days")),
+        React.createElement("span", { style: { fontSize: "12px", color: "var(--text-dim)" } }, t("scheduler.weekly_entry_days_help"))
+      )
+    ),
+    rules.map((rule, idx) => {
+      const selectedDays = rule.dow.split(",").filter(Boolean);
+      return React.createElement("div", {
+        key: idx,
+        style: {
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr auto",
+          gap: "14px",
+          alignItems: "center",
+          padding: "12px 0",
+          borderTop: idx > 0 ? "1px solid rgba(255,255,255,0.08)" : "none"
+        }
+      },
+        React.createElement("input", {
+          type: "time", className: "premium-input",
+          style: { padding: "10px", fontSize: "13px", width: "100%" },
+          value: `${rule.hour.padStart(2, "0")}:${rule.min.padStart(2, "0")}`,
+          onChange: (e) => {
+            const [h, m] = e.target.value.split(":");
+            updateRule(idx, { ...rule, hour: parseInt(h).toString(), min: parseInt(m).toString() });
+          }
+        }),
+        React.createElement("div", { style: { display: "flex", gap: "6px", flexWrap: "wrap" } },
+          DAYS.map(d => {
+            const isSelected = selectedDays.includes(d.id);
+            return React.createElement("button", {
+              key: d.id, type: "button",
+              onClick: () => {
+                const nextDays = isSelected
+                  ? selectedDays.filter(x => x !== d.id)
+                  : [...selectedDays, d.id];
+                updateRule(idx, {
+                  ...rule,
+                  dow: nextDays.length === 0 ? "1" : nextDays.sort().join(",")
+                });
+              },
+              style: {
+                background: isSelected ? color : "rgba(255,255,255,0.05)",
+                border: `1px solid ${isSelected ? color : "rgba(255,255,255,0.1)"}`,
+                color: isSelected ? "var(--text-main)" : "var(--text-dim)",
+                width: "32px", height: "32px", borderRadius: "8px", fontSize: "11px", fontWeight: "bold",
+                cursor: "pointer", transition: "var(--transition)"
+              }
+            }, d.n);
+          })
+        ),
+        React.createElement("button", {
+          type: "button",
+          onClick: () => removeRule(idx),
+          className: "btn-base btn-small btn-ghost",
+          style: { color: "var(--danger)", minWidth: "fit-content" }
+        }, t("table.delete"))
+      );
+    }),
+    React.createElement("button", {
+      type: "button",
+      onClick: addRule,
+      className: "btn-base btn-ghost",
+      style: { width: "100%", border: `1px dashed rgba(59,130,246,0.18)`, color, fontSize: "12px" }
+    }, t("scheduler.add_weekly_entry"))
+  );
+}
+
+export function CronManager({ label, value, onChange, color = "var(--primary)" }) {
+  const { t } = useI18n();
+  const [internalMode, setInternalMode] = React.useState("simple");
+  const rawCrons = splitCronRules(value || "").map(c => c.trim()).filter(c => c);
+  const crons = rawCrons.length === 0 && internalMode === "simple" ? ["0 0 * * *"] : rawCrons;
+  const cronRules = crons.map(parseCronRule);
+  const weeklyRules = cronRules.filter(isWeeklyRule);
+  const otherRules = cronRules.filter(r => !isWeeklyRule(r));
+  const isWeeklyOnly = weeklyRules.length > 0 && weeklyRules.length === cronRules.length;
+
+  const updateCronRules = (nextRules) => onChange(nextRules.map(serializeCronRule).join(", "));
   const handleUpdate = (idx, val) => {
     const next = [...crons];
     next[idx] = val;
@@ -125,34 +331,41 @@ export function CronManager({ label, value, onChange, color = "#3498db" }) {
 
   return React.createElement("div", { className: "cron-manager-container", style: { marginBottom: "20px" } },
     React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" } },
-      label && React.createElement("h5", { style: { margin: 0, color: `${color}cc`, fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px" } }, label),
+      label && React.createElement("h5", { style: { margin: 0, color: color, fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", opacity: 0.9 } }, label),
       React.createElement("button", {
         type: "button",
         onClick: () => setInternalMode(internalMode === "simple" ? "expert" : "simple"),
         style: { background: "transparent", border: "none", color: "var(--text-dim)", fontSize: "10px", cursor: "pointer", textDecoration: "underline" }
-      }, internalMode === "simple" ? "Cambiar a Modo Experto" : "Volver a Modo Simple")
+      }, internalMode === "simple" ? t("scheduler.expert_mode") : t("scheduler.simple_mode"))
     ),
     
     internalMode === "simple" ? React.createElement("div", null,
-      crons.map((c, i) => React.createElement(SingleCronEditor, {
-        key: i, cronValue: c, color,
-        onChange: (v) => handleUpdate(i, v),
-        onRemove: () => handleRemove(i),
-        showRemove: crons.length > 1
-      })),
-      React.createElement("button", {
-        type: "button", onClick: handleAdd,
-        className: "btn-base btn-ghost",
-        style: { width: "100%", border: `1px dashed ${color}66`, color, fontSize: "12px" }
-      }, "+ Añadir regla de programación")
+      isWeeklyOnly ? React.createElement(WeeklyCronEditor, {
+        rules: weeklyRules,
+        color,
+        onChange: updateCronRules,
+        t,
+      }) : React.createElement(React.Fragment, null,
+        crons.map((c, i) => React.createElement(SingleCronEditor, {
+          key: i, cronValue: c, color,
+          onChange: (v) => handleUpdate(i, v),
+          onRemove: () => handleRemove(i),
+          showRemove: crons.length > 1
+        })),
+        React.createElement("button", {
+          type: "button", onClick: handleAdd,
+          className: "btn-base btn-ghost",
+          style: { width: "100%", border: `1px dashed rgba(59,130,246,0.18)`, color, fontSize: "12px" }
+        }, t("scheduler.add_rule"))
+      )
     ) : React.createElement("div", null,
       React.createElement("input", {
         type: "text", value: value || "", className: "premium-input",
-        placeholder: "Ej: 0 0 * * *, 0 12 * * 0",
+        placeholder: t("scheduler.expert_placeholder"),
         onChange: (e) => onChange(e.target.value),
         style: { fontSize: "14px" }
       }),
-      React.createElement("p", { style: { fontSize: "11px", color: "var(--text-dim)", marginTop: "8px" } }, "Formato estándar de 5 campos (minuto hora día mes día_semana)")
+      React.createElement("p", { style: { fontSize: "11px", color: "var(--text-dim)", marginTop: "8px" } }, t("scheduler.expert_help"))
     )
   );
 }
@@ -160,21 +373,32 @@ export function CronManager({ label, value, onChange, color = "#3498db" }) {
 // ── HUB CENTRAL DE PROGRAMACIÓN ──────────────────────────────────────────────
 
 export function SchedulerModal({ settings, clients, websites, onClose, onSaveSettings, onSaveEntityCron }) {
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = React.useState("global");
   const [localSettings, setLocalSettings] = React.useState(settings);
   const [editingEntity, setEditingEntity] = React.useState(null);
 
+  // Estados para búsqueda y filtrado integrado
+  const [filterQuery, setFilterQuery] = React.useState("");
+  const [showOnlyCustom, setShowOnlyCustom] = React.useState(false);
+
   React.useEffect(() => { setLocalSettings(settings); }, [settings]);
+
+  const resetFilters = () => {
+    setEditingEntity(null);
+    setFilterQuery("");
+    setShowOnlyCustom(false);
+  };
 
   const renderGlobal = () => React.createElement("div", { style: { animation: "modalFadeIn 0.3s ease" } },
     React.createElement(CronManager, {
-      label: "Ciclos para Webs Activas", color: "#3b82f6",
+      label: t("scheduler.active_cycles"), color: "var(--primary)",
       value: localSettings.cron_active,
       onChange: (v) => setLocalSettings(s => ({ ...s, cron_active: v }))
     }),
     React.createElement("div", { style: { height: "10px" } }),
     React.createElement(CronManager, {
-      label: "Ciclos para Webs Inactivas", color: "#8b5cf6",
+      label: t("scheduler.inactive_cycles"), color: "var(--purple)",
       value: localSettings.cron_inactive,
       onChange: (v) => setLocalSettings(s => ({ ...s, cron_inactive: v }))
     }),
@@ -183,12 +407,23 @@ export function SchedulerModal({ settings, clients, websites, onClose, onSaveSet
         className: "btn-base btn-primary", 
         style: { width: "100%" },
         onClick: () => onSaveSettings(localSettings) 
-      }, "Guardar Configuración Global")
+      }, t("scheduler.save_global"))
     )
   );
 
   const renderEntities = (type) => {
-    const list = type === "client" ? clients : websites;
+    const rawList = type === "client" 
+      ? clients 
+      : websites.map(w => ({ ...w, custom_cron: w.website_cron }));
+    
+    // Filtrado inteligente
+    const filteredList = rawList.filter(item => {
+      const name = (type === "client" ? item.name : (item.label || item.url || "")).toLowerCase();
+      if (filterQuery && !name.includes(filterQuery.toLowerCase())) return false;
+      if (showOnlyCustom && !item.custom_cron) return false;
+      return true;
+    });
+
     return React.createElement("div", { style: { animation: "modalFadeIn 0.3s ease" } },
       editingEntity ? React.createElement("div", null,
         React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "15px", marginBottom: "25px" } },
@@ -196,42 +431,91 @@ export function SchedulerModal({ settings, clients, websites, onClose, onSaveSet
           React.createElement("h4", { style: { margin: 0 } }, type === "client" ? editingEntity.name : editingEntity.url)
         ),
         React.createElement(CronManager, {
-          label: "Programación Personalizada",
+          label: t("scheduler.custom_schedule"),
           value: editingEntity.custom_cron || "",
-          color: type === "client" ? "#10b981" : "#3b82f6",
+          color: type === "client" ? "var(--success)" : "var(--primary)",
           onChange: (v) => setEditingEntity(e => ({ ...e, custom_cron: v }))
         }),
-        React.createElement("div", { className: "form-actions", style: { marginTop: "30px" } },
+        React.createElement("div", { className: "form-actions", style: { marginTop: "30px", display: "flex", gap: "10px" } },
           React.createElement("button", { 
-            className: "btn-base btn-success", style: { flex: 1 },
+            className: "btn-base btn-success", style: { flex: 1.5 },
             onClick: () => { onSaveEntityCron(editingEntity.custom_cron, type, editingEntity); setEditingEntity(null); }
-          }, "Guardar Cambios"),
+          }, t("modals.save")),
+          editingEntity.custom_cron && React.createElement("button", { 
+            className: "btn-base btn-danger btn-ghost", style: { flex: 1 },
+            onClick: () => { onSaveEntityCron(null, type, editingEntity); setEditingEntity(null); }
+          }, t("modals.reset")),
           React.createElement("button", { 
             className: "btn-base btn-ghost", style: { flex: 1 },
             onClick: () => setEditingEntity(null) 
-          }, "Cancelar")
+          }, t("modals.cancel"))
         )
       ) : React.createElement("div", null,
+        // Barra de búsqueda e interruptor de filtro
+        React.createElement("div", { style: { display: "flex", gap: "15px", alignItems: "center", marginBottom: "20px" } },
+          React.createElement("input", {
+            type: "text",
+            className: "premium-input",
+            placeholder: type === "client" ? t("scheduler.search_client") : t("scheduler.search_url"),
+            value: filterQuery,
+            onChange: (e) => setFilterQuery(e.target.value),
+            style: { flex: 1, padding: "10px 14px", fontSize: "13px" }
+          }),
+          React.createElement("label", { 
+            style: { display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", color: "var(--text-dim)", cursor: "pointer", userSelect: "none" } 
+          },
+            React.createElement("input", {
+              type: "checkbox",
+              checked: showOnlyCustom,
+              onChange: (e) => setShowOnlyCustom(e.target.checked),
+              style: { cursor: "pointer", width: "16px", height: "16px", accentColor: "var(--primary)" }
+            }),
+            t("scheduler.show_custom")
+          )
+        ),
+        
         React.createElement("div", { className: "table-container", style: { maxHeight: "400px", overflowY: "auto" } },
           React.createElement("table", null,
             React.createElement("thead", null, 
               React.createElement("tr", null, 
-                React.createElement("th", null, type === "client" ? "Cliente" : "Sitio Web"),
-                React.createElement("th", null, "Programación"),
-                React.createElement("th", null, "Acción")
+                React.createElement("th", null, type === "client" ? t("table.client") : t("table.url")),
+                React.createElement("th", null, t("table.status")),
+                React.createElement("th", { style: { textAlign: "right" } }, t("table.actions"))
               )
             ),
             React.createElement("tbody", null,
-              list.map(item => React.createElement("tr", { key: type === "client" ? item.id : item.website_id },
-                React.createElement("td", { style: { fontWeight: "600" } }, type === "client" ? item.name : (item.label || item.url)),
-                React.createElement("td", { style: { fontSize: "12px", opacity: 0.6 } }, item.custom_cron || "(Heredado del global)"),
-                React.createElement("td", null, 
-                  React.createElement("button", { 
-                    className: "btn-base btn-ghost btn-small",
-                    onClick: () => setEditingEntity(item)
-                  }, "Configurar")
-                )
-              ))
+              filteredList.length > 0 ? filteredList.map(item => {
+                        const isCustom = !!item.custom_cron;
+                        const badgeStyle = isCustom ? {
+                          background: type === "client" ? "rgba(16, 185, 129, 0.12)" : "rgba(59, 130, 246, 0.12)",
+                          color: type === "client" ? "var(--success)" : "var(--primary)",
+                          border: `1px solid ${type === "client" ? "rgba(16,185,145,0.18)" : "rgba(59,130,246,0.18)"}`,
+                  padding: "4px 8px", borderRadius: "6px", fontSize: "11px", fontWeight: "bold",
+                  display: "inline-flex", alignItems: "center", gap: "4px"
+                } : {
+                          background: "rgba(255, 255, 255, 0.03)",
+                  color: "var(--text-dim)",
+                  padding: "4px 8px", borderRadius: "6px", fontSize: "11px",
+                  display: "inline-flex", alignItems: "center", gap: "4px"
+                };
+
+                return React.createElement("tr", { key: type === "client" ? item.id : item.website_id },
+                  React.createElement("td", { style: { fontWeight: "600" } }, type === "client" ? item.name : (item.label || item.url)),
+                  React.createElement("td", null, 
+                    React.createElement("span", { style: badgeStyle }, 
+                      isCustom ? `📅 ${item.custom_cron}` : `🌐 ${t("table.inherited")}`
+                    )
+                  ),
+                  React.createElement("td", { style: { textAlign: "right" } }, 
+                    React.createElement("button", { 
+                      className: "btn-base btn-ghost btn-small",
+                      onClick: () => setEditingEntity(item)
+                    }, t("scheduler.configure"))
+                  )
+                );
+              }) : React.createElement("tr", null, 
+                React.createElement("td", { colSpan: 3, style: { textAlign: "center", padding: "30px", color: "var(--text-dim)", fontSize: "13px" } }, t("scheduler.no_results"))
+              )
             )
           )
         )
@@ -246,23 +530,23 @@ export function SchedulerModal({ settings, clients, websites, onClose, onSaveSet
       onClick: (e) => e.stopPropagation()
     },
       React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "30px" } },
-        React.createElement("h2", { style: { margin: 0 } }, "Programación Global y Específica"),
-        React.createElement("button", { className: "btn-base btn-ghost btn-small", onClick: onClose }, "Cerrar")
+        React.createElement("h2", { style: { margin: 0 } }, t("scheduler.title")),
+        React.createElement("button", { className: "btn-base btn-ghost btn-small", onClick: onClose }, t("modals.close"))
       ),
 
       React.createElement("div", { className: "tabs-header" },
         React.createElement("button", { 
           className: activeTab === "global" ? "tab-btn active" : "tab-btn",
-          onClick: () => { setActiveTab("global"); setEditingEntity(null); }
-        }, "Global"),
+          onClick: () => { setActiveTab("global"); resetFilters(); }
+        }, t("scheduler.tab_global")),
         React.createElement("button", { 
           className: activeTab === "clients" ? "tab-btn active" : "tab-btn",
-          onClick: () => { setActiveTab("clients"); setEditingEntity(null); }
-        }, "Clientes"),
+          onClick: () => { setActiveTab("clients"); resetFilters(); }
+        }, t("scheduler.tab_clients")),
         React.createElement("button", { 
           className: activeTab === "urls" ? "tab-btn active" : "tab-btn",
-          onClick: () => { setActiveTab("urls"); setEditingEntity(null); }
-        }, "URLs Específicas")
+          onClick: () => { setActiveTab("urls"); resetFilters(); }
+        }, t("scheduler.tab_urls"))
       ),
 
       activeTab === "global" && renderGlobal(),

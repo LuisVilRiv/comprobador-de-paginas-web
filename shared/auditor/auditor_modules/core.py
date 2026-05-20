@@ -85,6 +85,65 @@ class QualityAuditor:
             html_lines = html.splitlines()
             soup = BeautifulSoup(html, settings.BS4_PARSER)
 
+            # Comprobar si la página no está operativa (mantenimiento, error HTTP o plantilla por defecto)
+            status_code = metadata.get("status_code", 200)
+            is_inoperative = False
+            inoperative_reason = ""
+
+            title_str = (soup.title.string or "").strip().lower() if soup.title else ""
+            h1_text = " ".join([h1.get_text(" ", strip=True).lower() for h1 in soup.find_all("h1")])
+            h2_text = " ".join([h2.get_text(" ", strip=True).lower() for h2 in soup.find_all("h2")])
+            body_text = soup.get_text(" ", strip=True).lower()
+            words = body_text.split()
+            word_count = len(words)
+
+            if isinstance(status_code, int) and status_code >= 400:
+                is_inoperative = True
+                inoperative_reason = f"El código de estado HTTP {status_code} indica un error del servidor o del cliente."
+            else:
+                err_patterns = [
+                    "404 not found", "page not found", "página no encontrada", "pagina no encontrada",
+                    "internal server error", "500 error", "502 bad gateway", "503 service unavailable",
+                    "error de conexión", "error de conexion", "database error", "fallo de conexión",
+                    "connection error", "access denied", "forbidden", "no autorizado"
+                ]
+                maint_patterns = [
+                    "mantenimiento", "maintenance", "en construcción", "en construccion",
+                    "under construction", "coming soon", "próximamente", "proximamente",
+                    "volveremos pronto", "back soon", "temporarily down", "sitio inactivo"
+                ]
+                parking_patterns = [
+                    "welcome to nginx", "apache2 ubuntu default page", "apache2 debian default page",
+                    "iis windows server", "hosting account suspended", "cuenta suspendida",
+                    "plesk default page", "cpanel hosting", "default website page"
+                ]
+
+                if any(p in title_str for p in err_patterns):
+                    is_inoperative = True
+                    inoperative_reason = f"El título de la página ('{soup.title.string}') indica un estado de error."
+                elif any(p in title_str for p in maint_patterns):
+                    is_inoperative = True
+                    inoperative_reason = f"El título de la página ('{soup.title.string}') indica que el sitio está en mantenimiento."
+                elif any(p in title_str for p in parking_patterns):
+                    is_inoperative = True
+                    inoperative_reason = f"El título de la página ('{soup.title.string}') corresponde a una plantilla de servidor por defecto."
+                elif word_count < 250:
+                    if any(p in h1_text for p in err_patterns) or any(p in h2_text for p in err_patterns):
+                        is_inoperative = True
+                        inoperative_reason = "El encabezado principal indica un error del sistema en una página con poco contenido."
+                    elif any(p in h1_text for p in maint_patterns) or any(p in h2_text for p in maint_patterns):
+                        is_inoperative = True
+                        inoperative_reason = "El encabezado principal indica que el sitio está en mantenimiento."
+                    elif any(p in h1_text for p in parking_patterns) or any(p in h2_text for p in parking_patterns):
+                        is_inoperative = True
+                        inoperative_reason = "El encabezado corresponde a una plantilla de servidor o hosting por defecto."
+
+            if is_inoperative:
+                warning_msg = f"Sitio web no operativo: {inoperative_reason}"
+                technical_issues.append(warning_msg)
+                content_issues.append(warning_msg)
+                recommendations.append("Asegurar que el servidor web responda correctamente y desactivar el modo mantenimiento para permitir la auditoría.")
+
             if is_banned_url(base_url):
                 warning = f"URL prohibida para pruebas de red por politica: {base_url}"
                 link_issues.append(warning)

@@ -4,8 +4,10 @@ import time
 from datetime import datetime
 
 from croniter import croniter
+from config.logging_config import setup_logger
 
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__)
+
 
 
 class AuditScheduler:

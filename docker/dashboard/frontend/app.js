@@ -1,7 +1,7 @@
 /**
  * app.js — Dashboard Principal
  */
-import React, { useEffect, useMemo, useState } from "https://esm.sh/react@18.3.1";
+import React, { useEffect, useMemo, useState, useCallback } from "https://esm.sh/react@18.3.1";
 import { createRoot } from "https://esm.sh/react-dom@18.3.1/client";
 
 import {
@@ -27,31 +27,31 @@ import { I18nProvider, useI18n } from "./js/i18n.js";
 function App() {
   const { t, lang, toggleLang } = useI18n();
 
-  const [summary, setSummary]   = useState({});
+  const [summary, setSummary] = useState({});
   const [websites, setWebsites] = useState([]);
-  const [clients, setClients]   = useState([]);
+  const [clients, setClients] = useState([]);
   const [clientId, setClientId] = useState("");
-  const [query, setQuery]       = useState("");
-  const [loading, setLoading]   = useState(false);
-  const [formError, setFormError]         = useState("");
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
   const [settings, setSettings] = useState({ cron_active: "", cron_inactive: "" });
-  const [timers, setTimers]     = useState({ active: "", inactive: "" });
-  const [now, setNow]           = useState(new Date());
+  const [timers, setTimers] = useState({ active: "", inactive: "" });
+  const [now, setNow] = useState(new Date());
   const [selectedWebsite, setSelectedWebsite] = useState(null);
   const [auditingIds, setAuditingIds] = useState(new Set());
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, type: "", id: "", name: "", input: "" });
 
-  const [showAddClient,   setShowAddClient]   = useState(false);
-  const [showAddWebsite,  setShowAddWebsite]  = useState(false);
-  const [showEditClient,  setShowEditClient]  = useState(false);
+  const [showAddClient, setShowAddClient] = useState(false);
+  const [showAddWebsite, setShowAddWebsite] = useState(false);
+  const [showEditClient, setShowEditClient] = useState(false);
   const [showEditWebsite, setShowEditWebsite] = useState(false);
-  const [showSettings,    setShowSettings]    = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
-  const [newClientForm,  setNewClientForm]  = useState({ name: "", email: "", phone: "", company: "", notes: "" });
+  const [newClientForm, setNewClientForm] = useState({ name: "", email: "", phone: "", company: "", notes: "" });
   const [newWebsiteForm, setNewWebsiteForm] = useState({ client_id: "", url: "", label: "", strategy: "auto", active: true });
-  const [editClientForm,  setEditClientForm]  = useState(null);
+  const [editClientForm, setEditClientForm] = useState(null);
   const [editWebsiteForm, setEditWebsiteForm] = useState(null);
 
   const { runs, runSections, runIssues, loadRuns, toggleSections } = useAuditDetail();
@@ -148,6 +148,67 @@ function App() {
 
   const toggleTheme = () => setTheme(t => (t === "light" ? "dark" : "light"));
 
+  // Tour logic
+  const startTour = useCallback(() => {
+    if (!window.driver || !window.driver.js || !window.driver.js.driver) {
+      console.warn("Driver.js is not loaded yet.");
+      return;
+    }
+    const driver = window.driver.js.driver({
+      showProgress: true,
+      nextBtnText: t("tour.next"),
+      prevBtnText: t("tour.prev"),
+      doneBtnText: t("tour.done"),
+      steps: [
+        { popover: { title: t("tour.step_welcome_title"), description: t("tour.step_welcome_desc") } },
+        { element: '#tour-toggles', popover: { title: t("tour.step_toggles_title"), description: t("tour.step_toggles_desc"), side: "bottom", align: 'end' } },
+        { element: '#tour-global-settings', popover: { title: t("tour.step_global_config_title"), description: t("tour.step_global_config_desc"), side: "bottom", align: 'end' } },
+        { 
+          element: '#tour-cron-manager', 
+          popover: { title: t("tour.step_cron_title"), description: t("tour.step_cron_desc"), side: "left", align: 'start' },
+          onHighlightStarted: () => {
+            setShowSettings(true);
+          }
+        },
+        { element: '#tour-cron-frequency', popover: { title: t("tour.step_cron_frequency_title"), description: t("tour.step_cron_frequency_desc"), side: "top", align: 'start' } },
+        { 
+          element: '#tour-cron-expert-toggle', 
+          popover: { title: t("tour.step_cron_expert_title"), description: t("tour.step_cron_expert_desc"), side: "top", align: 'start' },
+          onDeselected: () => {
+            setShowSettings(false);
+          }
+        },
+        { element: '#tour-stats', popover: { title: t("tour.step_stats_title"), description: t("tour.step_stats_desc"), side: "bottom", align: 'start' } },
+        { element: '#tour-new-client', popover: { title: t("tour.step_new_client_title"), description: t("tour.step_new_client_desc"), side: "bottom", align: 'start' } },
+        { element: '#tour-new-url', popover: { title: t("tour.step_new_url_title"), description: t("tour.step_new_url_desc"), side: "bottom", align: 'start' } },
+        { element: '#tour-refresh', popover: { title: t("tour.step_refresh_title"), description: t("tour.step_refresh_desc"), side: "bottom", align: 'start' } },
+        { element: '#tour-client-filter', popover: { title: t("tour.step_filter_title"), description: t("tour.step_filter_desc"), side: "bottom", align: 'start' } },
+        { element: '#tour-client-actions', popover: { title: t("tour.step_client_actions_title"), description: t("tour.step_client_actions_desc"), side: "bottom", align: 'start' } },
+        { element: '#tour-search', popover: { title: t("tour.step_filter_title"), description: t("tour.step_filter_desc"), side: "bottom", align: 'start' } },
+        { element: '#tour-table', popover: { title: t("tour.step_table_title"), description: t("tour.step_table_desc"), side: "top", align: 'start' } },
+        { element: '#tour-sortable-headers', popover: { title: t("tour.step_headers_title"), description: t("tour.step_headers_desc"), side: "top", align: 'start' } },
+        { element: '#tour-row-url', popover: { title: t("tour.step_row_url_title"), description: t("tour.step_row_url_desc"), side: "bottom", align: 'start' } },
+        { element: '#tour-row-actions', popover: { title: t("tour.step_row_actions_title"), description: t("tour.step_row_actions_desc"), side: "bottom", align: 'end' } },
+        { element: '#tour-pagination', popover: { title: t("tour.step_pagination_title"), description: t("tour.step_pagination_desc"), side: "top", align: 'center' } }
+      ],
+      onDestroyed: () => {
+        localStorage.setItem("tour_completed", "true");
+      }
+    });
+    driver.drive();
+  }, [t]);
+
+  useEffect(() => {
+    const hasCompletedTour = localStorage.getItem("tour_completed");
+    if (!hasCompletedTour) {
+      // Give UI a moment to render before starting tour
+      const timer = setTimeout(() => {
+        startTour();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [startTour]);
+
   const handleExportClient = async () => {
     if (!clientId) return;
     try {
@@ -167,38 +228,45 @@ function App() {
   return React.createElement("div", { className: "app" },
     // Header
     React.createElement("div", { className: "header-area", style: { display: "flex", justifyContent: "space-between", alignItems: "center" } },
-      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "15px" } },
+      React.createElement("div", { id: "tour-toggles", style: { display: "flex", alignItems: "center", gap: "15px" } },
         React.createElement("h2", null, t("app.title")),
         React.createElement("button", {
           className: "btn-base btn-ghost",
-          style: { padding: "6px 12px", border: "1px solid rgba(255,255,255,0.1)", fontSize: "14px", fontWeight: "bold" },
+          style: { padding: "6px 12px", border: "1px solid var(--border-main)", fontSize: "18px" },
           onClick: toggleLang,
           title: "Switch Language"
-        }, lang === "es" ? "🇬🇧 EN" : "🇪🇸 ES"),
+        }, lang === "es" ? "🇪🇸" : "🇬🇧"),
         React.createElement("button", {
           className: "btn-base btn-ghost",
-          style: { padding: "6px 10px", border: "1px solid rgba(255,255,255,0.08)", fontSize: "14px" },
+          style: { padding: "6px 10px", border: "1px solid var(--border-main)", fontSize: "14px" },
           onClick: toggleTheme,
           title: "Toggle theme"
         }, theme === "light" ? "☀️" : "🌙")
       ),
-      React.createElement("button", { 
+      React.createElement("button", {
+        className: "btn-base btn-ghost",
+        style: { padding: "6px 10px", border: "1px solid var(--border-main)", fontSize: "14px", marginRight: "10px" },
+        onClick: startTour,
+        title: "Start Tour"
+      }, t("tour.help_btn")),
+      React.createElement("button", {
+        id: "tour-global-settings",
         className: "btn-base btn-purple",
-        onClick: () => setShowSettings(true) 
+        onClick: () => setShowSettings(true)
       }, t("app.global_schedule"))
     ),
 
     // Messages
     successMessage && React.createElement("div", { className: "message success" }, successMessage),
-    formError      && React.createElement("div", { className: "message error" },   formError),
+    formError && React.createElement("div", { className: "message error" }, formError),
 
     // Stats
-    React.createElement("div", { className: "grid" },
-      React.createElement("div", { className: "card" }, 
+    React.createElement("div", { className: "grid", id: "tour-stats" },
+      React.createElement("div", { className: "card" },
         React.createElement("div", { style: { fontSize: "12px", color: "var(--text-dim)", marginBottom: "8px" } }, t("app.active_webs")),
         React.createElement("div", { style: { fontSize: "24px", fontWeight: "800" } }, summary.active_websites ?? "0")
       ),
-      React.createElement("div", { className: "card" }, 
+      React.createElement("div", { className: "card" },
         React.createElement("div", { style: { fontSize: "12px", color: "var(--text-dim)", marginBottom: "8px" } }, t("app.excellent_score")),
         React.createElement("div", { style: { fontSize: "24px", fontWeight: "800", color: "var(--success)" } }, summary.excellent_count ?? "0")
       ),
@@ -215,53 +283,55 @@ function App() {
     // Toolbar
     React.createElement("div", { className: "topbar" },
       React.createElement("div", { style: { display: "flex", gap: "10px" } },
-        React.createElement("button", { className: "btn-base btn-success", onClick: () => setShowAddClient(true) }, t("app.new_client")),
-        React.createElement("button", { className: "btn-base btn-primary", onClick: () => setShowAddWebsite(true) }, t("app.new_url")),
-        React.createElement("button", { className: "btn-base btn-ghost", onClick: loadAll }, t("app.refresh"))
+        React.createElement("button", { id: "tour-new-client", className: "btn-base btn-success", onClick: () => setShowAddClient(true) }, t("app.new_client")),
+        React.createElement("button", { id: "tour-new-url", className: "btn-base btn-primary", onClick: () => setShowAddWebsite(true) }, t("app.new_url")),
+        React.createElement("button", { id: "tour-refresh", className: "btn-base btn-ghost", onClick: loadAll }, t("app.refresh"))
       ),
       React.createElement("div", { style: { display: "flex", gap: "15px", alignItems: "center", flex: 1 } },
-        React.createElement("div", { style: { display: "flex", flex: 1, gap: "5px" } },
-          React.createElement("select", { 
-            className: "premium-input", 
+        React.createElement("div", { id: "tour-client-filter", style: { display: "flex", flex: 1, gap: "5px" } },
+          React.createElement("select", {
+            className: "premium-input",
             style: { flex: 1 },
-            value: clientId, 
-            onChange: (e) => setClientId(e.target.value) 
+            value: clientId,
+            onChange: (e) => setClientId(e.target.value)
           },
             React.createElement("option", { value: "" }, t("app.all_clients")),
             clients.map(c => React.createElement("option", { key: c.id, value: c.id }, c.name))
           ),
-          clientId && React.createElement("button", {
-            className: "btn-base btn-ghost",
-            style: { padding: "0 12px", border: "1px solid rgba(255,255,255,0.1)" },
-            title: t("app.edit_client"),
-            onClick: () => {
-              const c = clients.find(x => x.id === clientId);
-              if(c) { setEditClientForm(c); setShowEditClient(true); }
-            }
-          }, "✏️"),
-          clientId && React.createElement("button", {
-            className: "btn-base btn-ghost",
-            style: { padding: "0 12px", color: "var(--danger)", border: "1px solid rgba(255,255,255,0.1)" },
-            title: t("app.delete_client"),
-            onClick: () => {
-              const c = clients.find(x => x.id === clientId);
-              if(c) { setDeleteConfirm({ show: true, type: "client", id: c.id, name: c.name, input: "" }); }
-            }
-          }, "🗑️")
-          ,
-          clientId && React.createElement("button", {
-            className: "btn-base btn-ghost",
-            style: { padding: "0 12px", border: "1px solid rgba(255,255,255,0.1)", fontWeight: "700" },
-            title: t("app.export_client_report") || "Exportar Reporte",
-            onClick: handleExportClient
-          }, "📄 Exportar Reporte")
+          clientId && React.createElement("div", { id: "tour-client-actions", style: { display: "flex", gap: "5px" } },
+            React.createElement("button", {
+              className: "btn-base btn-ghost",
+              style: { padding: "0 12px", border: "1px solid var(--border-main)" },
+              title: t("app.edit_client"),
+              onClick: () => {
+                const c = clients.find(x => x.id === clientId);
+                if (c) { setEditClientForm(c); setShowEditClient(true); }
+              }
+            }, "✏️"),
+            React.createElement("button", {
+              className: "btn-base btn-ghost",
+              style: { padding: "0 12px", color: "var(--danger)", border: "1px solid var(--border-main)" },
+              title: t("app.delete_client"),
+              onClick: () => {
+                const c = clients.find(x => x.id === clientId);
+                if (c) { setDeleteConfirm({ show: true, type: "client", id: c.id, name: c.name, input: "" }); }
+              }
+            }, "🗑️"),
+            React.createElement("button", {
+              className: "btn-base btn-ghost",
+              style: { padding: "0 12px", border: "1px solid var(--border-main)", fontWeight: "700" },
+              title: t("app.export_client_report") || "Exportar Reporte",
+              onClick: handleExportClient
+            }, "📄 Exportar Reporte")
+          )
         ),
-        React.createElement("input", { 
-          className: "premium-input", 
+        React.createElement("input", {
+          id: "tour-search",
+          className: "premium-input",
           style: { flex: 1.5 },
-          value: query, 
-          onChange: (e) => setQuery(e.target.value), 
-          placeholder: t("app.search_placeholder") 
+          value: query,
+          onChange: (e) => setQuery(e.target.value),
+          placeholder: t("app.search_placeholder")
         })
       )
     ),
@@ -288,18 +358,20 @@ function App() {
     showAddWebsite && React.createElement(AddWebsiteModal, { form: newWebsiteForm, clients, onChange: setNewWebsiteForm, onSubmit: (e) => { e.preventDefault(); const payload = { ...newWebsiteForm, client_id: newWebsiteForm.client_id || null }; createWebsite(payload).then(() => { notify(t("app.url_added")); setShowAddWebsite(false); setNewWebsiteForm({ client_id: "", url: "", label: "", strategy: "auto", active: true }); loadAll(); }).catch(err => setFormError(err.message)); }, onClose: () => { setShowAddWebsite(false); setNewWebsiteForm({ client_id: "", url: "", label: "", strategy: "auto", active: true }); } }),
     showEditClient && React.createElement(EditClientModal, { form: editClientForm, onChange: setEditClientForm, onSubmit: (e) => { e.preventDefault(); updateClient(editClientForm.id, editClientForm).then(() => { notify(t("app.client_updated")); setShowEditClient(false); loadAll(); }).catch(err => setFormError(err.message)); }, onClose: () => setShowEditClient(false) }),
     showEditWebsite && React.createElement(EditWebsiteModal, { form: editWebsiteForm, clients, onChange: setEditWebsiteForm, onSubmit: (e) => { e.preventDefault(); const payload = { ...editWebsiteForm, client_id: editWebsiteForm.client_id || null }; updateWebsite(editWebsiteForm.website_id, payload).then(() => { notify(t("app.url_updated")); setShowEditWebsite(false); loadAll(); }).catch(err => setFormError(err.message)); }, onClose: () => setShowEditWebsite(false) }),
-    deleteConfirm.show && React.createElement(DeleteConfirmModal, { confirm: deleteConfirm, onChange: (v) => setDeleteConfirm(d => ({ ...d, input: v })), onConfirm: async () => {
-      if (deleteConfirm.type === "client") {
-        await deleteClient(deleteConfirm.id);
-        if (clientId === deleteConfirm.id) setClientId("");
-      } else {
-        await deleteWebsite(deleteConfirm.id);
-      }
-      setDeleteConfirm({ show: false });
-      notify(t("app.deleted_success"));
-      loadAll();
-    }, onCancel: () => setDeleteConfirm({ show: false }) }),
-    selectedWebsite && React.createElement(WebsiteDetailModal, { 
+    deleteConfirm.show && React.createElement(DeleteConfirmModal, {
+      confirm: deleteConfirm, onChange: (v) => setDeleteConfirm(d => ({ ...d, input: v })), onConfirm: async () => {
+        if (deleteConfirm.type === "client") {
+          await deleteClient(deleteConfirm.id);
+          if (clientId === deleteConfirm.id) setClientId("");
+        } else {
+          await deleteWebsite(deleteConfirm.id);
+        }
+        setDeleteConfirm({ show: false });
+        notify(t("app.deleted_success"));
+        loadAll();
+      }, onCancel: () => setDeleteConfirm({ show: false })
+    }),
+    selectedWebsite && React.createElement(WebsiteDetailModal, {
       website: selectedWebsite, auditingIds, runs, runSections, runIssues,
       onAudit: handleAuditWebsite, onToggleActive: async (w) => { await updateWebsite(w.website_id, { active: !w.active }); loadAll(); },
       onDelete: (w) => setDeleteConfirm({ show: true, type: "website", id: w.website_id, name: w.url, input: "" }),
@@ -309,7 +381,7 @@ function App() {
 }
 
 createRoot(document.getElementById("root")).render(
-  React.createElement(I18nProvider, null, 
+  React.createElement(I18nProvider, null,
     React.createElement(App)
   )
 );

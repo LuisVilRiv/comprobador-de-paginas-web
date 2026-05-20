@@ -57,6 +57,27 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── 2. Analizador de IA (FastAPI + SentenceTransformers) ─────────────────────
+  ai-analyzer:
+    build:
+      context: ./ai-analyzer
+    container_name: web_auditor_ai_analyzer
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Madrid
+      MODEL_CACHE_DIR: /app/model_cache
+    volumes:
+      - ai_model_cache:/app/model_cache
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+    networks:
+      - backend
+
   # (scraper service merged into `dashboard-api` below)
 
   # ── 3. Dashboard API (FastAPI) ──────────────────────────────────────────────
@@ -75,6 +96,7 @@ services:
       DB_NAME:     ${POSTGRES_DB:-web_auditor}
       DB_USER:     ${POSTGRES_USER:-auditor}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-auditor_secret}
+      AI_ANALYZER_URL: http://ai-analyzer:8080
       # Intervalo en segundos; <=0 = ejecución única en arranque. Establecer >0 para modo daemon.
       RUN_INTERVAL_SECONDS: ${RUN_INTERVAL_SECONDS:-60}
       TZ: Europe/Madrid
@@ -128,4 +150,6 @@ volumes:
   pg_data:
     driver: local
   scraper_logs:
+    driver: local
+  ai_model_cache:
     driver: local

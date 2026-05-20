@@ -36,6 +36,67 @@ from ..scoring import (
 
 logger = setup_logger(__name__)
 
+EDUCATIONAL_CONTEXT_TERMS = (
+    "codigo de estado",
+    "código de estado",
+    "http status",
+    "status code",
+    "response status",
+    "reason phrase",
+    "request method",
+    "http semantics",
+    "ietf",
+    "internet engineering task force",
+    "rfc",
+    "wikipedia",
+    "enciclopedia",
+    "documentacion",
+    "documentación",
+    "documentation",
+    "definicion",
+    "definición",
+    "que es",
+    "qué es",
+    "ejemplo",
+    "especificacion",
+    "especificación",
+    "normative",
+    "informative",
+)
+
+# Umbrales: las páginas de error típicas son cortas; un RFC tiene miles de palabras.
+MAX_BODY_STRONG_ERROR_WORDS = 900
+
+SPEC_TECHNICAL_CUES = (
+    "status code",
+    "response status",
+    "request method",
+    "reason phrase",
+    "request-target",
+    "http/",
+    "http semantics",
+)
+
+ERROR_CONTEXT_TERMS = (
+    "error",
+    "not found",
+    "forbidden",
+    "service unavailable",
+    "internal server",
+    "bad gateway",
+    "gateway timeout",
+    "acceso denegado",
+    "pagina no encontrada",
+    "página no encontrada",
+    "no disponible",
+    "fuera de servicio",
+    "mantenimiento",
+    "temporarily",
+    "unavailable",
+    "try again later",
+    "cloudflare",
+    "blocked",
+)
 
 class QualityAuditor:
     def __init__(self, timeout: int = settings.REQUEST_TIMEOUT):
@@ -89,6 +150,7 @@ class QualityAuditor:
             status_code = metadata.get("status_code", 200)
             is_inoperative = False
             inoperative_reason = ""
+            inoperative_hard_signal = False
 
             title_str = (soup.title.string or "").strip().lower() if soup.title else ""
             h1_text = " ".join([h1.get_text(" ", strip=True).lower() for h1 in soup.find_all("h1")])
@@ -96,62 +158,158 @@ class QualityAuditor:
             body_text = soup.get_text(" ", strip=True).lower()
             words = body_text.split()
             word_count = len(words)
+            educational_hits = sum(1 for term in EDUCATIONAL_CONTEXT_TERMS if term in body_text)
+            heading_count = len(soup.find_all(["h2", "h3"]))
+            has_reference_sections = any(
+                marker in body_text for marker in ("references", "referencias", "table of contents", "specification")
+            )
+            spec_cue_hits = sum(1 for c in SPEC_TECHNICAL_CUES if c in body_text)
+            looks_like_spec_document = word_count >= 800 and spec_cue_hits >= 2
+            looks_educational = (
+                (educational_hits >= 2 and word_count >= 180)
+                or (word_count >= 300 and (heading_count >= 3 or has_reference_sections))
+                or looks_like_spec_document
+            )
 
             if isinstance(status_code, int) and status_code >= 400:
                 is_inoperative = True
+                inoperative_hard_signal = True
                 inoperative_reason = f"El código de estado HTTP {status_code} indica un error del servidor o del cliente."
             else:
-                err_patterns = [
+                # Patrones FUERTES: códigos HTTP y mensajes de error muy específicos.
+                # Se comprueban SIEMPRE en título, H1, H2 y cuerpo completo (sin límite de palabras).
+                strong_err_patterns = [
                     "404 not found", "404 forbidden", "404 error", "error 404",
-                    "page not found", "página no encontrada", "pagina no encontrada", "no encontrado error",
-                    "internal server error", "500 internal", "500 error", "server error 500", "error 500", "http 500",
-                    "502 bad gateway", "bad gateway", "502 error", "error 502", "http 502", "bad gateway error",
-                    "503 service", "503 unavailable", "503 error", "service unavailable", "service temporarily unavailable",
-                    "temporarily unavailable", "error 503", "http 503", "servicio no disponible", "temporarily down",
-                    "504 gateway", "gateway timeout", "504 gateway timeout", "504 error", "error 504", "http 504",
-                    "error de conexión", "error de conexion", "database connection error", "fallo de conexión",
-                    "fallo de conexion", "connection error", "connection timed out", "connection refused",
-                    "web server is down", "error de base de datos", "database error", "error al establecer una conexión con la base de datos",
-                    "error establishing a database connection", "access denied", "forbidden error", "unauthorized access",
-                    "sin autorización", "sin autorizacion", "cloudflare ray id", "sucuri web site blocker",
-                    "blocked by web application firewall", "security block", "ddos protection"
+                    "page not found", "página no encontrada", "pagina no encontrada",
+                    "internal server error", "500 internal", "500 error", "error 500", "http 500",
+                    "502 bad gateway", "bad gateway", "502 error", "error 502", "http 502",
+                    "503 service", "503 unavailable", "503 error", "service unavailable",
+                    "service temporarily unavailable", "temporarily unavailable",
+                    "error 503", "http 503", "servicio no disponible",
+                    "504 gateway", "gateway timeout", "504 error", "error 504", "http 504",
+                    "web server is down", "error establishing a database connection",
+                    "error al establecer una conexión con la base de datos",
+                    "welcome to nginx", "apache2 ubuntu default page", "apache2 debian default page",
+                    "iis windows server", "hosting account suspended", "cuenta suspendida",
+                    "plesk default page", "cpanel hosting", "default website page",
+                    "cloudflare ray id", "sucuri web site blocker",
+                    "blocked by web application firewall", "ddos protection",
                 ]
-                maint_patterns = [
+                # Patrones SUAVES: mantenimiento/construcción.
+                # Solo se comprueban en páginas con poco texto (< 500 palabras).
+                soft_maint_patterns = [
                     "mantenimiento", "maintenance", "en construcción", "en construccion",
                     "under construction", "coming soon", "próximamente", "proximamente",
                     "volveremos pronto", "back soon", "temporarily down", "sitio inactivo",
-                    "temporarily down for maintenance", "site under maintenance", "sitio bajo mantenimiento"
-                ]
-                parking_patterns = [
-                    "welcome to nginx", "apache2 ubuntu default page", "apache2 debian default page",
-                    "iis windows server", "hosting account suspended", "cuenta suspendida",
-                    "plesk default page", "cpanel hosting", "default website page"
+                    "temporarily down for maintenance", "site under maintenance", "sitio bajo mantenimiento",
+                    "error de conexión", "error de conexion", "database connection error",
+                    "fallo de conexión", "fallo de conexion", "connection error",
+                    "connection timed out", "connection refused", "error de base de datos",
+                    "database error", "access denied", "forbidden error",
                 ]
 
-                if any(p in title_str for p in err_patterns):
+                title_raw = soup.title.string if soup.title else title_str
+
+                # --- Comprobación FUERTE (sin límite de palabras) ---
+                if any(p in title_str for p in strong_err_patterns):
                     is_inoperative = True
-                    inoperative_reason = f"El título de la página ('{soup.title.string}') indica un estado de error."
-                elif any(p in title_str for p in maint_patterns):
+                    inoperative_hard_signal = True
+                    inoperative_reason = f"El título de la página ('{title_raw}') indica un estado de error del servidor."
+                elif any(p in h1_text for p in strong_err_patterns) or any(p in h2_text for p in strong_err_patterns):
                     is_inoperative = True
-                    inoperative_reason = f"El título de la página ('{soup.title.string}') indica que el sitio está en mantenimiento."
-                elif any(p in title_str for p in parking_patterns):
+                    inoperative_hard_signal = True
+                    inoperative_reason = "El encabezado principal de la página indica un error del servidor."
+                elif (
+                    word_count < MAX_BODY_STRONG_ERROR_WORDS
+                    and any(p in body_text for p in strong_err_patterns)
+                    and not looks_educational
+                ):
                     is_inoperative = True
-                    inoperative_reason = f"El título de la página ('{soup.title.string}') corresponde a una plantilla de servidor por defecto."
-                elif word_count < 300:
-                    if any(p in h1_text for p in err_patterns) or any(p in h2_text for p in err_patterns) or any(p in body_text for p in err_patterns):
+                    inoperative_reason = "El cuerpo de la página contiene indicadores de error del servidor (503, 502, 404, etc.)."
+                # Detect custom error codes (e.g., a 503 page that returns HTTP 200)
+                elif (
+                    not looks_educational and (
+                        self._has_contextual_error_code(title_str)
+                        or self._has_contextual_error_code(h1_text)
+                        or self._has_contextual_error_code(h2_text)
+                        or self._has_contextual_error_code(body_text)
+                    )
+                ):
+                    is_inoperative = True
+                    inoperative_reason = f"Página indica error HTTP código detectado en el contenido."
+                # --- Comprobación SUAVE (solo en páginas con poco texto) ---
+                elif word_count < 500:
+                    if any(p in title_str for p in soft_maint_patterns):
                         is_inoperative = True
-                        inoperative_reason = "El contenido, encabezado o cuerpo de la página indica un error del sistema en un sitio con poco texto."
-                    elif any(p in h1_text for p in maint_patterns) or any(p in h2_text for p in maint_patterns) or any(p in body_text for p in maint_patterns):
+                        inoperative_reason = f"El título de la página ('{title_raw}') indica que el sitio está en mantenimiento."
+                    elif (any(p in h1_text for p in soft_maint_patterns)
+                          or any(p in h2_text for p in soft_maint_patterns)
+                          or any(p in body_text for p in soft_maint_patterns)):
                         is_inoperative = True
-                        inoperative_reason = "El contenido, encabezado o cuerpo de la página indica que el sitio está en mantenimiento."
-                    elif any(p in h1_text for p in parking_patterns) or any(p in h2_text for p in parking_patterns) or any(p in body_text for p in parking_patterns):
-                        is_inoperative = True
-                        inoperative_reason = "El contenido, encabezado o cuerpo de la página corresponde a una plantilla de servidor o hosting por defecto."
+                        inoperative_reason = "El contenido de la página indica que el sitio está en mantenimiento o no disponible."
+
+
+            # --- Integración con Microservicio de IA para análisis semántico ---
+            ai_data = None
+            if settings.AI_ANALYZER_ENABLED:
+                try:
+                    logger.info("🤖 Invocando microservicio de IA local para análisis semántico: %s", base_url)
+                    ai_payload = {
+                        "html": html,
+                        "url": base_url,
+                        "status_code": status_code,
+                        "metadata": metadata
+                    }
+                    ai_resp = self._session.post(
+                        f"{settings.AI_ANALYZER_URL}/analyze",
+                        json=ai_payload,
+                        timeout=settings.AI_ANALYZER_TIMEOUT
+                    )
+                    if ai_resp.status_code == 200:
+                        ai_data = ai_resp.json()
+                        logger.info("✓ IA análisis completado. Score semántico: %s", ai_data.get("quality_score"))
+                    else:
+                        logger.warning("⚠️ Microservicio de IA retornó código %s", ai_resp.status_code)
+                except Exception as exc:
+                    logger.warning("⚠️ Error al conectar con el microservicio de IA: %s. Continuando con reglas clásicas.", exc)
+
+            if ai_data:
+                # 1. Detección de inoperatividad por IA
+                if ai_data.get("is_inoperative") and not is_inoperative:
+                    is_inoperative = True
+                    inoperative_reason = ai_data.get("inoperative_reason") or "Detectado por IA."
+                elif (
+                    not ai_data.get("is_inoperative")
+                    and is_inoperative
+                    and not inoperative_hard_signal
+                ):
+                    # Si la regla clásica era heurística (no señal dura) y la IA no confirma,
+                    # priorizamos el criterio semántico para evitar falsos positivos.
+                    is_inoperative = False
+                    inoperative_reason = ""
+                    
+                # 2. Agregar problemas detectados por la IA a sus respectivas listas
+                for issue in ai_data.get("issues", []):
+                    # Si es un problema malicioso o no apto, se añade a seguridad y a contenido
+                    if any(kw in issue.lower() for kw in ["malicioso", "no apto", "adulto", "pornografía", "violencia", "phishing", "gambling", "malware", "estafa"]):
+                        if issue not in security_issues:
+                            security_issues.append(issue)
+                        if issue not in content_issues:
+                            content_issues.append(issue)
+                    else:
+                        if issue not in content_issues:
+                            content_issues.append(issue)
+                            
+                for warning in ai_data.get("warnings", []):
+                    if warning not in content_issues:
+                        content_issues.append(warning)
 
             if is_inoperative:
                 warning_msg = f"Sitio web no operativo: {inoperative_reason}"
-                technical_issues.append(warning_msg)
-                content_issues.append(warning_msg)
+                if warning_msg not in technical_issues:
+                    technical_issues.append(warning_msg)
+                if warning_msg not in content_issues:
+                    content_issues.append(warning_msg)
                 recommendations.append("Asegurar que el servidor web responda correctamente y desactivar el modo mantenimiento para permitir la auditoría.")
 
             if is_banned_url(base_url):
@@ -275,6 +433,20 @@ class QualityAuditor:
         )
         final_recommendations.extend(recommendations)
 
+        report_metrics = collect_metrics(
+            soup, metadata, security_issues, image_issues, 
+            link_issues, button_issues, technical_issues,
+            crawl_stats, asset_stats
+        )
+        if ai_data:
+            report_metrics["ai_quality_score"] = ai_data.get("quality_score")
+            report_metrics["ai_detected_language"] = ai_data.get("detected_language")
+            report_metrics["ai_confidence"] = ai_data.get("confidence")
+            report_metrics["ai_is_inoperative"] = ai_data.get("is_inoperative")
+            report_metrics["ai_has_spam"] = ai_data.get("has_spam")
+            report_metrics["ai_has_malicious_content"] = ai_data.get("has_malicious_content")
+            report_metrics["ai_has_incoherent_content"] = ai_data.get("has_incoherent_content")
+
         return QualityAuditReport(
             status=status,
             score=score,
@@ -289,11 +461,7 @@ class QualityAuditor:
             release_blocked=is_blocked,
             release_blockers=blockers,
             recommendations=list(set(final_recommendations)),
-            metrics=collect_metrics(
-                soup, metadata, security_issues, image_issues, 
-                link_issues, button_issues, technical_issues,
-                crawl_stats, asset_stats
-            )
+            metrics=report_metrics
         )
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -479,3 +647,15 @@ class QualityAuditor:
         )
         t = re.sub(r"([a-z])\*+([a-z])", r"\1\2", t)
         return t
+
+    @staticmethod
+    def _has_contextual_error_code(text: str) -> bool:
+        """Devuelve True solo si aparece 4xx/5xx con contexto de error real."""
+        lowered = (text or "").lower()
+        for match in re.finditer(r"\b(4\d{2}|5\d{2})\b", lowered):
+            start = max(0, match.start() - 90)
+            end = min(len(lowered), match.end() + 90)
+            window = lowered[start:end]
+            if any(term in window for term in ERROR_CONTEXT_TERMS):
+                return True
+        return False

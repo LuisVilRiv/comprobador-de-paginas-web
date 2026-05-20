@@ -32,7 +32,34 @@ class SeleniumStrategy(BaseScraper):
 
     # ── Implementación del contrato BaseScraper ───────────────────────────────
 
-    def _do_scrape(self, url: str) -> ScrapeResult:
+
+    def fetch(self, url: str) -> tuple[str, dict]:
+        """Fetch page using a simple requests fallback.
+        Returns raw HTML text and a metadata dict containing at least
+        ``status_code``. This method is used by legacy tests that expect
+        a ``fetch`` API. It does not perform JavaScript rendering – for
+        pages that require JS the caller should use ``scrape`` which
+        invokes Selenium.
+        """
+        import requests as _req
+        try:
+            # Primary request: GET to obtain both content and status
+            resp = _req.get(url, timeout=15, verify=False, headers={"User-Agent": "Mozilla/5.0"})
+            html = resp.text
+            meta = {"status_code": resp.status_code}
+        except Exception as e:
+            # Fallback: try HEAD if GET fails
+            try:
+                head_resp = _req.head(url, timeout=15, allow_redirects=True, verify=False,
+                                     headers={"User-Agent": "Mozilla/5.0"})
+                html = ""
+                meta = {"status_code": head_resp.status_code, "error": str(e)}
+            except Exception as e2:
+                html = ""
+                meta = {"status_code": 0, "error": f"GET error: {e}; HEAD error: {e2}"}
+        return html, meta
+
+    def scrape(self, url: str) -> ScrapeResult:
         driver = self._create_driver()
         try:
             start = time.perf_counter()
@@ -68,6 +95,18 @@ class SeleniumStrategy(BaseScraper):
             raise RuntimeError(f"WebDriverException: {exc}") from exc
         finally:
             driver.quit()
+
+        # Fallback: si los performance logs no dieron el status code real, usar requests.head()
+        if status_code == 200:
+            try:
+                import requests as _req
+                _resp = _req.head(url, timeout=8, allow_redirects=True,
+                                  headers={"User-Agent": "Mozilla/5.0"})
+                if _resp.status_code != 200:
+                    status_code = _resp.status_code
+                    logger.info("Selenium status fallback via HEAD: %d para %s", status_code, url)
+            except Exception:
+                pass  # Mantener 200 si el HEAD también falla
 
         # Parsear con BS4 para obtener HTML indentado y legible
         soup = BeautifulSoup(raw_html, settings.BS4_PARSER)

@@ -100,6 +100,11 @@ AUDIT_ADMIN_PROBE_PATHS = (
 # Errores JS de consola (Selenium driver.get_log)
 AUDIT_JS_CONSOLE_MAX_ERRORS = int(os.environ.get("AUDIT_JS_CONSOLE_MAX_ERRORS", "25"))
 
+# ── AI Analyzer ───────────────────────────────────────────────────────────────
+AI_ANALYZER_URL = os.environ.get("AI_ANALYZER_URL", "http://ai-analyzer:8080")
+AI_ANALYZER_TIMEOUT = float(os.environ.get("AI_ANALYZER_TIMEOUT", "6.0"))
+AI_ANALYZER_ENABLED = os.environ.get("AI_ANALYZER_ENABLED", "true").lower() == "true"
+
 # ── Estrategia por defecto ────────────────────────────────────────────────────
 DEFAULT_STRATEGY = os.environ.get("DEFAULT_STRATEGY", "selenium")
 

@@ -6,12 +6,12 @@ import { useI18n } from "./i18n.js";
 
 // ── UTILIDADES CRON ─────────────────────────────────────────────────────────
 
-function parseCron(c) {
+export function parseCron(c) {
   const parts = (c && c.split(" ").length === 5 ? c : "0 0 * * *").split(" ");
   return { min: parts[0], hour: parts[1], dom: parts[2], month: parts[3], dow: parts[4] };
 }
 
-function splitCronRules(value) {
+export function splitCronRules(value) {
   if (!value) return [];
   return value
     .split(/\s*,\s*(?=(?:[^\s]+\s+){4}[^\s]+)/)
@@ -19,7 +19,7 @@ function splitCronRules(value) {
     .filter(Boolean);
 }
 
-function detectFrequency(parts) {
+export function detectFrequency(parts) {
   if (parts.dow !== "*") return "weekly";
   if (parts.month.includes("/")) return "monthly_periodic";
   if (parts.dom.includes("/")) return "daily_periodic";
@@ -28,7 +28,7 @@ function detectFrequency(parts) {
   return "daily";
 }
 
-function parseCronRule(cron) {
+export function parseCronRule(cron) {
   const parts = parseCron(cron);
   return {
     min: parts.min,
@@ -39,12 +39,27 @@ function parseCronRule(cron) {
   };
 }
 
-function serializeCronRule(rule) {
+export function serializeCronRule(rule) {
   return `${rule.min} ${rule.hour} ${rule.dom} ${rule.month} ${rule.dow}`;
 }
 
-function isWeeklyRule(rule) {
+export function isWeeklyRule(rule) {
   return rule.dow !== "*" && rule.dom === "*" && rule.month === "*";
+}
+
+export function expandWeeklyRule(rule) {
+  if (!isWeeklyRule(rule)) return [rule];
+  return rule.dow.split(",").filter(Boolean).map(day => ({ ...rule, dow: day }));
+}
+
+export function normalizeWeeklyRules(rules) {
+  return rules
+    .flatMap(expandWeeklyRule)
+    .sort((a, b) => Number(a.dow) - Number(b.dow));
+}
+
+export function createWeeklyRule(day) {
+  return { min: "0", hour: "0", dom: "*", month: "*", dow: day };
 }
 
 // ── COMPONENTES DE UI PREMIUM ───────────────────────────────────────────────
@@ -76,7 +91,7 @@ function SingleCronEditor({ cronValue, color, onChange, onRemove, showRemove }) 
     }, t("table.delete")),
 
     React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" } },
-      React.createElement("div", null,
+      React.createElement("div", { id: "tour-cron-frequency" },
         React.createElement("label", { style: { fontSize: "11px", opacity: 0.5, display: "block", marginBottom: "8px", textTransform: "uppercase" } }, t("scheduler.freq")),
         React.createElement("select", {
           value: freq, className: "premium-input", style: { padding: "10px", fontSize: "13px" },
@@ -208,9 +223,16 @@ function SingleCronEditor({ cronValue, color, onChange, onRemove, showRemove }) 
 
 function WeeklyCronEditor({ rules, color, onChange, t }) {
   const DAYS = [
-    { id: "1", n: t("scheduler.day_l") }, { id: "2", n: t("scheduler.day_m") }, { id: "3", n: t("scheduler.day_x") },
-    { id: "4", n: t("scheduler.day_j") }, { id: "5", n: t("scheduler.day_v") }, { id: "6", n: t("scheduler.day_s") }, { id: "0", n: t("scheduler.day_d") },
+    { id: "1", n: t("scheduler.day_l"), full: t("scheduler.day_l_full") },
+    { id: "2", n: t("scheduler.day_m"), full: t("scheduler.day_m_full") },
+    { id: "3", n: t("scheduler.day_x"), full: t("scheduler.day_x_full") },
+    { id: "4", n: t("scheduler.day_j"), full: t("scheduler.day_j_full") },
+    { id: "5", n: t("scheduler.day_v"), full: t("scheduler.day_v_full") },
+    { id: "6", n: t("scheduler.day_s"), full: t("scheduler.day_s_full") },
+    { id: "0", n: t("scheduler.day_d"), full: t("scheduler.day_d_full") },
   ];
+
+  const selectedDays = rules.map(r => r.dow);
 
   const updateRule = (index, updated) => {
     const next = [...rules];
@@ -223,14 +245,18 @@ function WeeklyCronEditor({ rules, color, onChange, t }) {
     onChange(next);
   };
 
-  const addRule = () => {
-    onChange([...rules, { min: "0", hour: "0", dom: "*", month: "*", dow: "1" }]);
+  const toggleDay = (dayId) => {
+    if (selectedDays.includes(dayId)) {
+      onChange(rules.filter(r => r.dow !== dayId));
+      return;
+    }
+    onChange([...rules, createWeeklyRule(dayId)].sort((a, b) => Number(a.dow) - Number(b.dow)));
   };
 
   return React.createElement("div", {
     style: {
-      background: "rgba(255, 255, 255, 0.03)",
-      border: "1px solid rgba(255, 255, 255, 0.08)",
+      background: "var(--bg-accent)",
+      border: "1px solid var(--border-main)",
       borderRadius: "14px",
       padding: "18px",
       marginBottom: "12px"
@@ -246,50 +272,46 @@ function WeeklyCronEditor({ rules, color, onChange, t }) {
         React.createElement("span", { style: { fontSize: "12px", color: "var(--text-dim)" } }, t("scheduler.weekly_entry_days_help"))
       )
     ),
+    React.createElement("div", { style: { display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "18px" } },
+      DAYS.map(d => {
+        const isSelected = selectedDays.includes(d.id);
+        return React.createElement("button", {
+          key: d.id, type: "button",
+          onClick: () => toggleDay(d.id),
+          style: {
+            background: isSelected ? color : "var(--btn-ghost-bg)",
+            border: `1px solid ${isSelected ? color : "var(--border-main)"}`,
+            color: isSelected ? "var(--text-main)" : "var(--text-dim)",
+            width: "32px", height: "32px", borderRadius: "8px", fontSize: "11px", fontWeight: "bold",
+            cursor: "pointer", transition: "var(--transition)"
+          }
+        }, d.n);
+      })
+    ),
+    rules.length === 0 && React.createElement("p", { style: { fontSize: "12px", color: "var(--text-dim)", marginBottom: "12px" } }, t("scheduler.weekly_select_day_message")),
     rules.map((rule, idx) => {
-      const selectedDays = rule.dow.split(",").filter(Boolean);
+      const day = DAYS.find(d => d.id === rule.dow);
       return React.createElement("div", {
         key: idx,
         style: {
           display: "grid",
-          gridTemplateColumns: "1fr 1fr auto",
+          gridTemplateColumns: "1fr auto",
           gap: "14px",
           alignItems: "center",
           padding: "12px 0",
           borderTop: idx > 0 ? "1px solid rgba(255,255,255,0.08)" : "none"
         }
       },
-        React.createElement("input", {
-          type: "time", className: "premium-input",
-          style: { padding: "10px", fontSize: "13px", width: "100%" },
-          value: `${rule.hour.padStart(2, "0")}:${rule.min.padStart(2, "0")}`,
-          onChange: (e) => {
-            const [h, m] = e.target.value.split(":");
-            updateRule(idx, { ...rule, hour: parseInt(h).toString(), min: parseInt(m).toString() });
-          }
-        }),
-        React.createElement("div", { style: { display: "flex", gap: "6px", flexWrap: "wrap" } },
-          DAYS.map(d => {
-            const isSelected = selectedDays.includes(d.id);
-            return React.createElement("button", {
-              key: d.id, type: "button",
-              onClick: () => {
-                const nextDays = isSelected
-                  ? selectedDays.filter(x => x !== d.id)
-                  : [...selectedDays, d.id];
-                updateRule(idx, {
-                  ...rule,
-                  dow: nextDays.length === 0 ? "1" : nextDays.sort().join(",")
-                });
-              },
-              style: {
-                background: isSelected ? color : "rgba(255,255,255,0.05)",
-                border: `1px solid ${isSelected ? color : "rgba(255,255,255,0.1)"}`,
-                color: isSelected ? "var(--text-main)" : "var(--text-dim)",
-                width: "32px", height: "32px", borderRadius: "8px", fontSize: "11px", fontWeight: "bold",
-                cursor: "pointer", transition: "var(--transition)"
-              }
-            }, d.n);
+        React.createElement("div", null,
+          React.createElement("strong", { style: { display: "block", marginBottom: "6px", color: "var(--text-main)" } }, `${t("scheduler.hour_of")} ${day ? day.full : rule.dow}`),
+          React.createElement("input", {
+            type: "time", className: "premium-input",
+            style: { padding: "10px", fontSize: "13px", width: "100%" },
+            value: `${rule.hour.padStart(2, "0")}:${rule.min.padStart(2, "0")}`,
+            onChange: (e) => {
+              const [h, m] = e.target.value.split(":");
+              updateRule(idx, { ...rule, hour: parseInt(h).toString(), min: parseInt(m).toString() });
+            }
           })
         ),
         React.createElement("button", {
@@ -299,13 +321,7 @@ function WeeklyCronEditor({ rules, color, onChange, t }) {
           style: { color: "var(--danger)", minWidth: "fit-content" }
         }, t("table.delete"))
       );
-    }),
-    React.createElement("button", {
-      type: "button",
-      onClick: addRule,
-      className: "btn-base btn-ghost",
-      style: { width: "100%", border: `1px dashed rgba(59,130,246,0.18)`, color, fontSize: "12px" }
-    }, t("scheduler.add_weekly_entry"))
+    })
   );
 }
 
@@ -315,9 +331,10 @@ export function CronManager({ label, value, onChange, color = "var(--primary)" }
   const rawCrons = splitCronRules(value || "").map(c => c.trim()).filter(c => c);
   const crons = rawCrons.length === 0 && internalMode === "simple" ? ["0 0 * * *"] : rawCrons;
   const cronRules = crons.map(parseCronRule);
-  const weeklyRules = cronRules.filter(isWeeklyRule);
+  const expandedWeeklyRules = normalizeWeeklyRules(cronRules.filter(isWeeklyRule));
+  const weeklyRules = expandedWeeklyRules;
   const otherRules = cronRules.filter(r => !isWeeklyRule(r));
-  const isWeeklyOnly = weeklyRules.length > 0 && weeklyRules.length === cronRules.length;
+  const isWeeklyOnly = weeklyRules.length > 0 && otherRules.length === 0;
 
   const updateCronRules = (nextRules) => onChange(nextRules.map(serializeCronRule).join(", "));
   const handleUpdate = (idx, val) => {
@@ -333,6 +350,7 @@ export function CronManager({ label, value, onChange, color = "var(--primary)" }
     React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" } },
       label && React.createElement("h5", { style: { margin: 0, color: color, fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px", opacity: 0.9 } }, label),
       React.createElement("button", {
+        id: "tour-cron-expert-toggle",
         type: "button",
         onClick: () => setInternalMode(internalMode === "simple" ? "expert" : "simple"),
         style: { background: "transparent", border: "none", color: "var(--text-dim)", fontSize: "10px", cursor: "pointer", textDecoration: "underline" }
@@ -390,7 +408,7 @@ export function SchedulerModal({ settings, clients, websites, onClose, onSaveSet
     setShowOnlyCustom(false);
   };
 
-  const renderGlobal = () => React.createElement("div", { style: { animation: "modalFadeIn 0.3s ease" } },
+  const renderGlobal = () => React.createElement("div", { id: "tour-cron-manager", style: { animation: "modalFadeIn 0.3s ease" } },
     React.createElement(CronManager, {
       label: t("scheduler.active_cycles"), color: "var(--primary)",
       value: localSettings.cron_active,

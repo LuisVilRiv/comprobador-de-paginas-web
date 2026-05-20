@@ -19,6 +19,14 @@ app.use(
   })
 );
 
+// Disable caching so CSS/JS changes always take effect immediately
+app.use((_req, res, next) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
+  next();
+});
+
 app.use(express.static(path.join(__dirname, "frontend")));
 app.get("*", (_req, res) => {
   res.sendFile(path.join(__dirname, "frontend", "index.html"));

@@ -90,9 +90,9 @@ function WebsiteRow({ w, auditingIds, now, onOpen, onAudit, onEdit, onToggleActi
         React.createElement("span", { style: badgeStyle, title: `${t("table.client_inherited")}: ${w.resolved_cron}` }, `⏱️ ${diffStr} ${t("table.client_inherited")}`)
       );
     } else {
-      badgeStyle.background = "rgba(255, 255, 255, 0.03)";
+      badgeStyle.background = "var(--bg-accent)";
       badgeStyle.color = "var(--text-dim)";
-      badgeStyle.border = "1px solid rgba(255, 255, 255, 0.06)";
+      badgeStyle.border = "1px solid var(--border-main)";
       return React.createElement("div", null,
         React.createElement("span", { style: badgeStyle, title: `${t("table.inherited")}: ${w.resolved_cron}` }, `⏱️ ${diffStr}`)
       );
@@ -110,7 +110,8 @@ function WebsiteRow({ w, auditingIds, now, onOpen, onAudit, onEdit, onToggleActi
     return React.createElement("span", { 
       style: { 
         padding: "4px 8px", borderRadius: "6px", fontSize: "11px", fontWeight: "700",
-        background: w.audit_status === "excelente" ? "rgba(16, 185, 129, 0.1)" : "rgba(255,255,255,0.05)",
+        background: w.audit_status === "excelente" ? "rgba(16, 185, 129, 0.1)" : "var(--bg-accent)",
+        border: `1px solid ${w.audit_status === "excelente" ? "rgba(16, 185, 129, 0.2)" : "var(--border-main)"}`,
         color: w.audit_status === "excelente" ? "var(--success)" : "var(--text-dim)"
       } 
     }, (w.audit_status || w.run_status || "nuevo").toUpperCase());
@@ -120,6 +121,7 @@ function WebsiteRow({ w, auditingIds, now, onOpen, onAudit, onEdit, onToggleActi
     React.createElement("td", { style: { fontWeight: "600", paddingTop: "12px", paddingBottom: "12px" } },
       React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "6px" } },
         React.createElement("span", {
+          id: "tour-row-url",
           onClick: () => onOpen(w),
           style: { cursor: "pointer", color: "var(--primary)", textDecoration: "none" }
         }, w.label || w.url),
@@ -143,7 +145,7 @@ function WebsiteRow({ w, auditingIds, now, onOpen, onAudit, onEdit, onToggleActi
       })
     ),
     React.createElement("td", null,
-      React.createElement("div", { style: { display: "flex", gap: "6px" } },
+      React.createElement("div", { id: "tour-row-actions", style: { display: "flex", gap: "6px" } },
         React.createElement("button", {
           onClick: () => onAudit(w),
           disabled: isAuditing || w.pending_audit,
@@ -166,24 +168,163 @@ function WebsiteRow({ w, auditingIds, now, onOpen, onAudit, onEdit, onToggleActi
   );
 }
 
+function sortValue(web, key) {
+  switch (key) {
+    case "url": return (web.label || web.url || "").toString().toLowerCase();
+    case "client": return (web.client_name || "").toString().toLowerCase();
+    case "score": return Number(web.score ?? Number.NEGATIVE_INFINITY);
+    case "prev": return Number(web.previous_score ?? Number.NEGATIVE_INFINITY);
+    case "sections": return Number(web.sections_passed ?? 0);
+    case "last_audit": return new Date(web.audit_date).getTime() || 0;
+    case "status": return (web.audit_status || web.run_status || "").toString().toLowerCase();
+    case "active": return web.active ? 1 : 0;
+    default: return "";
+  }
+}
+
+function stableSort(websites, key, direction) {
+  return [...websites].sort((a, b) => {
+    const aVal = sortValue(a, key);
+    const bVal = sortValue(b, key);
+    if (aVal < bVal) return direction === "asc" ? -1 : 1;
+    if (aVal > bVal) return direction === "asc" ? 1 : -1;
+    return 0;
+  });
+}
+
 export function WebsitesTable({ websites, auditingIds, now, onOpen, onAudit, onEdit, onToggleActive, onDelete }) {
-  const { t } = useI18n();
-  return React.createElement("div", { className: "table-container" },
+  const { t, lang } = useI18n();
+  const [sortConfig, setSortConfig] = React.useState({ key: "url", direction: "asc" });
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const itemsPerPage = 8;
+
+  // Reset to page 1 when the filtered list changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [websites.length]);
+
+  const handleHeaderClick = (key) => {
+    setSortConfig(prev => {
+      if (prev.key === key) {
+        return { key, direction: prev.direction === "asc" ? "desc" : "asc" };
+      }
+      return { key, direction: "asc" };
+    });
+  };
+
+  const sortedWebsites = stableSort(websites || [], sortConfig.key, sortConfig.direction);
+  
+  // Pagination calculation
+  const totalPages = Math.ceil(sortedWebsites.length / itemsPerPage) || 1;
+  const activePage = Math.min(currentPage, totalPages);
+  const startIndex = (activePage - 1) * itemsPerPage;
+  const paginatedWebsites = sortedWebsites.slice(startIndex, startIndex + itemsPerPage);
+
+  const headers = [
+    { key: "url", label: t("table.url") },
+    { key: "client", label: t("table.client") },
+    { key: "score", label: t("table.score") },
+    { key: "prev", label: "Prev." },
+    { key: "sections", label: "Sect." },
+    { key: "last_audit", label: t("table.last_audit") },
+    { key: "status", label: t("table.status") },
+    { key: "active", label: "Act." },
+    { key: "actions", label: t("table.actions"), sortable: false }
+  ];
+
+  return React.createElement("div", { className: "table-container", id: "tour-table" },
     React.createElement("table", null,
-      React.createElement("thead", null,
+      React.createElement("thead", { id: "tour-sortable-headers" },
         React.createElement("tr", null,
-          [t("table.url"), t("table.client"), t("table.score"), "Prev.", "Sect.", t("table.last_audit"), t("table.status"), "Act.", t("table.actions")].map(
-            (h) => React.createElement("th", { key: h }, h)
-          )
+          headers.map((header) => {
+            const isSortable = header.sortable !== false;
+            const active = sortConfig.key === header.key;
+            const arrow = active ? (sortConfig.direction === "asc" ? " ▲" : " ▼") : "";
+            return React.createElement("th", {
+              key: header.key,
+              onClick: isSortable ? () => handleHeaderClick(header.key) : undefined,
+              style: isSortable ? { cursor: "pointer", userSelect: "none" } : undefined
+            }, header.label + arrow);
+          })
         )
       ),
       React.createElement("tbody", null,
-        websites.length > 0 ? websites.map((w) =>
+        paginatedWebsites.length > 0 ? paginatedWebsites.map((w) =>
           React.createElement(WebsiteRow, {
             key: w.website_id, w, auditingIds, now,
             onOpen, onAudit, onEdit, onToggleActive, onDelete,
           })
         ) : React.createElement("tr", null, React.createElement("td", { colSpan: 9, style: { textAlign: "center", padding: "40px", color: "var(--text-dim)" } }, t("scheduler.no_results")))
+      )
+    ),
+    sortedWebsites.length > itemsPerPage && React.createElement("div", {
+      id: "tour-pagination",
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: "12px 20px",
+        borderTop: "1px solid var(--border-main)",
+        background: "var(--bg-accent)",
+        gap: "15px",
+        flexWrap: "wrap"
+      }
+    },
+      React.createElement("span", { style: { fontSize: "13px", color: "var(--text-dim)", fontWeight: "500" } },
+        lang === "es" 
+          ? `Mostrando ${startIndex + 1}-${Math.min(startIndex + itemsPerPage, sortedWebsites.length)} de ${sortedWebsites.length}`
+          : `Showing ${startIndex + 1}-${Math.min(startIndex + itemsPerPage, sortedWebsites.length)} of ${sortedWebsites.length}`
+      ),
+      React.createElement("div", { style: { display: "flex", gap: "6px", alignItems: "center" } },
+        React.createElement("button", {
+          disabled: activePage === 1,
+          onClick: () => setCurrentPage(prev => Math.max(prev - 1, 1)),
+          className: "btn-base btn-small btn-ghost",
+          style: { cursor: activePage === 1 ? "not-allowed" : "pointer", opacity: activePage === 1 ? 0.5 : 1 }
+        }, lang === "es" ? "Anterior" : "Previous"),
+        
+        (function() {
+          const pages = [];
+          if (totalPages <= 1) {
+            pages.push(1);
+          } else {
+            pages.push(1);
+            if (activePage > 2) pages.push('...-left');
+            if (activePage > 1 && activePage < totalPages) pages.push(activePage);
+            if (activePage < totalPages - 1) pages.push('...-right');
+            pages.push(totalPages);
+          }
+          return pages.map((pageNum) => {
+            if (typeof pageNum === 'string' && pageNum.startsWith('...')) {
+              return React.createElement("span", { key: pageNum, style: { padding: "0 4px", color: "var(--text-dim)" } }, "...");
+            }
+            const isActive = pageNum === activePage;
+            return React.createElement("button", {
+              key: pageNum,
+              onClick: () => setCurrentPage(pageNum),
+              className: `btn-base btn-small ${isActive ? "btn-primary" : "btn-ghost"}`,
+              style: {
+                minWidth: "28px",
+                height: "28px",
+                padding: 0,
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                fontWeight: "bold",
+                fontSize: "12px"
+              }
+            }, pageNum);
+          });
+        })(),
+
+        React.createElement("button", {
+          disabled: activePage === totalPages,
+          onClick: () => setCurrentPage(prev => Math.min(prev + 1, totalPages)),
+          className: "btn-base btn-small btn-ghost",
+          style: { cursor: activePage === totalPages ? "not-allowed" : "pointer", opacity: activePage === totalPages ? 0.5 : 1 }
+        }, lang === "es" ? "Siguiente" : "Next")
       )
     )
   );

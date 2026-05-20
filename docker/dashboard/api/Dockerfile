@@ -6,8 +6,17 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget curl gnupg ca-certificates unzip \
+    libglib2.0-0 libnss3 libfontconfig1 \
+    libxss1 \
+    fonts-liberation libgtk-3-0 libxshmfence1 \
+    libgbm1 xdg-utils \
     libpq-dev gcc \
-    && rm -rf /var/lib/apt/lists/*
+    && wget -q -O /tmp/google-chrome.deb \
+        https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
+    && apt-get install -y /tmp/google-chrome.deb \
+    && rm /tmp/google-chrome.deb \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Build context = raíz del repositorio (definido en docker-compose.yml)
 

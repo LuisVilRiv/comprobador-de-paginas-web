@@ -70,6 +70,18 @@ def calculate_score(
             type_counts[issue_type] = count + 1
         total_deduction += min(cat_deduction, cat_limit)
 
+    # Penalización extrema para páginas inoperativas, de error o en mantenimiento
+    is_inoperative = False
+    for issue_list in [security_issues, seo_issues, content_issues, image_issues, structure_issues, link_issues, button_issues, technical_issues]:
+        for issue in issue_list:
+            issue_l = issue.lower()
+            if "sitio web no operativo" in issue_l:
+                is_inoperative = True
+                break
+
+    if is_inoperative:
+        return 5  # Puntuación fija de 5/100 para páginas no operativas
+
     return max(0, min(100, int(100.0 - total_deduction)))
 
 
@@ -123,6 +135,10 @@ def evaluate_release_gate(
     form_failures = [i for i in button_issues if "fallo al probar el action" in i.lower()]
     if form_failures:
         blockers.append(f"Formularios con fallos en el action ({len(form_failures)}).")
+
+    # Blocker explícito si el sitio no está operativo
+    if any("sitio web no operativo" in i.lower() for i in technical_issues + content_issues):
+        blockers.append("El sitio web no está operativo (página de error, mantenimiento o plantilla por defecto).")
 
     return (len(blockers) > 0), blockers
 

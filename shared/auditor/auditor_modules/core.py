@@ -102,15 +102,25 @@ class QualityAuditor:
                 inoperative_reason = f"El código de estado HTTP {status_code} indica un error del servidor o del cliente."
             else:
                 err_patterns = [
-                    "404 not found", "page not found", "página no encontrada", "pagina no encontrada",
-                    "internal server error", "500 error", "502 bad gateway", "503 service unavailable",
-                    "error de conexión", "error de conexion", "database error", "fallo de conexión",
-                    "connection error", "access denied", "forbidden", "no autorizado"
+                    "404 not found", "404 forbidden", "404 error", "error 404",
+                    "page not found", "página no encontrada", "pagina no encontrada", "no encontrado error",
+                    "internal server error", "500 internal", "500 error", "server error 500", "error 500", "http 500",
+                    "502 bad gateway", "bad gateway", "502 error", "error 502", "http 502", "bad gateway error",
+                    "503 service", "503 unavailable", "503 error", "service unavailable", "service temporarily unavailable",
+                    "temporarily unavailable", "error 503", "http 503", "servicio no disponible", "temporarily down",
+                    "504 gateway", "gateway timeout", "504 gateway timeout", "504 error", "error 504", "http 504",
+                    "error de conexión", "error de conexion", "database connection error", "fallo de conexión",
+                    "fallo de conexion", "connection error", "connection timed out", "connection refused",
+                    "web server is down", "error de base de datos", "database error", "error al establecer una conexión con la base de datos",
+                    "error establishing a database connection", "access denied", "forbidden error", "unauthorized access",
+                    "sin autorización", "sin autorizacion", "cloudflare ray id", "sucuri web site blocker",
+                    "blocked by web application firewall", "security block", "ddos protection"
                 ]
                 maint_patterns = [
                     "mantenimiento", "maintenance", "en construcción", "en construccion",
                     "under construction", "coming soon", "próximamente", "proximamente",
-                    "volveremos pronto", "back soon", "temporarily down", "sitio inactivo"
+                    "volveremos pronto", "back soon", "temporarily down", "sitio inactivo",
+                    "temporarily down for maintenance", "site under maintenance", "sitio bajo mantenimiento"
                 ]
                 parking_patterns = [
                     "welcome to nginx", "apache2 ubuntu default page", "apache2 debian default page",
@@ -127,16 +137,16 @@ class QualityAuditor:
                 elif any(p in title_str for p in parking_patterns):
                     is_inoperative = True
                     inoperative_reason = f"El título de la página ('{soup.title.string}') corresponde a una plantilla de servidor por defecto."
-                elif word_count < 250:
-                    if any(p in h1_text for p in err_patterns) or any(p in h2_text for p in err_patterns):
+                elif word_count < 300:
+                    if any(p in h1_text for p in err_patterns) or any(p in h2_text for p in err_patterns) or any(p in body_text for p in err_patterns):
                         is_inoperative = True
-                        inoperative_reason = "El encabezado principal indica un error del sistema en una página con poco contenido."
-                    elif any(p in h1_text for p in maint_patterns) or any(p in h2_text for p in maint_patterns):
+                        inoperative_reason = "El contenido, encabezado o cuerpo de la página indica un error del sistema en un sitio con poco texto."
+                    elif any(p in h1_text for p in maint_patterns) or any(p in h2_text for p in maint_patterns) or any(p in body_text for p in maint_patterns):
                         is_inoperative = True
-                        inoperative_reason = "El encabezado principal indica que el sitio está en mantenimiento."
-                    elif any(p in h1_text for p in parking_patterns) or any(p in h2_text for p in parking_patterns):
+                        inoperative_reason = "El contenido, encabezado o cuerpo de la página indica que el sitio está en mantenimiento."
+                    elif any(p in h1_text for p in parking_patterns) or any(p in h2_text for p in parking_patterns) or any(p in body_text for p in parking_patterns):
                         is_inoperative = True
-                        inoperative_reason = "El encabezado corresponde a una plantilla de servidor o hosting por defecto."
+                        inoperative_reason = "El contenido, encabezado o cuerpo de la página corresponde a una plantilla de servidor o hosting por defecto."
 
             if is_inoperative:
                 warning_msg = f"Sitio web no operativo: {inoperative_reason}"

@@ -34,13 +34,14 @@ class BeautifulSoupStrategy(BaseScraper):
             start = time.perf_counter()
             response = self._session.get(url, timeout=settings.REQUEST_TIMEOUT)
             elapsed_ms = int((time.perf_counter() - start) * 1000)
-            response.raise_for_status()
+            if response.status_code >= 400:
+                logger.warning("Respuesta HTTP con código de error %d para %s", response.status_code, url)
         except Timeout as exc:
             raise RuntimeError(f"Timeout al conectar con {url}") from exc
         except ConnectionError as exc:
             raise RuntimeError(f"Error de conexión con {url}") from exc
         except RequestException as exc:
-            raise RuntimeError(f"HTTP {exc.response.status_code if exc.response else '?'}: {url}") from exc
+            raise RuntimeError(f"Error HTTP o de red al conectar con {url}: {exc}") from exc
 
         soup = BeautifulSoup(
             response.content,

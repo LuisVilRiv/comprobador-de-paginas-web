@@ -5,6 +5,9 @@ import time
 from urllib.parse import urlparse
 import requests
 from config import settings
+from config.logging_config import setup_logger
+
+logger = setup_logger(__name__)
 
 def is_banned_url(url: str) -> bool:
     """Verifica si la URL está en la lista de hosts prohibidos (APDI, etc)."""
@@ -52,14 +55,18 @@ def ensure_non_empty(category: str, issues: list[str]):
 def check_url(session, url, timeout=settings.REQUEST_TIMEOUT, include_content=False, method="GET"):
     """Verifica si una URL es accesible y mide el tiempo de respuesta."""
     if is_banned_url(url):
+        logger.info("   ↳ [OMITIDO] %s (Bloqueado por política)", url)
         return False, 0, 403, "" # Prohibido por politica
     try:
+        logger.info("   ↳ [HTTP %s] Comprobando: %s", method.upper(), url)
         start = time.perf_counter()
         resp = session.request(method.upper(), url, timeout=timeout, allow_redirects=True)
         elapsed = int((time.perf_counter() - start) * 1000)
         content = resp.text if include_content else ""
+        logger.info("     ↳ [RESPUESTA] Estado: %s | Tiempo: %d ms", resp.status_code, elapsed)
         return resp.ok, elapsed, resp.status_code, content
-    except Exception:
+    except Exception as e:
+        logger.warning("     ↳ [FALLO DE CONEXIÓN] %s: %s", url, e)
         return False, 0, None, ""
 
 def classify_speed(ms: int) -> str:

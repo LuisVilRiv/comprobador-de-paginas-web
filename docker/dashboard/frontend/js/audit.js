@@ -32,6 +32,7 @@ export function AuditInfoPanel() {
  */
 function IssueRow({ issue }) {
   const { t } = useI18n();
+  const isResolved = issue.diff_status === "resolved";
   const severityColor =
     issue.severity === "critical" ? "var(--danger)" :
     issue.severity === "high"     ? "var(--warning)" : "var(--text-dim)";
@@ -43,7 +44,12 @@ function IssueRow({ issue }) {
     React.createElement("span", {
       style: { color: severityColor, fontWeight: "bold", marginRight: "8px", fontSize: "11px", display: "inline-flex", alignItems: "center", gap: "8px" }
     }, React.createElement("span", { style: { fontSize: "12px" } }, diffIcon), `[${issue.severity.toUpperCase()}]`),
-    React.createElement("span", { style: { color: "var(--text-main)" } }, issue.message),
+    React.createElement("span", {
+      style: {
+        color: isResolved ? "var(--text-dim)" : "var(--text-main)",
+        textDecoration: isResolved ? "line-through" : "none",
+      }
+    }, `${isResolved ? "RESUELTA: " : ""}${issue.message}`),
     issue.line_no && React.createElement(
       "span",
       { style: { color: "var(--text-dim)", marginLeft: "10px", fontSize: "11px", fontStyle: "italic" } },
@@ -115,6 +121,7 @@ function RunSectionsTable({ sections, issues }) {
                     React.createElement(IssueRow, { key: `curr-${idx}`, issue })
                   ),
                   resolvedForSection.length > 0 && React.createElement("div", { style: { marginTop: "8px", paddingTop: "8px", borderTop: "1px dashed rgba(255,255,255,0.04)" } },
+                    React.createElement("div", { style: { fontSize: "11px", color: "var(--success)", marginBottom: "6px", fontWeight: "bold" } }, "Incidencias resueltas en esta ejecución"),
                     resolvedForSection.map((issue, idx) => React.createElement(IssueRow, { key: `res-${idx}`, issue }))
                   )
                 )

@@ -16,7 +16,7 @@ def get_active_websites() -> list[dict[str, Any]]:
                 Client.name.label("client_name"),
                 Client.custom_cron.label("client_cron")
             )
-            .join(Client, Website.client_id == Client.id)
+            .outerjoin(Client, Website.client_id == Client.id)
             .where(Website.active == True, Website.pending_audit == False)
             .order_by(Client.name, Website.url)
         )
@@ -34,7 +34,7 @@ def get_inactive_websites() -> list[dict[str, Any]]:
                 Client.name.label("client_name"),
                 Client.custom_cron.label("client_cron")
             )
-            .join(Client, Website.client_id == Client.id)
+            .outerjoin(Client, Website.client_id == Client.id)
             .where(Website.active == False, Website.pending_audit == False)
             .order_by(Client.name, Website.url)
         )
@@ -47,7 +47,7 @@ def get_pending_audit_websites() -> list[dict[str, Any]]:
     with get_db() as db:
         stmt = (
             select(Website.id, Website.url, Website.label, Website.strategy, Client.name.label("client_name"))
-            .join(Client, Website.client_id == Client.id)
+            .outerjoin(Client, Website.client_id == Client.id)
             .where(Website.pending_audit == True)
             .order_by(Website.updated_at)
         )
@@ -63,3 +63,4 @@ def clear_pending_audit(website_id: str) -> None:
             .values(pending_audit=False, updated_at=datetime.now(timezone.utc))
         )
         db.commit()
+

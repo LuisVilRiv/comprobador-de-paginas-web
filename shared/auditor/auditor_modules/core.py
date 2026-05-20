@@ -90,9 +90,11 @@ class QualityAuditor:
                 link_issues.append(warning)
                 recommendations.append("Cambiar URL objetivo por un dominio permitido.")
             else:
+                logger.info("🍪 Realizando cookie warm-up para %s", base_url)
                 warm_up_cookies(self._session, base_url)
 
             # Fase 1: Seguridad
+            logger.info("🛡️ [Fase 1/8] Iniciando análisis de Seguridad para %s", base_url)
             check_security(
                 html=html, soup=soup, base_url=base_url, issues=security_issues,
                 session=self._session, last_response_headers=self._last_response_headers,
@@ -101,12 +103,16 @@ class QualityAuditor:
             update_progress()
 
             # Fase 2: Estructura y SEO
+            logger.info("📐 [Fase 2/8] Iniciando análisis de Estructura de encabezados")
             check_structure(soup=soup, issues=structure_issues)
             update_progress()
+            
+            logger.info("🔍 [Fase 3/8] Iniciando análisis de SEO y meta-etiquetas")
             check_seo(soup=soup, issues=seo_issues, regex_set=self._regex)
             update_progress()
 
             # Fase 3: Contenido
+            logger.info("📝 [Fase 4/8] Iniciando análisis de Contenido y legibilidad")
             check_content(
                 soup=soup, issues=content_issues, html_lines=html_lines, base_url=base_url,
                 dicts=self._dicts, regex_set=self._regex, 
@@ -115,6 +121,7 @@ class QualityAuditor:
             update_progress()
 
             # Fase 4: Imagenes
+            logger.info("🖼️ [Fase 5/8] Iniciando análisis de Imágenes rotas y etiquetas alt")
             check_images(
                 soup=soup, base_url=base_url, html_lines=html_lines, issues=image_issues,
                 is_banned_fn=is_banned_url, check_url_fn=lambda url, **kwargs: check_url(self._session, url, **kwargs),
@@ -123,6 +130,7 @@ class QualityAuditor:
             update_progress()
 
             # Fase 5: Enlaces
+            logger.info("🔗 [Fase 6/8] Iniciando rastreo recursivo y comprobación de Enlaces rotos (máx: %d)", settings.AUDIT_MAX_RECURSIVE_LINKS)
             check_links_recursive(
                 soup=soup, base_url=base_url, html_lines=html_lines, issues=link_issues,
                 crawl_stats=crawl_stats, is_banned_fn=is_banned_url,
@@ -133,6 +141,7 @@ class QualityAuditor:
             update_progress()
 
             # Fase 6: Botones
+            logger.info("🔘 [Fase 7/8] Iniciando análisis de Botones y accesibilidad de formularios")
             check_buttons(
                 soup=soup, base_url=base_url, html_lines=html_lines, issues=button_issues,
                 is_banned_fn=is_banned_url, check_url_fn=lambda url, **kwargs: check_url(self._session, url, **kwargs),
@@ -142,6 +151,7 @@ class QualityAuditor:
             update_progress()
 
             # Fase 7: Tecnico + Browser
+            logger.info("⚙️ [Fase 8/8] Iniciando análisis Técnico, recursos CSS/JS y errores de consola")
             check_technical(
                 html=html, soup=soup, base_url=base_url, html_lines=html_lines,
                 issues=technical_issues, asset_stats=asset_stats, recommendations=recommendations,
@@ -149,6 +159,7 @@ class QualityAuditor:
                 classify_speed_fn=classify_speed, find_line_fn=find_line
             )
             if not is_banned_url(base_url):
+                logger.info("🌐 Iniciando driver de Selenium para interactividad en navegador y logs de consola")
                 driver = self._get_driver()
                 check_js_console_errors(driver, base_url, technical_issues)
                 interact_buttons_selenium(driver, base_url, button_issues, self)

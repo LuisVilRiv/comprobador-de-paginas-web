@@ -92,7 +92,7 @@ def test_inoperative_by_heading_maintenance_thin_content():
     assert report.score == 5
     assert report.status == "crítico"
     assert report.release_blocked is True
-    assert any("El encabezado principal indica que el sitio está en mantenimiento" in issue for issue in report.technical_issues)
+    assert any("El contenido, encabezado o cuerpo de la página indica que el sitio está en mantenimiento" in issue for issue in report.technical_issues)
 
 
 def test_operative_page_is_not_flagged():

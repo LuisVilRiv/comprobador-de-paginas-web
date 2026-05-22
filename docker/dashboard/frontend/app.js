@@ -131,21 +131,22 @@ function App() {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [s, c, w] = await Promise.all([fetchSummary(), fetchClients(), fetchWebsites(clientId)]);
+      const [s, c, w, cfg] = await Promise.all([
+        fetchSummary(),
+        fetchClients(),
+        fetchWebsites(clientId),
+        fetchSettings()
+      ]);
       setSummary(s || {});
       setClients(c || []);
       setWebsites(w || []);
+      setSettings(cfg || { cron_active: "", cron_inactive: "" });
     } catch (err) { setFormError(err.message); }
     finally { setLoading(false); }
   };
 
-  const loadSettingsData = async () => {
-    try { setSettings(await fetchSettings()); }
-    catch (err) { console.error(err); }
-  };
-
-  useEffect(() => { loadAll(); }, [clientId, summary.active_websites, summary.excellent_count]);
-  useEffect(() => { loadSettingsData(); }, [settings.cron_active, settings.cron_inactive]);
+  useEffect(() => { loadAll(); }, [clientId]);
+  
   // Polling para auditorías en curso
   useEffect(() => {
     const hasRunning = websites.some(w => w.run_status === "running" || auditingIds.has(w.website_id));
@@ -205,7 +206,7 @@ function App() {
     try {
       await saveSettings(newSettings);
       notify(t("app.schedule_saved"));
-      await loadSettingsData();
+      await loadAll();
     } catch (err) { setFormError(err.message); }
   };
 

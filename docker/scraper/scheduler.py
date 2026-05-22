@@ -1,14 +1,12 @@
 import json
 import logging
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 from croniter import croniter
 from config.logging_config import setup_logger
 
 logger = setup_logger(__name__)
-
-
 
 class AuditScheduler:
     """
@@ -36,7 +34,7 @@ class AuditScheduler:
         self._settings_fn  = settings_fn
         self._poll_interval = poll_interval
 
-        # website_id → { "next_run": datetime, "crons": list, "active": bool }
+        # website_id -> { "next_run": datetime, "crons": list, "active": bool }
         self._web_cache = {}
         
         self._next_active        = None
@@ -84,7 +82,7 @@ class AuditScheduler:
         return selected, source
 
     def _tick(self) -> None:
-        # 1. Siempre procesar pendientes (prioridad máxima)
+        # 1. Procesar pendientes
         self._run_pending()
 
         # 2. Obtener configuración y webs
@@ -99,7 +97,8 @@ class AuditScheduler:
             logger.error("Error al refrescar datos en scheduler: %s", exc)
             return
 
-        now = datetime.utcnow()
+        # Usar fecha/hora UTC timezone-aware
+        now = datetime.now(timezone.utc)
 
         # 3. Evaluar cada web
         for entry in active_list + inactive_list:
@@ -116,17 +115,20 @@ class AuditScheduler:
             if now >= self._web_cache[web_id]["next_run"]:
                 logger.info("⏰ [CRON] Ejecutando auditoría programada: %s", entry["url"])
                 self._run_single(entry)
-                self._web_cache[web_id]["next_run"] = self._calculate_next(crons, now)
+                # Recalcular la próxima ejecución desde `now`
+                self._web_cache[web_id]["next_run"] = self._calculate_next(crons, datetime.now(timezone.utc))
 
     def _calculate_next(self, crons: list[str], from_dt: datetime) -> datetime:
         next_times = []
         for c in crons:
             try:
+                # from_dt es timezone-aware, croniter lo manejará correctamente
                 next_times.append(croniter(c, from_dt).get_next(datetime))
             except Exception as e:
                 logger.error("Expresión cron inválida '%s': %s", c, e)
         
         if not next_times:
-            # Fallback a 1 hora si falla todo
-            return croniter("0 * * * *", from_dt).get_next(datetime)
+            # Fallback a 1 hora si todo lo demás falla
+            return (from_dt + timedelta(hours=1))
+            
         return min(next_times)

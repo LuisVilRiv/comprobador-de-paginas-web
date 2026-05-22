@@ -1,6 +1,58 @@
 /**
- * i18n.js — Sistema de Internacionalización (React Context)
+ * ============================================================================
+ * I18N.JS - Sistema de Internacionalización (Internacionalización)
+ * ============================================================================
+ * 
+ * DESCRIPCIÓN:
+ * Este módulo implementa un sistema de internacionalización (i18n) completo
+ * para la aplicación, permitiendo cambiar dinámicamente entre español e inglés.
+ * Utiliza React Context API para proveer las funciones de traducción a todos
+ * los componentes de la aplicación.
+ * 
+ * CARACTERÍSTICAS:
+ * - Cambio dinámico de idioma sin recargar la página
+ * - Persistencia en localStorage (el idioma se mantiene entre sesiones)
+ * - Actualización del atributo lang del HTML para accesibilidad
+ * - Sistema de diccionarios anidados para organización jerárquica
+ * - Función de traducción con fallback a la clave si no existe
+ * 
+ * ESTRUCTURA DEL DICCIONARIO:
+ * Los diccionarios están organizados por categorías:
+ * - app: Textos generales de la aplicación (títulos, botones, mensajes)
+ * - tour: Textos para los tours guiados (títulos, descripciones, botones)
+ * - table: Textos para la tabla de websites (cabeceras, estados, acciones)
+ * - modals: Textos para modales (formularios, confirmaciones)
+ * - scheduler: Textos para el programador de auditorías
+ * - audit: Textos para el detalle de auditorías
+ * 
+ * USO EN COMPONENTES:
+ * ```javascript
+ * import { useI18n } from "./js/i18n.js";
+ * 
+ * function MiComponente() {
+ *   const { t, lang, toggleLang } = useI18n();
+ *   
+ *   return (
+ *     <div>
+ *       <h1>{t("app.title")}</h1>
+ *       <button onClick={toggleLang}>
+ *         {lang === "es" ? "English" : "Español"}
+ *       </button>
+ *     </div>
+ *   );
+ * }
+ * ```
+ * 
+ * CLAVES DE TRADUCCIÓN:
+ * - Formato: "categoria.clave" (ej: "app.title", "tour.next")
+ * - Separador: punto (.) para jerarquía
+ * - Fallback: si no existe, devuelve la clave completa
+ * 
+ * @version 2.0.0
+ * @author Web Auditor Team
+ * @since 2024
  */
+
 import React, { createContext, useContext, useState, useEffect, useCallback } from "https://esm.sh/react@18.3.1";
 
 const dictionaries = {
@@ -29,7 +81,7 @@ const dictionaries = {
       audit_scheduled: "✓ Auditoría programada para",
     },
     tour: {
-      help_btn: "ℹ️ Tour",
+      help_btn: "Tour",
       step_welcome_title: "¡Bienvenido al Dashboard!",
       step_welcome_desc: "Vamos a dar un rápido paseo por las funcionalidades principales para que le saques el máximo partido al auditor.",
       step_toggles_title: "Apariencia e Idioma",
@@ -66,7 +118,17 @@ const dictionaries = {
       step_row_actions_desc: "En cada fila tienes botones rápidos para forzar una auditoría en este momento, editar su configuración o eliminarla.",
       done: "Terminar",
       next: "Siguiente",
-      prev: "Atrás"
+      prev: "Atrás",
+      // New modular tour labels
+      lang_toggle: "Cambiar idioma",
+      theme_toggle: "Cambiar tema",
+      full_tour_title: "Iniciar tour completo",
+      module_tours: "Tours por módulo",
+      module_stats: "Estadísticas",
+      module_clients: "Clientes",
+      module_websites: "Webs y Búsqueda",
+      module_table: "Tabla de Resultados",
+      module_scheduler: "Programador"
     },
     table: {
       url: "Sitio Web",
@@ -272,7 +334,17 @@ const dictionaries = {
       step_row_actions_desc: "On each row you have quick buttons to manually force an audit right now, edit its settings, or delete it.",
       done: "Done",
       next: "Next",
-      prev: "Previous"
+      prev: "Previous",
+      // New modular tour labels
+      lang_toggle: "Change language",
+      theme_toggle: "Change theme",
+      full_tour_title: "Start full tour",
+      module_tours: "Module tours",
+      module_stats: "Statistics",
+      module_clients: "Clients",
+      module_websites: "Websites & Search",
+      module_table: "Results Table",
+      module_scheduler: "Scheduler"
     },
     table: {
       url: "Website",

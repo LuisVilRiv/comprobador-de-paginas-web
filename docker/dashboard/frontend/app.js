@@ -1,27 +1,99 @@
 /**
- * app.js — Dashboard Principal
+ * ============================================================================
+ * APP.JS - Componente Principal del Dashboard
+ * ============================================================================
+ * 
+ * DESCRIPCIÓN:
+ * Este archivo contiene el componente principal de la aplicación React para el
+ * dashboard de auditoría web. Gestiona el estado global, las operaciones CRUD
+ * para clientes y sitios web, las auditorías, la programación de tareas, y la
+ * interfaz de usuario completa.
+ * 
+ * ARQUITECTURA:
+ * - Patrón: Componentes funcionales con Hooks de React
+ * - Gestión de estado: useState para estado local
+ * - Efectos secundarios: useEffect para ciclo de vida y polling
+ * - Internacionalización: Context API a través de i18n.js
+ * - Tours guiados: Driver.js para walkthroughs interactivos
+ * 
+ * MÓDULOS RELACIONADOS:
+ * - api.js: Funciones asíncronas para comunicación con el backend
+ * - i18n.js: Sistema de traducción español/inglés
+ * - audit.js: Hook personalizado para detalles de auditoría
+ * - websites.js: Componentes de tabla y modal de websites
+ * - scheduler.js: Modal de programación de auditorías
+ * - modals.js: Componentes modales reutilizables
+ * 
+ * ESTADOS PRINCIPALES:
+ * - summary: Resumen de métricas (webs activas, puntuaciones excelentes)
+ * - websites: Lista de sitios web monitoreados
+ * - clients: Lista de clientes
+ * - clientId: Filtro actual por cliente
+ * - query: Término de búsqueda actual
+ * - settings: Configuración global de programación
+ * - theme: Tema claro/oscuro
+ * - showTourMenu: Estado del menú desplegable de tours
+ * 
+ * @version 2.0.0
+ * @author Web Auditor Team
+ * @since 2024
  */
+
 import React, { useEffect, useMemo, useState, useCallback } from "https://esm.sh/react@18.3.1";
 import { createRoot } from "https://esm.sh/react-dom@18.3.1/client";
 
+/**
+ * Importación de funciones de API
+ * Estas funciones se comunican con el backend para operaciones CRUD
+ * y ejecución de auditorías
+ */
 import {
-  fetchSummary, fetchClients, fetchWebsites,
-  fetchSettings, saveSettings,
-  createClient, updateClient, deleteClient,
-  createWebsite, updateWebsite, deleteWebsite,
-  triggerAudit,
-  exportClientReport,
+  fetchSummary,        // Obtiene resumen de métricas del dashboard
+  fetchClients,        // Obtiene lista de todos los clientes
+  fetchWebsites,       // Obtiene websites filtrados por cliente
+  fetchSettings,       // Obtiene configuración global de programación
+  saveSettings,        // Guarda configuración global
+  createClient,        // Crea nuevo cliente
+  updateClient,        // Actualiza cliente existente
+  deleteClient,        // Elimina cliente (con validación)
+  createWebsite,       // Añade nuevo website a monitorear
+  updateWebsite,       // Actualiza configuración de website
+  deleteWebsite,       // Elimina website del monitoreo
+  triggerAudit,        // Inicia auditoría manual para un website
+  exportClientReport,  // Genera y descarga reporte PDF de cliente
 } from "./js/api.js";
 
+/**
+ * Hook personalizado para gestión de detalles de auditoría
+ * Maneja el historial, secciones e incidencias de auditorías
+ */
 import { useAuditDetail } from "./js/audit.js";
+
+/**
+ * Componentes de visualización y gestión de websites
+ */
 import { WebsitesTable, WebsiteDetailModal } from "./js/websites.js";
+
+/**
+ * Modal para programación de auditorías (global, por cliente, por website)
+ */
 import { SchedulerModal } from "./js/scheduler.js";
+
+/**
+ * Componentes modales reutilizables para operaciones CRUD
+ */
 import {
-  DeleteConfirmModal,
-  AddClientModal, EditClientModal,
-  AddWebsiteModal, EditWebsiteModal,
+  DeleteConfirmModal,      // Modal de confirmación de eliminación
+  AddClientModal,          // Modal para crear cliente
+  EditClientModal,         // Modal para editar cliente
+  AddWebsiteModal,         // Modal para añadir website
+  EditWebsiteModal,        // Modal para editar website
 } from "./js/modals.js";
 
+/**
+ * Proveedor de internacionalización (i18n)
+ * Permite cambiar entre español e inglés en toda la app
+ */
 import { I18nProvider, useI18n } from "./js/i18n.js";
 
 function App() {
@@ -48,6 +120,7 @@ function App() {
   const [showEditClient, setShowEditClient] = useState(false);
   const [showEditWebsite, setShowEditWebsite] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showTourMenu, setShowTourMenu] = useState(false);
 
   const [newClientForm, setNewClientForm] = useState({ name: "", email: "", phone: "", company: "", notes: "" });
   const [newWebsiteForm, setNewWebsiteForm] = useState({ client_id: "", url: "", label: "", strategy: "auto", active: true });
@@ -148,55 +221,119 @@ function App() {
 
   const toggleTheme = () => setTheme(t => (t === "light" ? "dark" : "light"));
 
-  // Tour logic
-  const startTour = useCallback(() => {
+  // Tour logic - Modular tours
+  const createDriver = useCallback((steps, onDestroyCallback) => {
     if (!window.driver || !window.driver.js || !window.driver.js.driver) {
       console.warn("Driver.js is not loaded yet.");
-      return;
+      return null;
     }
-    const driver = window.driver.js.driver({
+    return window.driver.js.driver({
       showProgress: true,
       nextBtnText: t("tour.next"),
       prevBtnText: t("tour.prev"),
       doneBtnText: t("tour.done"),
-      steps: [
-        { popover: { title: t("tour.step_welcome_title"), description: t("tour.step_welcome_desc") } },
-        { element: '#tour-toggles', popover: { title: t("tour.step_toggles_title"), description: t("tour.step_toggles_desc"), side: "bottom", align: 'end' } },
-        { element: '#tour-global-settings', popover: { title: t("tour.step_global_config_title"), description: t("tour.step_global_config_desc"), side: "bottom", align: 'end' } },
-        { 
-          element: '#tour-cron-manager', 
-          popover: { title: t("tour.step_cron_title"), description: t("tour.step_cron_desc"), side: "left", align: 'start' },
-          onHighlightStarted: () => {
-            setShowSettings(true);
-          }
-        },
-        { element: '#tour-cron-frequency', popover: { title: t("tour.step_cron_frequency_title"), description: t("tour.step_cron_frequency_desc"), side: "top", align: 'start' } },
-        { 
-          element: '#tour-cron-expert-toggle', 
-          popover: { title: t("tour.step_cron_expert_title"), description: t("tour.step_cron_expert_desc"), side: "top", align: 'start' },
-          onDeselected: () => {
-            setShowSettings(false);
-          }
-        },
-        { element: '#tour-stats', popover: { title: t("tour.step_stats_title"), description: t("tour.step_stats_desc"), side: "bottom", align: 'start' } },
-        { element: '#tour-new-client', popover: { title: t("tour.step_new_client_title"), description: t("tour.step_new_client_desc"), side: "bottom", align: 'start' } },
-        { element: '#tour-new-url', popover: { title: t("tour.step_new_url_title"), description: t("tour.step_new_url_desc"), side: "bottom", align: 'start' } },
-        { element: '#tour-refresh', popover: { title: t("tour.step_refresh_title"), description: t("tour.step_refresh_desc"), side: "bottom", align: 'start' } },
-        { element: '#tour-client-filter', popover: { title: t("tour.step_filter_title"), description: t("tour.step_filter_desc"), side: "bottom", align: 'start' } },
-        { element: '#tour-client-actions', popover: { title: t("tour.step_client_actions_title"), description: t("tour.step_client_actions_desc"), side: "bottom", align: 'start' } },
-        { element: '#tour-search', popover: { title: t("tour.step_filter_title"), description: t("tour.step_filter_desc"), side: "bottom", align: 'start' } },
-        { element: '#tour-table', popover: { title: t("tour.step_table_title"), description: t("tour.step_table_desc"), side: "top", align: 'start' } },
-        { element: '#tour-sortable-headers', popover: { title: t("tour.step_headers_title"), description: t("tour.step_headers_desc"), side: "top", align: 'start' } },
-        { element: '#tour-row-url', popover: { title: t("tour.step_row_url_title"), description: t("tour.step_row_url_desc"), side: "bottom", align: 'start' } },
-        { element: '#tour-row-actions', popover: { title: t("tour.step_row_actions_title"), description: t("tour.step_row_actions_desc"), side: "bottom", align: 'end' } },
-        { element: '#tour-pagination', popover: { title: t("tour.step_pagination_title"), description: t("tour.step_pagination_desc"), side: "top", align: 'center' } }
-      ],
-      onDestroyed: () => {
-        localStorage.setItem("tour_completed", "true");
-      }
+      steps: steps,
+      onDestroyed: onDestroyCallback
     });
-    driver.drive();
   }, [t]);
+
+  // Full tour steps
+  const fullTourSteps = useCallback(() => ([
+    { popover: { title: t("tour.step_welcome_title"), description: t("tour.step_welcome_desc") } },
+    { element: '#tour-toggles', popover: { title: t("tour.step_toggles_title"), description: t("tour.step_toggles_desc"), side: "bottom", align: 'end' } },
+    { element: '#tour-global-settings', popover: { title: t("tour.step_global_config_title"), description: t("tour.step_global_config_desc"), side: "bottom", align: 'end' } },
+    { 
+      element: '#tour-cron-manager', 
+      popover: { title: t("tour.step_cron_title"), description: t("tour.step_cron_desc"), side: "left", align: 'start' },
+      onHighlightStarted: () => {
+        setShowSettings(true);
+      }
+    },
+    { element: '#tour-cron-frequency', popover: { title: t("tour.step_cron_frequency_title"), description: t("tour.step_cron_frequency_desc"), side: "top", align: 'start' } },
+    { 
+      element: '#tour-cron-expert-toggle', 
+      popover: { title: t("tour.step_cron_expert_title"), description: t("tour.step_cron_expert_desc"), side: "top", align: 'start' },
+      onDeselected: () => {
+        setShowSettings(false);
+      }
+    },
+    { element: '#tour-stats', popover: { title: t("tour.step_stats_title"), description: t("tour.step_stats_desc"), side: "bottom", align: 'start' } },
+    { element: '#tour-new-client', popover: { title: t("tour.step_new_client_title"), description: t("tour.step_new_client_desc"), side: "bottom", align: 'start' } },
+    { element: '#tour-new-url', popover: { title: t("tour.step_new_url_title"), description: t("tour.step_new_url_desc"), side: "bottom", align: 'start' } },
+    { element: '#tour-refresh', popover: { title: t("tour.step_refresh_title"), description: t("tour.step_refresh_desc"), side: "bottom", align: 'start' } },
+    { element: '#tour-client-filter', popover: { title: t("tour.step_filter_title"), description: t("tour.step_filter_desc"), side: "bottom", align: 'start' } },
+    { element: '#tour-client-actions', popover: { title: t("tour.step_client_actions_title"), description: t("tour.step_client_actions_desc"), side: "bottom", align: 'start' } },
+    { element: '#tour-search', popover: { title: t("tour.step_filter_title"), description: t("tour.step_filter_desc"), side: "bottom", align: 'start' } },
+    { element: '#tour-table', popover: { title: t("tour.step_table_title"), description: t("tour.step_table_desc"), side: "top", align: 'start' } },
+    { element: '#tour-sortable-headers', popover: { title: t("tour.step_headers_title"), description: t("tour.step_headers_desc"), side: "top", align: 'start' } },
+    { element: '#tour-row-url', popover: { title: t("tour.step_row_url_title"), description: t("tour.step_row_url_desc"), side: "bottom", align: 'start' } },
+    { element: '#tour-row-actions', popover: { title: t("tour.step_row_actions_title"), description: t("tour.step_row_actions_desc"), side: "bottom", align: 'end' } },
+    { element: '#tour-pagination', popover: { title: t("tour.step_pagination_title"), description: t("tour.step_pagination_desc"), side: "top", align: 'center' } }
+  ]), [t]);
+
+  // Stats module tour steps
+  const statsTourSteps = useCallback(() => ([
+    { element: '#tour-stats', popover: { title: t("tour.step_stats_title"), description: t("tour.step_stats_desc"), side: "bottom", align: 'start' } }
+  ]), [t]);
+
+  // Client management module tour steps
+  const clientTourSteps = useCallback(() => ([
+    { element: '#tour-new-client', popover: { title: t("tour.step_new_client_title"), description: t("tour.step_new_client_desc"), side: "bottom", align: 'start' } },
+    { element: '#tour-client-filter', popover: { title: t("tour.step_filter_title"), description: t("tour.step_filter_desc"), side: "bottom", align: 'start' } },
+    { element: '#tour-client-actions', popover: { title: t("tour.step_client_actions_title"), description: t("tour.step_client_actions_desc"), side: "bottom", align: 'start' } }
+  ]), [t]);
+
+  // Website management module tour steps
+  const websiteTourSteps = useCallback(() => ([
+    { element: '#tour-new-url', popover: { title: t("tour.step_new_url_title"), description: t("tour.step_new_url_desc"), side: "bottom", align: 'start' } },
+    { element: '#tour-refresh', popover: { title: t("tour.step_refresh_title"), description: t("tour.step_refresh_desc"), side: "bottom", align: 'start' } },
+    { element: '#tour-search', popover: { title: t("tour.step_filter_title"), description: t("tour.step_filter_desc"), side: "bottom", align: 'start' } }
+  ]), [t]);
+
+  // Table module tour steps
+  const tableTourSteps = useCallback(() => ([
+    { element: '#tour-table', popover: { title: t("tour.step_table_title"), description: t("tour.step_table_desc"), side: "top", align: 'start' } },
+    { element: '#tour-sortable-headers', popover: { title: t("tour.step_headers_title"), description: t("tour.step_headers_desc"), side: "top", align: 'start' } },
+    { element: '#tour-row-url', popover: { title: t("tour.step_row_url_title"), description: t("tour.step_row_url_desc"), side: "bottom", align: 'start' } },
+    { element: '#tour-row-actions', popover: { title: t("tour.step_row_actions_title"), description: t("tour.step_row_actions_desc"), side: "bottom", align: 'end' } },
+    { element: '#tour-pagination', popover: { title: t("tour.step_pagination_title"), description: t("tour.step_pagination_desc"), side: "top", align: 'center' } }
+  ]), [t]);
+
+  // Scheduler module tour steps
+  const schedulerTourSteps = useCallback(() => ([
+    { element: '#tour-global-settings', popover: { title: t("tour.step_global_config_title"), description: t("tour.step_global_config_desc"), side: "bottom", align: 'end' } },
+    { 
+      element: '#tour-cron-manager', 
+      popover: { title: t("tour.step_cron_title"), description: t("tour.step_cron_desc"), side: "left", align: 'start' },
+      onHighlightStarted: () => {
+        setShowSettings(true);
+      }
+    },
+    { element: '#tour-cron-frequency', popover: { title: t("tour.step_cron_frequency_title"), description: t("tour.step_cron_frequency_desc"), side: "top", align: 'start' } },
+    { 
+      element: '#tour-cron-expert-toggle', 
+      popover: { title: t("tour.step_cron_expert_title"), description: t("tour.step_cron_expert_desc"), side: "top", align: 'start' },
+      onDeselected: () => {
+        setShowSettings(false);
+      }
+    }
+  ]), [t]);
+
+  // Start specific tour module
+  const startModuleTour = useCallback((moduleSteps, tourId) => {
+    const driver = createDriver(moduleSteps(), () => {
+      localStorage.setItem(`tour_completed_${tourId}`, "true");
+    });
+    if (driver) driver.drive();
+  }, [createDriver]);
+
+  // Start full tour
+  const startTour = useCallback(() => {
+    const driver = createDriver(fullTourSteps(), () => {
+      localStorage.setItem("tour_completed", "true");
+    });
+    if (driver) driver.drive();
+  }, [createDriver, fullTourSteps]);
 
   useEffect(() => {
     const hasCompletedTour = localStorage.getItem("tour_completed");
@@ -231,24 +368,54 @@ function App() {
       React.createElement("div", { id: "tour-toggles", style: { display: "flex", alignItems: "center", gap: "15px" } },
         React.createElement("h2", null, t("app.title")),
         React.createElement("button", {
-          className: "btn-base btn-ghost",
-          style: { padding: "6px 12px", border: "1px solid var(--border-main)", fontSize: "18px" },
+          className: "tour-btn",
           onClick: toggleLang,
-          title: "Switch Language"
+          title: t("tour.lang_toggle")
         }, lang === "es" ? "🇪🇸" : "🇬🇧"),
         React.createElement("button", {
-          className: "btn-base btn-ghost",
-          style: { padding: "6px 10px", border: "1px solid var(--border-main)", fontSize: "14px" },
+          className: "tour-btn",
           onClick: toggleTheme,
-          title: "Toggle theme"
+          title: t("tour.theme_toggle")
         }, theme === "light" ? "☀️" : "🌙")
       ),
-      React.createElement("button", {
-        className: "btn-base btn-ghost",
-        style: { padding: "6px 10px", border: "1px solid var(--border-main)", fontSize: "14px", marginRight: "10px" },
-        onClick: startTour,
-        title: "Start Tour"
-      }, t("tour.help_btn")),
+      // Tour button with dropdown menu
+      React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "10px", position: "relative" } },
+        React.createElement("div", { style: { display: "flex", gap: "8px" } },
+          React.createElement("button", {
+            className: "tour-btn tour-btn-primary",
+            onClick: startTour,
+            title: t("tour.full_tour_title")
+          }, "🎯 " + t("tour.help_btn")),
+          React.createElement("button", {
+            className: "tour-btn tour-btn-icon",
+            onClick: () => setShowTourMenu(!showTourMenu),
+            title: t("tour.module_tours")
+          }, "▼")
+        ),
+        // Dropdown menu for module tours
+        showTourMenu && React.createElement("div", { className: "tour-dropdown" },
+          React.createElement("button", {
+            className: "tour-dropdown-item",
+            onClick: () => { startModuleTour(statsTourSteps, "stats"); setShowTourMenu(false); }
+          }, "📊 " + t("tour.module_stats")),
+          React.createElement("button", {
+            className: "tour-dropdown-item",
+            onClick: () => { startModuleTour(clientTourSteps, "clients"); setShowTourMenu(false); }
+          }, "👥 " + t("tour.module_clients")),
+          React.createElement("button", {
+            className: "tour-dropdown-item",
+            onClick: () => { startModuleTour(websiteTourSteps, "websites"); setShowTourMenu(false); }
+          }, "🌐 " + t("tour.module_websites")),
+          React.createElement("button", {
+            className: "tour-dropdown-item",
+            onClick: () => { startModuleTour(tableTourSteps, "table"); setShowTourMenu(false); }
+          }, "📋 " + t("tour.module_table")),
+          React.createElement("button", {
+            className: "tour-dropdown-item",
+            onClick: () => { startModuleTour(schedulerTourSteps, "scheduler"); setShowTourMenu(false); }
+          }, "⏰ " + t("tour.module_scheduler"))
+        )
+      ),
       React.createElement("button", {
         id: "tour-global-settings",
         className: "btn-base btn-purple",

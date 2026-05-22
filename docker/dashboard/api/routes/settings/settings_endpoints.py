@@ -12,7 +12,7 @@ ENDPOINTS:
 - GET /settings - Obtener configuración actual y estado del scheduler
 - PUT /settings - Actualizar configuración (expresiones CRON)
 
-@version 1.2.0
+@version 1.3.0
 @author Web Auditor Team
 @since 2024
 """
@@ -21,8 +21,6 @@ ENDPOINTS:
 # IMPORTACIONES
 # ═══════════════════════════════════════════════════════════════════════════════
 
-import json
-import os
 from fastapi import APIRouter, HTTPException
 
 # Importar repositorio de base de datos
@@ -38,9 +36,6 @@ from schemas.settings import SettingsUpdate
 # Crear router con prefijo "/settings" y etiqueta "settings" para Swagger
 router = APIRouter(prefix="/settings", tags=["settings"])
 
-# Ruta al archivo de estado del scheduler (creado por el scraper)
-SCHEDULE_STATUS_FILE = "/app/config/schedule_status.json"
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENDPOINTS
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -48,38 +43,14 @@ SCHEDULE_STATUS_FILE = "/app/config/schedule_status.json"
 @router.get("")
 def get_settings():
     """
-    Obtiene la configuración actual del sistema y el estado del scheduler.
-    
-    Combina la configuración CRON de la base de datos con la información
-    de próxima ejecución del archivo de estado del scheduler.
+    Obtiene la configuración CRON actual del sistema desde la base de datos.
 
     Returns:
         dict: Configuración que incluye:
             - cron_active: Frecuencia para websites activos
             - cron_inactive: Frecuencia para websites inactivos
-            - next_active: Timestamp de la próxima ejecución activa (compatible con frontend)
-            - next_inactive: Timestamp de la próxima ejecución inactiva (compatible con frontend)
     """
-    db_settings = repo.get_settings()
-    schedule_status = {}
-
-    if os.path.exists(SCHEDULE_STATUS_FILE):
-        try:
-            with open(SCHEDULE_STATUS_FILE, 'r') as f:
-                schedule_status = json.load(f)
-        except (IOError, json.JSONDecodeError):
-            # Si hay un error, el scheduler aún no ha escrito o el archivo es inválido.
-            # No es un error fatal, se devolverá un objeto vacío para el estado.
-            pass
-    
-    # Fusionar ambos diccionarios usando los nombres de clave que el frontend espera
-    combined_settings = {
-        **db_settings,
-        "next_active": schedule_status.get("next_active_timestamp"),
-        "next_inactive": schedule_status.get("next_inactive_timestamp"),
-    }
-    
-    return combined_settings
+    return repo.get_settings()
 
 
 @router.put("")

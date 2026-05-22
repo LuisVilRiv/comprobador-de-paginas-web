@@ -371,7 +371,7 @@ function App() {
           className: "tour-btn",
           onClick: toggleLang,
           title: t("tour.lang_toggle")
-        }, lang === "es" ? "🇪🇸" : "🇬🇧"),
+        }, React.createElement("span", { className: "flag-emoji" }, lang === "es" ? "🇪🇸" : "🇬🇧")),
         React.createElement("button", {
           className: "tour-btn",
           onClick: toggleTheme,

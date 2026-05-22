@@ -1,7 +1,27 @@
 """
-models.py — Modelos de base de datos SQLAlchemy.
-Define todas las tablas y relaciones del ORM.
+MODELS.PY - Modelos de Base de Datos SQLAlchemy
+
+DESCRIPCIÓN:
+Este módulo define todos los modelos ORM para la base de datos del sistema de
+auditoría web. Cada clase representa una tabla en PostgreSQL con sus relaciones.
+
+MODELOS:
+- Client: Clientes propietarios de websites
+- Website: URLs a auditar con configuración individual
+- AuditRun: Ejecuciones de auditoría (una por website auditado)
+- AuditRunSection: Secciones del informe (SEO, seguridad, etc.)
+- AuditIssue: Incidencias detectadas en cada auditoría
+- GlobalSetting: Configuración global del sistema
+
+@version 1.0.0
+@author Web Auditor Team
+@since 2024
 """
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# IMPORTACIONES
+# ═══════════════════════════════════════════════════════════════════════════════
+
 from sqlalchemy import (
     Boolean,
     Column,

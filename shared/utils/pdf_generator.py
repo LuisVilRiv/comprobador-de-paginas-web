@@ -1,13 +1,38 @@
+"""
+PDF_GENERATOR.PY - Generador de Reportes PDF de Auditorías
+
+DESCRIPCIÓN:
+Este módulo genera reportes PDF profesionales de auditorías web con gráficos,
+tablas y análisis detallados. Utiliza ReportLab para el PDF y Matplotlib para
+los gráficos de tendencia histórica.
+
+CARACTERÍSTICAS:
+- Gráficos de tendencia histórica por sección (SEO, seguridad, etc.)
+- Tablas detalladas de incidencias
+- Diseño profesional con paleta de colores consistente
+- Histogramas comparativos de múltiples auditorías
+
+@version 1.0.0
+@author Web Auditor Team
+@since 2024
+"""
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# IMPORTACIONES
+# ═══════════════════════════════════════════════════════════════════════════════
+
 import io
 import html
 from datetime import datetime
 
+# Matplotlib para generación de gráficos
 import matplotlib
-matplotlib.use("Agg")  # backend sin GUI, imprescindible en servidor
+matplotlib.use("Agg")  # Backend sin GUI para servidores
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 
+# ReportLab para generación de PDFs
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -17,8 +42,11 @@ from reportlab.platypus import (
     Table, TableStyle, PageBreak, Image,
 )
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# CONSTANTES
+# ═══════════════════════════════════════════════════════════════════════════════
 
-# ── Paleta de colores para las barras del histograma ──────────────────────────
+# Paleta de colores para las barras del histograma
 _BAR_COLORS = ["#6366f1", "#22d3ee", "#f59e0b", "#10b981", "#f43f5e"]
 
 

@@ -1,7 +1,7 @@
 import asyncio
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from scraper.strategies.selenium_strategy import SeleniumStrategy
 from shared.auditor.auditor_modules.core import QualityAuditor
 

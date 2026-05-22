@@ -110,7 +110,7 @@ services:
       # Scraper-related mounts (merged)
       - scraper_logs:/app/logs
       - ../data:/app/data
-      - ../config:/app/config:ro
+      - ../config:/app/config
       - ../scraper:/app/scraper:ro
       - ./scraper/entrypoint.py:/app/entrypoint.py:ro
     # Also run the scraper process in the same container (development-friendly)

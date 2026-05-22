@@ -36,7 +36,7 @@ class AuditScheduler:
         self._settings_fn  = settings_fn
         self._poll_interval = poll_interval
 
-        # website_id -> { "next_run": datetime, "crons": list, "active": bool }
+        # website_id → { "next_run": datetime, "crons": list, "active": bool }
         self._web_cache = {}
         
         self._next_active        = None
@@ -99,7 +99,7 @@ class AuditScheduler:
             logger.error("Error al refrescar datos en scheduler: %s", exc)
             return
 
-        now = datetime.now()
+        now = datetime.utcnow()
 
         # 3. Evaluar cada web
         for entry in active_list + inactive_list:

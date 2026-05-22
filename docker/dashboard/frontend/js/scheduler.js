@@ -6,6 +6,37 @@ import { useI18n } from "./i18n.js";
 
 // ── UTILIDADES CRON ─────────────────────────────────────────────────────────
 
+function getSpainOffset(date) {
+    const year = date.getUTCFullYear();
+    // DST en Europa/España empieza el último domingo de marzo a la 1:00 UTC
+    const dstStart = new Date(Date.UTC(year, 2, 31));
+    dstStart.setUTCDate(31 - dstStart.getUTCDay());
+    dstStart.setUTCHours(1, 0, 0, 0);
+
+    // DST en Europa/España termina el último domingo de octubre a la 1:00 UTC
+    const dstEnd = new Date(Date.UTC(year, 9, 31));
+    dstEnd.setUTCDate(31 - dstEnd.getUTCDay());
+    dstEnd.setUTCHours(1, 0, 0, 0);
+
+    // Si la fecha actual está dentro del periodo de DST, el offset es +2. Si no, +1.
+    if (date >= dstStart && date < dstEnd) {
+        return 2; // Horario de verano (CEST, UTC+2)
+    }
+    return 1; // Horario de invierno (CET, UTC+1)
+}
+
+function toSpanishTime(h, m) {
+    const offset = getSpainOffset(new Date());
+    const localHour = (parseInt(h, 10) + offset) % 24;
+    return { hour: localHour.toString(), min: m.toString() };
+}
+
+function toUTCTime(h, m) {
+    const offset = getSpainOffset(new Date());
+    const utcHour = (parseInt(h, 10) - offset + 24) % 24;
+    return { hour: utcHour.toString(), min: m.toString() };
+}
+
 export function parseCron(c) {
   const parts = (c && c.split(" ").length === 5 ? c : "0 0 * * *").split(" ");
   return { min: parts[0], hour: parts[1], dom: parts[2], month: parts[3], dow: parts[4] };
@@ -68,6 +99,7 @@ function SingleCronEditor({ cronValue, color, onChange, onRemove, showRemove }) 
   const { t } = useI18n();
   const parts = parseCron(cronValue);
   const freq = detectFrequency(parts);
+  const displayTime = toSpanishTime(parts.hour, parts.min);
 
   const updateParts = (newParts) => {
     const p = { ...parts, ...newParts };
@@ -117,10 +149,11 @@ function SingleCronEditor({ cronValue, color, onChange, onRemove, showRemove }) 
         React.createElement("label", { style: { fontSize: "11px", opacity: 0.5, display: "block", marginBottom: "8px", textTransform: "uppercase" } }, t("scheduler.time")),
         React.createElement("input", {
           type: "time", className: "premium-input", style: { padding: "10px", fontSize: "13px" },
-          value: `${parts.hour.padStart(2, "0")}:${parts.min.padStart(2, "0")}`,
+          value: `${displayTime.hour.padStart(2, "0")}:${displayTime.min.padStart(2, "0")}`,
           onChange: (e) => {
             const [h, m] = e.target.value.split(":");
-            updateParts({ hour: parseInt(h).toString(), min: parseInt(m).toString() });
+            const utcTime = toUTCTime(h, m);
+            updateParts({ hour: utcTime.hour, min: utcTime.min });
           }
         })
       )
@@ -308,6 +341,7 @@ function WeeklyCronEditor({ rules, color, onChange, t, onFrequencyChange }) {
     rules.length === 0 && React.createElement("p", { style: { fontSize: "12px", color: "var(--text-dim)", marginBottom: "12px" } }, t("scheduler.weekly_select_day_message")),
     rules.map((rule, idx) => {
       const day = DAYS.find(d => d.id === rule.dow);
+      const displayTime = toSpanishTime(rule.hour, rule.min);
       return React.createElement("div", {
         key: idx,
         style: {
@@ -324,10 +358,11 @@ function WeeklyCronEditor({ rules, color, onChange, t, onFrequencyChange }) {
           React.createElement("input", {
             type: "time", className: "premium-input",
             style: { padding: "10px", fontSize: "13px", width: "100%" },
-            value: `${rule.hour.padStart(2, "0")}:${rule.min.padStart(2, "0")}`,
+            value: `${displayTime.hour.padStart(2, "0")}:${displayTime.min.padStart(2, "0")}`,
             onChange: (e) => {
               const [h, m] = e.target.value.split(":");
-              updateRule(idx, { ...rule, hour: parseInt(h).toString(), min: parseInt(m).toString() });
+              const utcTime = toUTCTime(h, m);
+              updateRule(idx, { ...rule, hour: utcTime.hour, min: utcTime.min });
             }
           })
         ),

@@ -9,7 +9,7 @@ estado de las auditorías.
 ENDPOINTS:
 - GET /summary - Métricas globales (webs activas, puntuaciones excelentes, próximos ciclos)
 
-@version 1.0.0
+@version 1.1.0
 @author Web Auditor Team
 @since 2024
 """
@@ -18,6 +18,8 @@ ENDPOINTS:
 # IMPORTACIONES
 # ═══════════════════════════════════════════════════════════════════════════════
 
+import json
+import os
 from fastapi import APIRouter
 
 # Importar repositorio de base de datos
@@ -29,6 +31,9 @@ from shared.database.repositories import dashboard as repo
 
 # Crear router con etiqueta "summary" para Swagger
 router = APIRouter(tags=["summary"])
+
+# Ruta al archivo de estado del scheduler (creado por el scraper)
+SCHEDULE_STATUS_FILE = "/app/config/schedule_status.json"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENDPOINTS
@@ -46,4 +51,23 @@ def global_summary():
             - next_active: Timestamp del próximo ciclo para websites activos
             - next_inactive: Timestamp del próximo ciclo para websites inactivos
     """
-    return repo.global_summary()
+    summary_data = repo.global_summary()
+    schedule_status = {}
+
+    if os.path.exists(SCHEDULE_STATUS_FILE):
+        try:
+            with open(SCHEDULE_STATUS_FILE, 'r') as f:
+                schedule_status = json.load(f)
+        except (IOError, json.JSONDecodeError):
+            # Si hay un error, el scheduler aún no ha escrito o el archivo es inválido.
+            # No es un error fatal, se devolverá un objeto vacío para el estado.
+            pass
+    
+    # Fusionar los datos del repositorio con el estado del scheduler
+    combined_data = {
+        **summary_data,
+        "next_active": schedule_status.get("next_active_timestamp"),
+        "next_inactive": schedule_status.get("next_inactive_timestamp"),
+    }
+    
+    return combined_data

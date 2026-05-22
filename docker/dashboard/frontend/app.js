@@ -34,7 +34,7 @@
  * - theme: Tema claro/oscuro
  * - showTourMenu: Estado del menú desplegable de tours
  * 
- * @version 2.1.0
+ * @version 2.2.0
  * @author Web Auditor Team
  * @since 2024
  */
@@ -140,7 +140,8 @@ function App() {
       setSummary(s || {});
       setClients(c || []);
       setWebsites(w || []);
-      setSettings(cfg || { cron_active: "", cron_inactive: "" });
+      // Unificar la configuración del schedule con los datos del resumen
+      setSettings({ ...(cfg || {}), next_active: s.next_active, next_inactive: s.next_inactive });
     } catch (err) { setFormError(err.message); }
     finally { setLoading(false); }
   };

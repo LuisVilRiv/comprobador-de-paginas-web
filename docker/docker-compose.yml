@@ -108,14 +108,16 @@ services:
       - ./dashboard/api/schemas:/app/schemas:ro
       - ./dashboard/api/routes:/app/routes:ro
       # Scraper-related mounts (merged)
-      - scraper_logs:/app/logs
+      - ./scraper_logs:/app/logs
       - ../data:/app/data
       - ../config:/app/config
       - ../scraper:/app/scraper:ro
       - ./scraper/entrypoint.py:/app/entrypoint.py:ro
+      - ./scraper/scheduler.py:/app/scheduler.py:ro
+      - ./scraper/service.py:/app/service.py:ro
     # Also run the scraper process in the same container (development-friendly)
     # Runs scraper in background and then starts uvicorn (hot-reload for API)
-    command: sh -c "python /app/entrypoint.py & uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+    command: sh -c "python /app/entrypoint.py > /app/logs/scraper.log 2>&1 & uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
     shm_size: "2gb"
     networks:
       - backend
@@ -148,8 +150,6 @@ services:
 # ── Volúmenes ────────────────────────────────────────────────────────────────
 volumes:
   pg_data:
-    driver: local
-  scraper_logs:
     driver: local
   ai_model_cache:
     driver: local

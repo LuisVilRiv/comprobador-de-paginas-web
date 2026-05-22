@@ -15,7 +15,7 @@ SECCIONES:
 - Auditoría: Umbrales de puntuación y parámetros de escaneo
 - AI Analyzer: Configuración del servicio de análisis con IA
 
-@version 1.0.0
+@version 1.0.1
 @author Web Auditor Team
 @since 2024
 """
@@ -73,9 +73,9 @@ DEFAULT_HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
     "Accept-Language": "es-ES,es;q=0.9,en-US;q=0.8,en;q=0.7",
     "Accept-Encoding": "gzip, deflate, br",
-    "Sec-CH-UA": '"Chromium";v="125", "Not=A?Brand";v="8", "Google Chrome";v="125"',
+    "Sec-CH-UA": '''"Chromium";v="125", "Not=A?Brand";v="8", "Google Chrome";v="125"''',
     "Sec-CH-UA-Mobile": "?0",
-    "Sec-CH-UA-Platform": '"Windows"',
+    "Sec-CH-UA-Platform": '''"Windows"''',
     "Sec-Fetch-Dest": "document",
     "Sec-Fetch-Mode": "navigate",
     "Sec-Fetch-Site": "none",
@@ -121,8 +121,8 @@ LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
 # Archivo de log
 LOG_FILE = LOG_DIR / "scraper.log"
 
-# Formato de los mensajes de log
-LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s — %(message)s"
+# Formato de los mensajes de log (usando guion simple para máxima compatibilidad)
+LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s - %(message)s"
 
 # Habilitar escritura de logs a archivo
 LOG_TO_FILE = os.environ.get("LOG_TO_FILE", "true").lower() == "true"
@@ -224,4 +224,3 @@ AI_ANALYZER_ENABLED = os.environ.get("AI_ANALYZER_ENABLED", "true").lower() == "
 
 # Estrategia de scraping por defecto (selenium, bs4, auto)
 DEFAULT_STRATEGY = os.environ.get("DEFAULT_STRATEGY", "selenium")
-

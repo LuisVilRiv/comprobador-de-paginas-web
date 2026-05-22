@@ -144,8 +144,8 @@ function App() {
     catch (err) { console.error(err); }
   };
 
-  useEffect(() => { loadAll(); loadSettingsData(); }, [clientId]);
-
+  useEffect(() => { loadAll(); }, [clientId, summary.active_websites, summary.excellent_count]);
+  useEffect(() => { loadSettingsData(); }, [settings.cron_active, settings.cron_inactive]);
   // Polling para auditorías en curso
   useEffect(() => {
     const hasRunning = websites.some(w => w.run_status === "running" || auditingIds.has(w.website_id));

@@ -312,6 +312,13 @@ select.premium-input option {
   position: relative;
 }
 
+/* Ensure emoji flags are always visible and not affected by text color */
+.tour-btn .flag-emoji,
+.tour-btn:has(.flag-emoji) {
+  font-size: 18px;
+  line-height: 1;
+}
+
 .tour-btn:hover {
   background: var(--border-main);
   color: var(--text-main);

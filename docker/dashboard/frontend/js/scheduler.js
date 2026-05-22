@@ -221,7 +221,7 @@ function SingleCronEditor({ cronValue, color, onChange, onRemove, showRemove }) 
   );
 }
 
-function WeeklyCronEditor({ rules, color, onChange, t }) {
+function WeeklyCronEditor({ rules, color, onChange, t, onFrequencyChange }) {
   const DAYS = [
     { id: "1", n: t("scheduler.day_l"), full: t("scheduler.day_l_full") },
     { id: "2", n: t("scheduler.day_m"), full: t("scheduler.day_m_full") },
@@ -253,6 +253,9 @@ function WeeklyCronEditor({ rules, color, onChange, t }) {
     onChange([...rules, createWeeklyRule(dayId)].sort((a, b) => Number(a.dow) - Number(b.dow)));
   };
 
+  // Get a representative time from the first rule (all rules should typically have the same time)
+  const representativeTime = rules.length > 0 ? rules[0] : { hour: "0", min: "0" };
+
   return React.createElement("div", {
     style: {
       background: "var(--bg-accent)",
@@ -262,14 +265,28 @@ function WeeklyCronEditor({ rules, color, onChange, t }) {
       marginBottom: "12px"
     }
   },
+    // Frequency selector to allow switching away from weekly mode
     React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "18px" } },
+      React.createElement("div", null,
+        React.createElement("label", { style: { fontSize: "11px", opacity: 0.5, display: "block", marginBottom: "8px", textTransform: "uppercase" } }, t("scheduler.freq")),
+        React.createElement("select", {
+          value: "weekly", className: "premium-input", style: { padding: "10px", fontSize: "13px" },
+          onChange: (e) => {
+            const f = e.target.value;
+            if (onFrequencyChange) onFrequencyChange(f, representativeTime);
+          }
+        },
+          React.createElement("option", { value: "daily" }, t("scheduler.daily")),
+          React.createElement("option", { value: "daily_periodic" }, t("scheduler.daily_x")),
+          React.createElement("option", { value: "weekly", selected: true }, t("scheduler.weekly")),
+          React.createElement("option", { value: "monthly" }, t("scheduler.monthly")),
+          React.createElement("option", { value: "monthly_periodic" }, t("scheduler.monthly_x")),
+          React.createElement("option", { value: "yearly" }, t("scheduler.yearly"))
+        )
+      ),
       React.createElement("div", null,
         React.createElement("strong", { style: { display: "block", marginBottom: "8px", color: "var(--text-main)" } }, t("scheduler.time")),
         React.createElement("span", { style: { fontSize: "12px", color: "var(--text-dim)" } }, t("scheduler.weekly_entry_time_help"))
-      ),
-      React.createElement("div", null,
-        React.createElement("strong", { style: { display: "block", marginBottom: "8px", color: "var(--text-main)" } }, t("scheduler.week_days")),
-        React.createElement("span", { style: { fontSize: "12px", color: "var(--text-dim)" } }, t("scheduler.weekly_entry_days_help"))
       )
     ),
     React.createElement("div", { style: { display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "18px" } },
@@ -363,6 +380,25 @@ export function CronManager({ label, value, onChange, color = "var(--primary)" }
         color,
         onChange: updateCronRules,
         t,
+        onFrequencyChange: (newFreq, time) => {
+          // Convert from weekly mode to the new frequency
+          let newRule;
+          if (newFreq === "daily") {
+            newRule = { min: time.min, hour: time.hour, dom: "*", month: "*", dow: "*" };
+          } else if (newFreq === "daily_periodic") {
+            newRule = { min: time.min, hour: time.hour, dom: "*/2", month: "*", dow: "*" };
+          } else if (newFreq === "monthly") {
+            newRule = { min: time.min, hour: time.hour, dom: "1", month: "*", dow: "*" };
+          } else if (newFreq === "monthly_periodic") {
+            newRule = { min: time.min, hour: time.hour, dom: "1", month: "*/3", dow: "*" };
+          } else if (newFreq === "yearly") {
+            newRule = { min: time.min, hour: time.hour, dom: "1", month: "1", dow: "*" };
+          } else {
+            // Stay in weekly mode (shouldn't happen, but fallback)
+            return;
+          }
+          onChange(serializeCronRule(newRule));
+        }
       }) : React.createElement(React.Fragment, null,
         crons.map((c, i) => React.createElement(SingleCronEditor, {
           key: i, cronValue: c, color,

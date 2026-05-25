@@ -174,10 +174,27 @@ class QualityAuditor:
             )
             spec_cue_hits = sum(1 for c in SPEC_TECHNICAL_CUES if c in body_text)
             looks_like_spec_document = word_count >= 800 and spec_cue_hits >= 2
+            url_lower = base_url.lower()
+            url_is_educational = any(
+                domain in url_lower
+                for domain in (
+                    "wikipedia.org",
+                    "rfc-editor.org",
+                    "tools.ietf.org",
+                    "developer.mozilla.org",
+                    "docs.python.org",
+                    "w3.org",
+                )
+            )
+            title_is_educational = any(
+                kw in title_str for kw in ("wikipedia", "rfc ", "rfc-", "enciclopedia", "specification")
+            )
             looks_educational = (
                 (educational_hits >= 2 and word_count >= 180)
                 or (word_count >= 300 and (heading_count >= 3 or has_reference_sections))
                 or looks_like_spec_document
+                or url_is_educational
+                or (educational_hits >= 3 and title_is_educational)
             )
 
             if isinstance(status_code, int) and status_code >= 400:

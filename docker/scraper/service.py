@@ -5,6 +5,8 @@ Orquesta el flujo de ejecución de una auditoría individual.
 
 from __future__ import annotations
 
+from bs4 import Tag
+
 from config.logging_config import setup_logger
 from scraper import ScraperContext
 from scraper.models.scrape_result import ScrapeResult
@@ -64,7 +66,7 @@ class AuditService:
                 if text_len < 100:
                     logger.info(
                         "🎯 Detectado contenedor SPA '%s' con poco contenido (%d chars).",
-                        el.name or el.get("id"),
+                        (el.name or el.get("id", "")) if isinstance(el, Tag) else "",
                         text_len,
                     )
                     is_spa_root_empty = True

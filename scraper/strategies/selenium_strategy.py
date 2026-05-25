@@ -43,6 +43,7 @@ class SeleniumStrategy(BaseScraper):
         """
         import requests as _req
 
+        meta: dict[str, int | str] = {}
         try:
             # Primary request: GET to obtain both content and status
             resp = _req.get(url, timeout=15, verify=False, headers={"User-Agent": "Mozilla/5.0"})
@@ -61,7 +62,7 @@ class SeleniumStrategy(BaseScraper):
                 meta = {"status_code": 0, "error": f"GET error: {e}; HEAD error: {e2}"}
         return html, meta
 
-    def scrape(self, url: str) -> ScrapeResult:
+    def _do_scrape(self, url: str) -> ScrapeResult:
         driver = self._create_driver()
         try:
             start = time.perf_counter()

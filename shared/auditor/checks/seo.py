@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 import shared.auditor.auditor_modules.helpers as helpers
 
@@ -21,14 +21,14 @@ def check_seo(soup: BeautifulSoup, issues: list[str], regex_set) -> None:
         issues.append(f"Longitud no óptima de <title> ({len(title)} caracteres).")
 
     meta_desc = soup.find("meta", attrs={"name": "description"})
-    desc_text = helpers.attr_to_str(meta_desc.get("content")).strip() if meta_desc else ""
+    desc_text = helpers.attr_to_str(meta_desc.get("content")).strip() if isinstance(meta_desc, Tag) else ""
     if not desc_text:
         issues.append("Falta meta description.")
     elif len(desc_text) < 70 or len(desc_text) > 160:
         issues.append(f"Longitud no óptima de meta description ({len(desc_text)} caracteres).")
 
     html_tag = soup.find("html")
-    if html_tag and not html_tag.get("lang"):
+    if isinstance(html_tag, Tag) and not html_tag.get("lang"):
         issues.append("La etiqueta <html> no define el atributo lang.")
     if not soup.find("link", attrs={"rel": "canonical"}):
         issues.append("Falta canonical (<link rel='canonical'>).")
@@ -65,7 +65,7 @@ def check_seo(soup: BeautifulSoup, issues: list[str], regex_set) -> None:
                 except (json.JSONDecodeError, ValueError):
                     issues.append("JSON-LD presente pero con sintaxis JSON inválida.")
 
-    page_lang = helpers.attr_to_str(html_tag.get("lang")).strip() if html_tag else ""
+    page_lang = helpers.attr_to_str(html_tag.get("lang")).strip() if isinstance(html_tag, Tag) else ""
     hreflang_links = soup.find_all("link", attrs={"rel": "alternate", "hreflang": True})
     if page_lang and not hreflang_links:
         issues.append(f'La página declara lang="{page_lang}" pero no tiene etiquetas hreflang.')

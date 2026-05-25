@@ -8,6 +8,7 @@ from __future__ import annotations
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
+from shared.auditor.auditor_modules.helpers import attr_to_str
 
 
 def check_images(
@@ -26,8 +27,8 @@ def check_images(
         return
 
     for img in images:
-        src = (img.get("src") or "").strip()
-        alt = (img.get("alt") or "").strip()
+        src = attr_to_str(img.get("src")).strip()
+        alt = attr_to_str(img.get("alt")).strip()
         line_no, line = find_line_fn(html_lines, img)
         location = f"línea aproximada {line_no}: {line}"
 

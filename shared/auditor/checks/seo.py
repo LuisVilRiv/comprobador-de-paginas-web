@@ -9,6 +9,8 @@ import json
 
 from bs4 import BeautifulSoup
 
+import shared.auditor.auditor_modules.helpers as helpers
+
 
 def check_seo(soup: BeautifulSoup, issues: list[str], regex_set) -> None:
 
@@ -19,7 +21,7 @@ def check_seo(soup: BeautifulSoup, issues: list[str], regex_set) -> None:
         issues.append(f"Longitud no óptima de <title> ({len(title)} caracteres).")
 
     meta_desc = soup.find("meta", attrs={"name": "description"})
-    desc_text = (meta_desc.get("content") or "").strip() if meta_desc else ""
+    desc_text = helpers.attr_to_str(meta_desc.get("content")).strip() if meta_desc else ""
     if not desc_text:
         issues.append("Falta meta description.")
     elif len(desc_text) < 70 or len(desc_text) > 160:
@@ -38,7 +40,7 @@ def check_seo(soup: BeautifulSoup, issues: list[str], regex_set) -> None:
         issues.append(f"Múltiples <h1> detectados ({len(h1_list)}). Solo debe haber uno.")
 
     og_props = {"og:title", "og:description", "og:image"}
-    found_og = {(m.get("property") or "").lower() for m in soup.find_all("meta", property=True)}
+    found_og = {helpers.attr_to_str(m.get("property")).lower() for m in soup.find_all("meta", property=True)}
     missing_og = og_props - found_og
     if missing_og:
         issues.append(
@@ -63,13 +65,13 @@ def check_seo(soup: BeautifulSoup, issues: list[str], regex_set) -> None:
                 except (json.JSONDecodeError, ValueError):
                     issues.append("JSON-LD presente pero con sintaxis JSON inválida.")
 
-    page_lang = (html_tag.get("lang") or "").strip() if html_tag else ""
+    page_lang = helpers.attr_to_str(html_tag.get("lang")).strip() if html_tag else ""
     hreflang_links = soup.find_all("link", attrs={"rel": "alternate", "hreflang": True})
     if page_lang and not hreflang_links:
         issues.append(f'La página declara lang="{page_lang}" pero no tiene etiquetas hreflang.')
 
     for img in soup.find_all("img"):
-        alt = (img.get("alt") or "").strip()
+        alt = helpers.attr_to_str(img.get("alt")).strip()
         if alt and regex_set.filename_alt_regex.match(alt):
-            src_hint = (img.get("src") or "")[:80]
+            src_hint = helpers.attr_to_str(img.get("src"))[:80]
             issues.append(f'El alt de una imagen es un nombre de archivo ("{alt}"), no descriptivo. src={src_hint}')

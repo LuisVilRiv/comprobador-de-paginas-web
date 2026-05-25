@@ -2,8 +2,11 @@
 check_technical — DOCTYPE, charset, assets, iframes, IDs duplicados, favicon, etc.
 Extraído de QualityAuditor._check_technical y _check_assets.
 """
+
 from __future__ import annotations
+
 from urllib.parse import urljoin
+
 from bs4 import BeautifulSoup
 
 
@@ -43,17 +46,19 @@ def check_technical(
     for dup in [tid for tid, count in id_count.items() if count > 1][:20]:
         issues.append(f"ID duplicado detectado: #{dup}.")
 
-    _check_assets(soup, base_url, html_lines, issues, asset_stats, is_banned_fn, check_url_fn, classify_speed_fn, find_line_fn)
+    _check_assets(
+        soup, base_url, html_lines, issues, asset_stats, is_banned_fn, check_url_fn, classify_speed_fn, find_line_fn
+    )
     _check_forms_accessibility(soup, html_lines, issues, find_line_fn)
 
     if not soup.find("link", rel=lambda r: r and ("icon" in r or "shortcut icon" in r)):
-        issues.append("Falta favicon (<link rel=\"icon\">).")
+        issues.append('Falta favicon (<link rel="icon">).')
 
     if not soup.find("link", attrs={"rel": "manifest"}):
-        recommendations.append("Falta web manifest (<link rel=\"manifest\">). Necesario para PWA.")
+        recommendations.append('Falta web manifest (<link rel="manifest">). Necesario para PWA.')
 
     inline_script_chars = sum(len(s.get_text(strip=True)) for s in soup.find_all("script") if not s.get("src"))
-    inline_style_chars  = sum(len(s.get_text(strip=True)) for s in soup.find_all("style"))
+    inline_style_chars = sum(len(s.get_text(strip=True)) for s in soup.find_all("style"))
     if inline_script_chars > 500_000:
         recommendations.append(f"JS en línea muy voluminoso ({inline_script_chars // 1024} KB).")
     if inline_style_chars > 200_000:
@@ -61,8 +66,7 @@ def check_technical(
 
 
 def _check_assets(
-    soup, base_url, html_lines, issues, asset_stats,
-    is_banned_fn, check_url_fn, classify_speed_fn, find_line_fn
+    soup, base_url, html_lines, issues, asset_stats, is_banned_fn, check_url_fn, classify_speed_fn, find_line_fn
 ):
     base_is_https = base_url.lower().startswith("https://")
 
@@ -107,8 +111,8 @@ def _check_forms_accessibility(soup, html_lines, issues, find_line_fn):
     for field in soup.find_all(["input", "select", "textarea"]):
         if field.name == "input" and (field.get("type") or "").lower() in {"hidden", "submit", "button"}:
             continue
-        has_aria  = bool((field.get("aria-label") or "").strip())
-        fid       = (field.get("id") or "").strip()
+        has_aria = bool((field.get("aria-label") or "").strip())
+        fid = (field.get("id") or "").strip()
         has_label = bool(fid and soup.find("label", attrs={"for": fid}))
         if not has_aria and not has_label:
             ln, line = find_line_fn(html_lines, field)

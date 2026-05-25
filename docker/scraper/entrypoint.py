@@ -6,6 +6,7 @@ Responsabilidades:
   · Delegar el scheduling al módulo scheduler.py.
   · Leer/escribir de PostgreSQL via shared.database.repo_scraper.
 """
+
 from __future__ import annotations
 
 import os
@@ -14,22 +15,24 @@ import sys
 # Añadir /app al sys.path para importaciones locales (service, scheduler)
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
+from service import AuditService
+
 from config.logging_config import setup_logger
-from scraper import ScraperContext, SeleniumStrategy, BeautifulSoupStrategy
+from scraper import BeautifulSoupStrategy, ScraperContext, SeleniumStrategy
 from shared.auditor import QualityAuditor
 from shared.database.repositories import scraper as db
-from service import AuditService
 
 logger = setup_logger(__name__)
 
 STRATEGY_REGISTRY = {
-    "selenium":      SeleniumStrategy(),
+    "selenium": SeleniumStrategy(),
     "beautifulsoup": BeautifulSoupStrategy(),
 }
 STRATEGY_ORDER = ["selenium", "beautifulsoup"]
 
 
 # ── Orquestación de Ciclos ──────────────────────────────────────────────────
+
 
 def run_pending_audits(service: AuditService) -> int:
     entries = db.get_pending_audit_websites()
@@ -68,9 +71,10 @@ def run_inactive_cycle(service: AuditService) -> int:
 
 # ── Punto de entrada ──────────────────────────────────────────────────────────
 
+
 def main():
     interval = int(os.environ.get("RUN_INTERVAL_SECONDS", "0"))
-    
+
     # Inicializar componentes
     context = ScraperContext(STRATEGY_REGISTRY["selenium"])
     auditor = QualityAuditor()
@@ -87,14 +91,14 @@ def main():
     from scheduler import AuditScheduler
 
     scheduler = AuditScheduler(
-        run_pending_fn  = lambda: run_pending_audits(service),
-        run_active_fn   = lambda: run_active_cycle(service),
-        run_inactive_fn = lambda: run_inactive_cycle(service),
-        run_single_fn   = lambda entry: service.process_website(entry),
-        get_active_fn   = db.get_active_websites,
-        get_inactive_fn = db.get_inactive_websites,
-        settings_fn     = db.get_settings,
-        poll_interval   = 5,
+        run_pending_fn=lambda: run_pending_audits(service),
+        run_active_fn=lambda: run_active_cycle(service),
+        run_inactive_fn=lambda: run_inactive_cycle(service),
+        run_single_fn=lambda entry: service.process_website(entry),
+        get_active_fn=db.get_active_websites,
+        get_inactive_fn=db.get_inactive_websites,
+        settings_fn=db.get_settings,
+        poll_interval=5,
     )
     scheduler.run_forever()
 

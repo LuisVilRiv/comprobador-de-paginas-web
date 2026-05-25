@@ -1,5 +1,7 @@
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
 from shared.auditor.checks.browser import check_js_console_errors, interact_buttons_selenium
 
 
@@ -23,9 +25,9 @@ def test_browser_check_console_errors():
         {"level": "ERROR", "message": "Failed to load resource: 404"},
     ]
     issues = []
-    
+
     check_js_console_errors(driver, "https://example.com", issues)
-    
+
     assert len(issues) == 2
     assert any("ReferenceError" in issue for issue in issues)
     assert any("Failed to load resource" in issue for issue in issues)
@@ -34,11 +36,9 @@ def test_browser_check_console_errors():
 def test_browser_check_console_errors_limit():
     # Caso 2: Respetar el límite de errores configurado (AUDIT_JS_CONSOLE_MAX_ERRORS = 3)
     driver = MagicMock()
-    driver.get_log.return_value = [
-        {"level": "SEVERE", "message": f"Error {i}"} for i in range(10)
-    ]
+    driver.get_log.return_value = [{"level": "SEVERE", "message": f"Error {i}"} for i in range(10)]
     issues = []
-    
+
     check_js_console_errors(driver, "https://example.com", issues)
     assert len(issues) == 3  # Límite máximo configurado en MockSettings
 
@@ -62,17 +62,19 @@ def test_browser_interact_buttons_alert():
     driver = MagicMock()
     btn = MagicMock()
     btn.is_displayed.return_value = True
-    
+
     # Mockear find_elements
     driver.find_elements.return_value = [btn]
-    
+
     # Simular alerta al llamar btn.click()
     alert = MagicMock()
     alert.text = "¡Alerta importante!"
     driver.switch_to.alert = alert
-    
+
     issues = []
     interact_buttons_selenium(driver, "https://example.com", issues, None)
-    
-    assert any("Alerta de navegador no capturada detectada al clicar botón: ¡Alerta importante!" in issue for issue in issues)
+
+    assert any(
+        "Alerta de navegador no capturada detectada al clicar botón: ¡Alerta importante!" in issue for issue in issues
+    )
     alert.accept.assert_called_once()

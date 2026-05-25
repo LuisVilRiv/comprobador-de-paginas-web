@@ -1,6 +1,8 @@
-import pytest
 import re
+
+import pytest
 from bs4 import BeautifulSoup
+
 from shared.auditor.checks.content import check_content
 
 
@@ -62,7 +64,7 @@ def test_content_perfect(content_deps):
     soup = BeautifulSoup(html, "html.parser")
     issues = []
     dicts, regex_set, norm_fn, find_fn = content_deps
-    
+
     # Usar /contacto para evitar la validación de thin content
     check_content(soup, issues, html.splitlines(), "https://example.com/contacto", dicts, regex_set, norm_fn, find_fn)
     assert len(issues) == 0
@@ -74,7 +76,7 @@ def test_content_empty_body(content_deps):
     soup = BeautifulSoup(html, "html.parser")
     issues = []
     dicts, regex_set, norm_fn, find_fn = content_deps
-    
+
     check_content(soup, issues, html.splitlines(), "https://example.com/contacto", dicts, regex_set, norm_fn, find_fn)
     assert any("No se encontró texto visible en el body" in issue for issue in issues)
 
@@ -92,7 +94,7 @@ def test_content_lorem_and_profanity(content_deps):
     soup = BeautifulSoup(html, "html.parser")
     issues = []
     dicts, regex_set, norm_fn, find_fn = content_deps
-    
+
     check_content(soup, issues, html.splitlines(), "https://example.com/contacto", dicts, regex_set, norm_fn, find_fn)
     assert any("[contenido de relleno] Patrón 'lorem ipsum'" in issue for issue in issues)
     assert any("[palabra malsonante] Patrón 'mierda'" in issue for issue in issues)
@@ -111,7 +113,7 @@ def test_content_evasion_spaced_and_dotted(content_deps):
     soup = BeautifulSoup(html, "html.parser")
     issues = []
     dicts, regex_set, norm_fn, find_fn = content_deps
-    
+
     check_content(soup, issues, html.splitlines(), "https://example.com/contacto", dicts, regex_set, norm_fn, find_fn)
     assert any("Evasión con letras espaciadas 'm i e r d a'" in issue for issue in issues)
     assert any("Evasión con puntuación intercalada 'p.u.t.a'" in issue for issue in issues)
@@ -129,7 +131,7 @@ def test_content_exposed_admin_path(content_deps):
     soup = BeautifulSoup(html, "html.parser")
     issues = []
     dicts, regex_set, norm_fn, find_fn = content_deps
-    
+
     check_content(soup, issues, html.splitlines(), "https://example.com/contacto", dicts, regex_set, norm_fn, find_fn)
     assert any("Ruta de administración expuesta en texto visible '/wp-admin'" in issue for issue in issues)
 
@@ -146,13 +148,14 @@ def test_content_thin_content(content_deps, monkeypatch):
     soup = BeautifulSoup(html, "html.parser")
     issues = []
     dicts, regex_set, norm_fn, find_fn = content_deps
-    
+
     # Parchear settings de min palabras
     class MockSettings:
         AUDIT_MIN_WORD_COUNT = 50
         AUDIT_KEYWORD_DENSITY_MAX = 0.35
+
     monkeypatch.setattr("shared.auditor.checks.content.settings", MockSettings)
-    
+
     check_content(soup, issues, html.splitlines(), "https://example.com/blog", dicts, regex_set, norm_fn, find_fn)
     assert any("Contenido delgado" in issue for issue in issues)
 
@@ -164,12 +167,13 @@ def test_content_keyword_stuffing(content_deps, monkeypatch):
     soup = BeautifulSoup(html, "html.parser")
     issues = []
     dicts, regex_set, norm_fn, find_fn = content_deps
-    
+
     class MockSettings:
         AUDIT_MIN_WORD_COUNT = 10
         AUDIT_KEYWORD_DENSITY_MAX = 0.40
+
     monkeypatch.setattr("shared.auditor.checks.content.settings", MockSettings)
-    
+
     check_content(soup, issues, html.splitlines(), "https://example.com/contacto", dicts, regex_set, norm_fn, find_fn)
     assert any("Posible keyword stuffing: 'software'" in issue for issue in issues)
 
@@ -186,6 +190,6 @@ def test_content_missing_legal_and_contact(content_deps):
     soup = BeautifulSoup(html, "html.parser")
     issues = []
     dicts, regex_set, norm_fn, find_fn = content_deps
-    
+
     check_content(soup, issues, html.splitlines(), "https://example.com/contacto", dicts, regex_set, norm_fn, find_fn)
     assert any("No se detecta enlace ni texto de aviso legal ni de política de privacidad" in issue for issue in issues)

@@ -1,5 +1,5 @@
-import pytest
 from bs4 import BeautifulSoup
+
 from shared.auditor.checks.technical import check_technical
 
 
@@ -40,10 +40,10 @@ def test_technical_perfect():
     issues = []
     recommendations = []
     asset_stats = {"checked": 0, "broken": 0, "mixed_content": 0}
-    
+
     def mock_check_url(url):
         return True, 100, 200, ""
-        
+
     check_technical(
         html=html,
         soup=soup,
@@ -55,9 +55,9 @@ def test_technical_perfect():
         is_banned_fn=mock_is_banned,
         check_url_fn=mock_check_url,
         classify_speed_fn=mock_classify_speed,
-        find_line_fn=mock_find_line
+        find_line_fn=mock_find_line,
     )
-    
+
     assert len(issues) == 0
     assert len(recommendations) == 0
 
@@ -78,7 +78,7 @@ def test_technical_missing_essential_tags():
     issues = []
     recommendations = []
     asset_stats = {"checked": 0, "broken": 0, "mixed_content": 0}
-    
+
     check_technical(
         html=html,
         soup=soup,
@@ -90,9 +90,9 @@ def test_technical_missing_essential_tags():
         is_banned_fn=mock_is_banned,
         check_url_fn=lambda u: (True, 50, 200, ""),
         classify_speed_fn=mock_classify_speed,
-        find_line_fn=mock_find_line
+        find_line_fn=mock_find_line,
     )
-    
+
     assert any("Falta <!DOCTYPE html>" in issue for issue in issues)
     assert any("Falta <meta charset='utf-8'>" in issue for issue in issues)
     assert any("Falta meta robots" in issue for issue in issues)
@@ -114,7 +114,7 @@ def test_technical_duplicate_ids_and_iframe_title():
     issues = []
     recommendations = []
     asset_stats = {"checked": 0, "broken": 0, "mixed_content": 0}
-    
+
     check_technical(
         html=html,
         soup=soup,
@@ -126,9 +126,9 @@ def test_technical_duplicate_ids_and_iframe_title():
         is_banned_fn=mock_is_banned,
         check_url_fn=lambda u: (True, 50, 200, ""),
         classify_speed_fn=mock_classify_speed,
-        find_line_fn=mock_find_line
+        find_line_fn=mock_find_line,
     )
-    
+
     assert any("Iframe sin atributo title" in issue for issue in issues)
     assert any("ID duplicado detectado: #duplicate-id" in issue for issue in issues)
 
@@ -150,7 +150,7 @@ def test_technical_mixed_content_and_blocking_scripts():
     issues = []
     recommendations = []
     asset_stats = {"checked": 0, "broken": 0, "mixed_content": 0}
-    
+
     check_technical(
         html=html,
         soup=soup,
@@ -162,9 +162,9 @@ def test_technical_mixed_content_and_blocking_scripts():
         is_banned_fn=mock_is_banned,
         check_url_fn=lambda u: (True, 50, 200, ""),
         classify_speed_fn=mock_classify_speed,
-        find_line_fn=mock_find_line
+        find_line_fn=mock_find_line,
     )
-    
+
     assert any("Contenido mixto CSS" in issue for issue in issues)
     assert any("Script bloqueante en <head>" in issue for issue in issues)
     assert asset_stats["mixed_content"] == 1
@@ -187,11 +187,11 @@ def test_technical_broken_assets():
     issues = []
     recommendations = []
     asset_stats = {"checked": 0, "broken": 0, "mixed_content": 0}
-    
+
     # Simular fallo en check_url
     def mock_check_url_fail(url):
         return False, 900, 404, ""
-        
+
     check_technical(
         html=html,
         soup=soup,
@@ -203,9 +203,9 @@ def test_technical_broken_assets():
         is_banned_fn=mock_is_banned,
         check_url_fn=mock_check_url_fail,
         classify_speed_fn=mock_classify_speed,
-        find_line_fn=mock_find_line
+        find_line_fn=mock_find_line,
     )
-    
+
     assert any("CSS inaccesible" in issue for issue in issues)
     assert any("JS inaccesible" in issue for issue in issues)
     assert asset_stats["broken"] == 2
@@ -229,7 +229,7 @@ def test_technical_form_accessibility():
     issues = []
     recommendations = []
     asset_stats = {"checked": 0, "broken": 0, "mixed_content": 0}
-    
+
     check_technical(
         html=html,
         soup=soup,
@@ -241,7 +241,7 @@ def test_technical_form_accessibility():
         is_banned_fn=mock_is_banned,
         check_url_fn=lambda u: (True, 50, 200, ""),
         classify_speed_fn=mock_classify_speed,
-        find_line_fn=mock_find_line
+        find_line_fn=mock_find_line,
     )
-    
+
     assert sum("Campo de formulario sin label ni aria-label" in issue for issue in issues) == 2

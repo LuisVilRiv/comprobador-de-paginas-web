@@ -2,8 +2,11 @@
 check_images — Imágenes rotas, alt, lazy-loading, dimensiones y formato.
 Extraído de QualityAuditor._check_images.
 """
+
 from __future__ import annotations
+
 from urllib.parse import urljoin
+
 from bs4 import BeautifulSoup
 
 
@@ -45,19 +48,15 @@ def check_images(
         speed = classify_speed_fn(elapsed_ms)
         if not ok:
             issues.append(
-                f"Imagen rota src={absolute_url} estado={status_code} "
-                f"tiempo={elapsed_ms}ms ({speed}) en {location}"
+                f"Imagen rota src={absolute_url} estado={status_code} tiempo={elapsed_ms}ms ({speed}) en {location}"
             )
 
         if not img.get("loading"):
-            issues.append(f"Imagen sin loading=\"lazy\" (src={src[:80]}) en {location}")
+            issues.append(f'Imagen sin loading="lazy" (src={src[:80]}) en {location}')
         if not img.get("width") or not img.get("height"):
             issues.append(
-                f"Imagen sin width/height explícitos (causa layout shift / CLS): "
-                f"src={src[:80]} en {location}"
+                f"Imagen sin width/height explícitos (causa layout shift / CLS): src={src[:80]} en {location}"
             )
         ext = src.rsplit(".", 1)[-1].lower() if "." in src else ""
         if ext in ("jpg", "jpeg", "png", "gif", "bmp", "tiff"):
-            issues.append(
-                f"Imagen en formato heredado ({ext}): considerar WebP/AVIF. src={src[:80]}"
-            )
+            issues.append(f"Imagen en formato heredado ({ext}): considerar WebP/AVIF. src={src[:80]}")

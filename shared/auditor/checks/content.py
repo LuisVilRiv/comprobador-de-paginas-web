@@ -3,9 +3,13 @@ check_content — Calidad de contenido: relleno, toxicidad, keyword stuffing,
                 requisitos legales y contacto.
 Extraído de QualityAuditor._check_content y _detect_incoherent_segments.
 """
+
 from __future__ import annotations
+
 import re
+
 from bs4 import BeautifulSoup
+
 from config import settings
 
 
@@ -28,11 +32,11 @@ def check_content(
     text_normalized = normalize_fn(text_l)
 
     all_patterns = (
-        *((p, "contenido de relleno")    for p in dicts.lorem_patterns),
-        *((p, "contenido incoherente")   for p in dicts.incoherent_patterns),
-        *((p, "contenido explícito")     for p in dicts.explicit_patterns),
-        *((p, "palabra malsonante")      for p in dicts.profanity_patterns),
-        *((p, "discurso de odio")        for p in dicts.hate_patterns),
+        *((p, "contenido de relleno") for p in dicts.lorem_patterns),
+        *((p, "contenido incoherente") for p in dicts.incoherent_patterns),
+        *((p, "contenido explícito") for p in dicts.explicit_patterns),
+        *((p, "palabra malsonante") for p in dicts.profanity_patterns),
+        *((p, "discurso de odio") for p in dicts.hate_patterns),
     )
 
     for pattern, category in all_patterns:
@@ -49,10 +53,7 @@ def check_content(
                 continue
             evasion_note = " [detectado via normalización]" if not in_original else ""
             line_no, line = find_line_fn(html_lines, pattern)
-            issues.append(
-                f"[{category}] Patrón '{pattern}'{evasion_note} "
-                f"en línea aproximada {line_no}: {line}"
-            )
+            issues.append(f"[{category}] Patrón '{pattern}'{evasion_note} en línea aproximada {line_no}: {line}")
 
     if regex_set.gibberish_regex.search(text_l):
         issues.append("Secuencias de caracteres repetidos anormales detectadas.")
@@ -106,7 +107,9 @@ def check_content(
     words = regex_set.keyword_density_word_regex.findall(text_l)
     word_count = len(words)
     url_lower = base_url.lower()
-    is_short_page = any(kw in url_lower for kw in ("contact", "contacto", "gracias", "thank", "legal", "privacy", "aviso"))
+    is_short_page = any(
+        kw in url_lower for kw in ("contact", "contacto", "gracias", "thank", "legal", "privacy", "aviso")
+    )
     if not is_short_page and 0 < word_count < settings.AUDIT_MIN_WORD_COUNT:
         issues.append(
             f"Contenido delgado (thin content): solo {word_count} palabras visibles "
@@ -121,17 +124,21 @@ def check_content(
         density = top_count / len(words)
         if density > settings.AUDIT_KEYWORD_DENSITY_MAX:
             issues.append(
-                f"Posible keyword stuffing: '{top_word}' aparece {top_count} veces "
-                f"({density:.1%} del texto)."
+                f"Posible keyword stuffing: '{top_word}' aparece {top_count} veces ({density:.1%} del texto)."
             )
 
     legal_terms = {"aviso legal", "política de privacidad", "privacy policy", "términos", "cookies", "rgpd", "gdpr"}
     has_legal = any(term in text_l for term in legal_terms) or any(
-        any(term in (a.get_text(" ", strip=True).lower()) or term in (a.get("href") or "").lower() for term in legal_terms)
+        any(
+            term in (a.get_text(" ", strip=True).lower()) or term in (a.get("href") or "").lower()
+            for term in legal_terms
+        )
         for a in soup.find_all("a")
     )
     if not has_legal:
-        issues.append("No se detecta enlace ni texto de aviso legal ni de política de privacidad. Obligatorio por el RGPD.")
+        issues.append(
+            "No se detecta enlace ni texto de aviso legal ni de política de privacidad. Obligatorio por el RGPD."
+        )
 
     contact_terms = {"contacto", "contact", "contáctanos", "escríbenos"}
     has_contact = any(term in text_l for term in contact_terms)

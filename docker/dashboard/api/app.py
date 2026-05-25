@@ -65,12 +65,12 @@ from fastapi.middleware.cors import CORSMiddleware
 # Importar routers de cada módulo
 # Cada router maneja un conjunto de endpoints relacionados
 from routes import (
-    clients_router,      # Endpoints para gestión de clientes
-    health_router,       # Endpoint para health check
-    runs_router,         # Endpoints para historial de auditorías
-    settings_router,     # Endpoints para configuración del scheduler
-    summary_router,      # Endpoints para resumen de métricas
-    websites_router,     # Endpoints para gestión de websites
+    clients_router,  # Endpoints para gestión de clientes
+    health_router,  # Endpoint para health check
+    runs_router,  # Endpoints para historial de auditorías
+    settings_router,  # Endpoints para configuración del scheduler
+    summary_router,  # Endpoints para resumen de métricas
+    websites_router,  # Endpoints para gestión de websites
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -80,8 +80,8 @@ from routes import (
 # Crear instancia principal de FastAPI
 app = FastAPI(
     title="Web Auditor Dashboard API",  # Título mostrado en Swagger UI
-    version="1.0.0",                    # Versión de la API
-    docs_url="/docs",                   # URL para documentación Swagger
+    version="1.0.0",  # Versión de la API
+    docs_url="/docs",  # URL para documentación Swagger
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -94,9 +94,9 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],                 # Permitir peticiones from any origin
+    allow_origins=["*"],  # Permitir peticiones from any origin
     allow_methods=["GET", "POST", "PUT", "DELETE"],  # Métodos HTTP permitidos
-    allow_headers=["*"],                 # Permitir todos los headers
+    allow_headers=["*"],  # Permitir todos los headers
 )
 
 # NOTA: En producción, `allow_origins` debería ser una lista específica de orígenes
@@ -109,12 +109,12 @@ app.add_middleware(
 # Registrar todos los routers en la aplicación principal
 # Cada router añade sus endpoints específicos a la API
 
-app.include_router(health_router)       # /health - Health check
-app.include_router(clients_router)      # /api/clients - Gestión de clientes
-app.include_router(websites_router)     # /api/websites - Gestión de websites
-app.include_router(summary_router)      # /api/summary - Métricas del dashboard
-app.include_router(runs_router)         # /api/runs - Historial de auditorías
-app.include_router(settings_router)     # /api/settings - Configuración del scheduler
+app.include_router(health_router)  # /health - Health check
+app.include_router(clients_router)  # /api/clients - Gestión de clientes
+app.include_router(websites_router)  # /api/websites - Gestión de websites
+app.include_router(summary_router)  # /api/summary - Métricas del dashboard
+app.include_router(runs_router)  # /api/runs - Historial de auditorías
+app.include_router(settings_router)  # /api/settings - Configuración del scheduler
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # PUNTOS DE ENTRADA (ENTRYPOINTS)

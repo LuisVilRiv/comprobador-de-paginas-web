@@ -27,24 +27,24 @@ AUTORIZACIÓN:
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy import select
 
-# Importar repositorio de base de datos para operaciones CRUD
-from shared.database.repositories import dashboard as repo
-from shared.database.repositories.dashboard import runs as runs_repo
+# Importar esquemas de validación (Pydantic)
+from schemas.clients import ClientCreate, ClientUpdate
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 # Importar conexión a base de datos
 from shared.database.connection import get_db
 
 # Importar modelos ORM
-from shared.database.models import Client, Website, AuditRun
+from shared.database.models import AuditRun, Client, Website
+
+# Importar repositorio de base de datos para operaciones CRUD
+from shared.database.repositories import dashboard as repo
+from shared.database.repositories.dashboard import runs as runs_repo
 
 # Importar generador de reportes PDF
 from shared.utils.pdf_generator import generate_client_report
-
-# Importar esquemas de validación (Pydantic)
-from schemas.clients import ClientCreate, ClientUpdate
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # CONFIGURACIÓN DEL ROUTER
@@ -57,14 +57,15 @@ router = APIRouter(prefix="/clients", tags=["clients"])
 # ENDPOINTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("")
 def list_clients():
     """
     Lista todos los clientes registrados en el sistema.
-    
+
     Returns:
         list: Array de objetos Client con sus datos completos.
-    
+
     Example:
         GET /api/clients
         [
@@ -84,7 +85,7 @@ def list_clients():
 def create_client(payload: ClientCreate):
     """
     Crea un nuevo cliente en el sistema.
-    
+
     Args:
         payload (ClientCreate): Datos del cliente a crear.
             - name (str, required): Nombre del cliente
@@ -93,13 +94,13 @@ def create_client(payload: ClientCreate):
             - company (str, optional): Nombre de la empresa
             - notes (str, optional): Notas adicionales
             - custom_cron (str, optional): Programación CRON personalizada
-    
+
     Returns:
         Client: Objeto del cliente creado con su ID generado.
-    
+
     Raises:
         HTTPException: 400 si hay error de integridad (ej: email duplicado)
-    
+
     Example:
         POST /api/clients
         {
@@ -118,26 +119,26 @@ def create_client(payload: ClientCreate):
         )
     except IntegrityError as exc:
         # Manejar errores de base de datos (ej: unique constraint violations)
-        raise HTTPException(status_code=400, detail=f"Error: {str(exc)}")
+        raise HTTPException(status_code=400, detail=f"Error: {str(exc)}") from exc
 
 
 @router.put("/{client_id}")
 def update_client(client_id: str, payload: ClientUpdate):
     """
     Actualiza los datos de un cliente existente.
-    
+
     Args:
         client_id (str): ID del cliente a actualizar
         payload (ClientUpdate): Datos a actualizar (todos opcionales)
-    
+
     Returns:
         Client: Objeto del cliente actualizado.
-    
+
     Raises:
-        HTTPException: 
+        HTTPException:
             - 400 si no hay campos para actualizar
             - 404 si el cliente no existe
-    
+
     Example:
         PUT /api/clients/123
         {
@@ -147,18 +148,18 @@ def update_client(client_id: str, payload: ClientUpdate):
     # Filtrar solo los campos que fueron explícitamente establecidos
     # Esto permite actualizaciones parciales sin sobrescribir con null
     data = {k: v for k, v in payload.dict().items() if k in payload.model_fields_set}
-    
+
     if not data:
         # Si no hay campos para actualizar, retornar error
         raise HTTPException(status_code=400, detail="No fields to update")
 
     # Ejecutar actualización en el repositorio
     row = repo.update_client(client_id, data)
-    
+
     if not row:
         # Si el cliente no existe, retornar error 404
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
-    
+
     return row
 
 
@@ -166,19 +167,19 @@ def update_client(client_id: str, payload: ClientUpdate):
 def delete_client(client_id: str):
     """
     Elimina un cliente del sistema.
-    
+
     NOTA: Esta operación también elimina todos los websites asociados al cliente
     y sus respectivos historiales de auditoría (cascade delete).
-    
+
     Args:
         client_id (str): ID del cliente a eliminar
-    
+
     Returns:
         dict: Mensaje de confirmación con el ID del cliente eliminado.
-    
+
     Raises:
         HTTPException: 404 si el cliente no existe
-    
+
     Example:
         DELETE /api/clients/123
         {
@@ -195,22 +196,22 @@ def delete_client(client_id: str):
 def export_client_report(client_id: str):
     """
     Genera y descarga un reporte PDF consolidado de un cliente.
-    
+
     El reporte incluye:
     - Información básica del cliente
     - Lista de todos sus websites
     - Última auditoría de cada website
     - Historial de auditorías (últimas 5 ejecuciones)
-    
+
     Args:
         client_id (str): ID del cliente para el reporte
-    
+
     Returns:
         StreamingResponse: Archivo PDF en streaming para descarga.
-    
+
     Raises:
         HTTPException: 404 si el cliente no existe
-    
+
     Example:
         GET /api/clients/123/export
         -> Descarga: client_123_report.pdf
@@ -229,24 +230,32 @@ def export_client_report(client_id: str):
         websites_data = []
         for w in websites:
             # Obtener la última ejecución (run) de cada website
-            last_run = db.execute(
-                select(AuditRun).where(AuditRun.website_id == w.id).order_by(AuditRun.started_at.desc()).limit(1)
-            ).scalars().first()
+            last_run = (
+                db.execute(
+                    select(AuditRun).where(AuditRun.website_id == w.id).order_by(AuditRun.started_at.desc()).limit(1)
+                )
+                .scalars()
+                .first()
+            )
 
             history = []
             if last_run:
                 # Obtener historial de auditorías para el PDF
                 history = runs_repo.runs_history_for_pdf(str(w.id), str(last_run.id))
 
-            websites_data.append({
-                "website": w,
-                "latest_run": last_run,
-                "history": history,
-            })
+            websites_data.append(
+                {
+                    "website": w,
+                    "latest_run": last_run,
+                    "history": history,
+                }
+            )
 
         # Generar PDF con los datos consolidados
         pdf = generate_client_report(client.name or "Cliente", websites_data)
         filename = f"client_{client_id}_report.pdf"
-        
+
         # Retornar como streaming response para descarga
-        return StreamingResponse(pdf, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename={filename}"})
+        return StreamingResponse(
+            pdf, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )

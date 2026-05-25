@@ -78,7 +78,6 @@ const dictionaries = {
       url_added: "✓ URL añadida",
       schedule_saved: "✓ Programación guardada",
       audit_scheduled: "✓ Auditoría programada para",
-      audit_scheduled: "✓ Auditoría programada para",
     },
     tour: {
       help_btn: "Tour",

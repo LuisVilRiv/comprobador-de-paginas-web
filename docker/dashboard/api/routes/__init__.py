@@ -21,12 +21,12 @@ ESTRUCTURA:
 
 # Importar y exportar todos los routers
 # Cada router se importa desde su submódulo correspondiente
-from .clients import router as clients_router      # /api/clients
-from .health import router as health_router        # /health
-from .runs import router as runs_router            # /api/runs
-from .settings import router as settings_router    # /api/settings
-from .summary import router as summary_router      # /api/summary
-from .websites import router as websites_router    # /api/websites
+from .clients import router as clients_router  # /api/clients
+from .health import router as health_router  # /health
+from .runs import router as runs_router  # /api/runs
+from .settings import router as settings_router  # /api/settings
+from .summary import router as summary_router  # /api/summary
+from .websites import router as websites_router  # /api/websites
 
 # Lista de routers disponibles para importación
 __all__ = [

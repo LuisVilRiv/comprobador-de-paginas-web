@@ -1,9 +1,10 @@
 import time
 from urllib.parse import urlparse
-from scraper.base.scraper_strategy import ScraperStrategy
-from scraper.models.scrape_result import ScrapeResult
+
 from config import settings
 from config.logging_config import setup_logger
+from scraper.base.scraper_strategy import ScraperStrategy
+from scraper.models.scrape_result import ScrapeResult
 
 logger = setup_logger(__name__)
 
@@ -45,13 +46,20 @@ class BaseScraper(ScraperStrategy):
                 result = self._do_scrape(url)
                 logger.info(
                     "[%s] Éxito en intento %d/%d → %s",
-                    self.strategy_name, attempt, self.max_retries, url,
+                    self.strategy_name,
+                    attempt,
+                    self.max_retries,
+                    url,
                 )
                 return result
             except Exception as exc:
                 logger.warning(
                     "[%s] Intento %d/%d fallido para %s: %s",
-                    self.strategy_name, attempt, self.max_retries, url, exc,
+                    self.strategy_name,
+                    attempt,
+                    self.max_retries,
+                    url,
+                    exc,
                 )
                 if attempt < self.max_retries:
                     time.sleep(self.retry_delay * attempt)  # backoff lineal

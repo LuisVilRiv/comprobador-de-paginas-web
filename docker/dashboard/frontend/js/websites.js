@@ -63,7 +63,7 @@ function WebsiteRow({ w, auditingIds, now, onOpen, onAudit, onEdit, onToggleActi
     else if (h > 0) diffStr = `${h}h ${m}m ${s}s`;
     else diffStr = `${m}m ${s}s`;
 
-    let badgeStyle = {
+    const badgeStyle = {
       fontSize: "9px",
       display: "inline-flex",
       alignItems: "center",

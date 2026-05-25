@@ -1,5 +1,5 @@
-import pytest
 from bs4 import BeautifulSoup
+
 from shared.auditor.checks.structure import check_structure
 
 
@@ -34,20 +34,19 @@ def test_structure_perfect():
     """
     soup = BeautifulSoup(html, "html.parser")
     issues = []
-    
+
     check_structure(soup, issues)
     assert len(issues) == 0
 
 
 def test_structure_missing_essential_tags():
     # Caso 2: Falta html, head, body o h1
-    soup_no_html = BeautifulSoup("<p>Sin estructura</p>", "html.parser")
-    # Nota: BeautifulSoup suele auto-envolver en html/body si no están, por lo que podemos pasarle un mock
+    # Nota: BeautifulSoup suele auto-envolver en html/body si no están, por lo que usamos un mock
     class EmptySoup:
         html = None
         head = None
         body = None
-    
+
     issues = []
     check_structure(EmptySoup(), issues)
     assert any("Falta la etiqueta <html>" in issue for issue in issues)

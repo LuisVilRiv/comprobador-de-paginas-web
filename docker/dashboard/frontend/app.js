@@ -291,7 +291,7 @@ function App() {
         React.createElement("button", { className: "tour-btn", onClick: toggleLang, title: t("tour.lang_toggle") }, 
           React.createElement("i", { "data-lucide": "languages" })
         ),
-        React.createElement("button", { className: "tour-btn", onClick: toggleTheme, title: t("tour.theme_toggle") }, 
+        React.createElement("button", { key: `theme-toggle-${theme}`, className: "tour-btn", onClick: toggleTheme, title: t("tour.theme_toggle") }, 
           React.createElement("i", { "data-lucide": theme === 'light' ? 'sun' : 'moon' })
         )
       ),

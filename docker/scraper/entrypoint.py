@@ -11,6 +11,9 @@ from __future__ import annotations
 import os
 import sys
 
+# Añadir /app al sys.path para importaciones locales (service, scheduler)
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+
 from config.logging_config import setup_logger
 from scraper import ScraperContext, SeleniumStrategy, BeautifulSoupStrategy
 from shared.auditor import QualityAuditor

@@ -21,7 +21,8 @@
  * 10. Barras de Progreso - Indicadores visuales
  * 11. Tabs - Navegación por pestañas
  * 12. Utilidades - Mensajes, badges, switches
- * 
+ * 13. Iconos - Estilos para Lucide Icons
+ *
  * CONVENCIONES DE NOMBRES:
  * - Variables: --nombre-variable
  * - Clases: kebab-case (.mi-clase)
@@ -33,7 +34,7 @@
  * - Tablet: min-width: 1024px
  * - Desktop: implícito en diseños fluidos
  * 
- * @version 2.0.0
+ * @version 2.1.0
  * @author Web Auditor Team
  * @since 2024
  */
@@ -602,4 +603,9 @@ input:checked + .slider {
 
 input:checked + .slider:before {
  transform: translateX(20px);
+}
+
+/* ── ICONS ── */
+.icon-left {
+  margin-right: 6px;
 }

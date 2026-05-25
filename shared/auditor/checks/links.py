@@ -9,6 +9,7 @@ from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
+import shared.auditor.auditor_modules.helpers as helpers
 from config import settings
 
 
@@ -33,7 +34,7 @@ def check_links_recursive(
     seen: set[str] = {base_url}  # Evitar volver a rastrear la URL base
 
     for anchor in soup.find_all("a"):
-        href = (anchor.get("href") or "").strip()
+        href = helpers.attr_to_str(anchor.get("href")).strip()
         if not href or href.startswith(("mailto:", "tel:", "javascript:")):
             continue
         if href.startswith("#"):
@@ -76,7 +77,7 @@ def check_links_recursive(
         if content and depth < settings.AUDIT_MAX_CRAWL_DEPTH:
             page_soup = BeautifulSoup(content, settings.BS4_PARSER)
             for inner_anchor in page_soup.find_all("a"):
-                href = (inner_anchor.get("href") or "").strip()
+                href = helpers.attr_to_str(inner_anchor.get("href")).strip()
                 if not href or href.startswith(("#", "mailto:", "tel:", "javascript:")):
                     continue
                 full_inner = urljoin(url, href)

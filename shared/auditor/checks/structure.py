@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from bs4 import BeautifulSoup
 
+import shared.auditor.auditor_modules.helpers as helpers
+
 
 def check_structure(soup: BeautifulSoup, issues: list[str]) -> None:
     if soup.html is None:
@@ -45,17 +47,19 @@ def check_structure(soup: BeautifulSoup, issues: list[str]) -> None:
     for anchor in soup.find_all("a"):
         link_text = anchor.get_text(" ", strip=True).lower().strip(" .,;")
         if link_text in generic_texts:
-            href = (anchor.get("href") or "")[:80]
+            href = helpers.attr_to_str(anchor.get("href"))[:80]
             issues.append(f"Enlace con texto genérico inutilizable con lector de pantalla: '{link_text}' (href={href})")
 
     for anchor in soup.find_all("a", attrs={"target": "_blank"}):
         rel = " ".join(anchor.get("rel") or []).lower()
         if "noopener" not in rel or "noreferrer" not in rel:
-            issues.append(f"Enlace target='_blank' sin rel='noopener noreferrer': {(anchor.get('href') or '')[:80]}")
+            href = helpers.attr_to_str(anchor.get('href'))[:80]
+            issues.append(f"Enlace target='_blank' sin rel='noopener noreferrer': {href}")
 
     for video in soup.find_all("video"):
+        src = helpers.attr_to_str(video.get('src'))[:80] or '(sin src)'
         if not video.find("track"):
-            issues.append(f"Elemento <video> sin <track>: {(video.get('src') or '(sin src)')[:80]}")
+            issues.append(f"Elemento <video> sin <track>: {src}")
 
     for tag_name in ("center", "font", "blink", "marquee", "frame", "frameset", "noframes", "big", "strike", "tt"):
         if soup.find(tag_name):

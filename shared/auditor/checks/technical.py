@@ -9,6 +9,8 @@ from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
+import shared.auditor.auditor_modules.helpers as helpers
+
 
 def check_technical(
     html: str,
@@ -34,13 +36,13 @@ def check_technical(
         issues.append("Falta meta robots.")
 
     for iframe in soup.find_all("iframe"):
-        if not (iframe.get("title") or "").strip():
+        if not helpers.attr_to_str(iframe.get("title")).strip():
             ln, line = find_line_fn(html_lines, iframe)
             issues.append(f"Iframe sin atributo title en línea {ln}: {line}")
 
     id_count: dict[str, int] = {}
     for tag in soup.find_all(attrs={"id": True}):
-        tid = (tag.get("id") or "").strip()
+        tid = helpers.attr_to_str(tag.get("id")).strip()
         if tid:
             id_count[tid] = id_count.get(tid, 0) + 1
     for dup in [tid for tid, count in id_count.items() if count > 1][:20]:
@@ -72,7 +74,7 @@ def _check_assets(
 
     for link in soup.find_all("link"):
         rel = " ".join(link.get("rel", [])).lower()
-        href = (link.get("href") or "").strip()
+        href = helpers.attr_to_str(link.get("href")).strip()
         if "stylesheet" not in rel:
             continue
         ln, line = find_line_fn(html_lines, link)
@@ -90,7 +92,7 @@ def _check_assets(
             issues.append(f"CSS inaccesible {full} estado={status_code}")
 
     for script in soup.find_all("script"):
-        src = (script.get("src") or "").strip()
+        src = helpers.attr_to_str(script.get("src")).strip()
         if not src:
             continue
         ln, line = find_line_fn(html_lines, script)
@@ -109,10 +111,11 @@ def _check_assets(
 
 def _check_forms_accessibility(soup, html_lines, issues, find_line_fn):
     for field in soup.find_all(["input", "select", "textarea"]):
-        if field.name == "input" and (field.get("type") or "").lower() in {"hidden", "submit", "button"}:
+        field_type = helpers.attr_to_str(field.get("type")).lower()
+        if field.name == "input" and field_type in {"hidden", "submit", "button"}:
             continue
-        has_aria = bool((field.get("aria-label") or "").strip())
-        fid = (field.get("id") or "").strip()
+        has_aria = bool(helpers.attr_to_str(field.get("aria-label")).strip())
+        fid = helpers.attr_to_str(field.get("id")).strip()
         has_label = bool(fid and soup.find("label", attrs={"for": fid}))
         if not has_aria and not has_label:
             ln, line = find_line_fn(html_lines, field)

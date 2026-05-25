@@ -12,43 +12,51 @@ Herramienta de auditoría de calidad web dockerizada.
 
 ```
 repo-raiz/
-├── config/              ← configuración del proyecto Python
-├── scraper/             ← paquete Python (estrategias, modelos)
-├── utils/               ← auditor, exportador, url_loader
-├── tests/
-├── main.py              ← ejecución local (sin Docker, lee data/urls.json)
-├── data/                ← gitignored (URLs privadas, outputs, informes)
-│   └── urls.json
-├── logs/                ← gitignored
+├── config/              ← configuración del proyecto Python (settings, logging)
+├── scraper/             ← paquete Python (estrategias de scraping, modelos)
+├── shared/              ← código compartido (auditor, database, utils)
+│   ├── auditor/         ← motor de auditoría y checks
+│   ├── database/        ← modelos SQLAlchemy y repositorios
+│   └── utils/           ← generador de PDF
+├── tests/               ← suite de pruebas (pytest)
+├── docs/                ← documentación del proyecto
+├── data/                ← gitignored (outputs, informes)
 ├── .gitignore
 └── docker/              ← TODO lo relacionado con Docker
     ├── .env.example     ← template de variables de entorno (commiteado)
     ├── .env             ← credenciales reales (gitignored — crearlo manualmente)
     ├── docker-compose.yml
     ├── db-init/
-    │   └── 01_schema.sql
+    │   ├── 01_schema.sql
+    │   └── 02_migrate_optional_client.sql
+    ├── ai-analyzer/     ← microservicio de análisis semántico (NLP)
     ├── scraper/
-    │   ├── Dockerfile
     │   ├── requirements.txt
-    │   ├── entrypoint.py   ← lee URLs de PostgreSQL (distinto de main.py)
-    │   └── db.py
+    │   ├── entrypoint.py   ← lee URLs de PostgreSQL
+    │   ├── scheduler.py    ← programador de auditorías
+    │   └── service.py      ← lógica de servicio de auditoría
     └── dashboard/
         ├── Dockerfile      ← frontend Node + React
         ├── server.js
         ├── frontend/
         │   ├── index.html
         │   ├── app.js
-        │   └── styles.css
+        │   ├── styles.css
+        │   └── js/         ← módulos (api, audit, i18n, modals, scheduler, websites)
         └── api/
-            ├── Dockerfile
+            ├── Dockerfile  ← también incluye Chrome/Selenium para el scraper
             ├── main.py     ← API FastAPI
+            ├── app.py      ← inicialización de la app y registro de routers
+            ├── routes/     ← endpoints modulares (clients, websites, runs, etc.)
+            ├── schemas/    ← esquemas Pydantic
             └── requirements.txt
 ```
 
-> **Nota sobre el build context del scraper**  
-> El `Dockerfile` del scraper se construye con la raíz del repo como contexto
+> **Nota sobre el build context de dashboard-api**  
+> El `Dockerfile` de dashboard-api se construye con la raíz del repo como contexto
 > (`context: ..` en el compose). Esto permite copiar `config/`, `scraper/` y
-> `utils/` al contenedor sin duplicar código.
+> `shared/` al contenedor sin duplicar código. El scraper se ejecuta como
+> proceso en segundo plano dentro del mismo contenedor.
 
 ---
 

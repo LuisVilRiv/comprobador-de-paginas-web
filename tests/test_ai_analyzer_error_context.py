@@ -1,13 +1,18 @@
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 
 def _load_ai_analyzer_class():
     analyzer_path = Path(__file__).resolve().parent.parent / "docker" / "ai-analyzer" / "analyzer.py"
     spec = importlib.util.spec_from_file_location("ai_analyzer_module", analyzer_path)
     module = importlib.util.module_from_spec(spec)
     assert spec and spec.loader
-    spec.loader.exec_module(module)
+    try:
+        spec.loader.exec_module(module)
+    except (ImportError, ModuleNotFoundError) as exc:
+        pytest.skip(f"ai-analyzer dependencies not installed: {exc}", allow_module_level=True)
     return module.AIContentAnalyzer
 
 

@@ -62,9 +62,11 @@ class AuditService:
             if el:
                 text_len = len(el.get_text().strip())
                 if text_len < 100:
+                    el_name = el.name if hasattr(el, "name") else None
+                    el_id = el.get("id") if hasattr(el, "get") else None
                     logger.info(
                         "🎯 Detectado contenedor SPA '%s' con poco contenido (%d chars).",
-                        el.name or el.get("id"),
+                        el_name or el_id,
                         text_len,
                     )
                     is_spa_root_empty = True

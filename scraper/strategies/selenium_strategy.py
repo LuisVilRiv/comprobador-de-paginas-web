@@ -2,7 +2,6 @@ import time
 
 from bs4 import BeautifulSoup
 from selenium import webdriver
-from selenium.common.exceptions import TimeoutException, WebDriverException
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support import expected_conditions as EC
@@ -43,25 +42,26 @@ class SeleniumStrategy(BaseScraper):
         """
         import requests as _req
 
+        meta: dict = {}
         try:
-            # Primary request: GET to obtain both content and status
             resp = _req.get(url, timeout=15, verify=False, headers={"User-Agent": "Mozilla/5.0"})
             html = resp.text
-            meta = {"status_code": resp.status_code}
+            meta["status_code"] = resp.status_code
         except Exception as e:
-            # Fallback: try HEAD if GET fails
             try:
                 head_resp = _req.head(
                     url, timeout=15, allow_redirects=True, verify=False, headers={"User-Agent": "Mozilla/5.0"}
                 )
                 html = ""
-                meta = {"status_code": head_resp.status_code, "error": str(e)}
+                meta["status_code"] = head_resp.status_code
+                meta["error"] = str(e)
             except Exception as e2:
                 html = ""
-                meta = {"status_code": 0, "error": f"GET error: {e}; HEAD error: {e2}"}
+                meta["status_code"] = 0
+                meta["error"] = f"GET error: {e}; HEAD error: {e2}"
         return html, meta
 
-    def scrape(self, url: str) -> ScrapeResult:
+    def _do_scrape(self, url: str) -> ScrapeResult:
         driver = self._create_driver()
         try:
             start = time.perf_counter()
@@ -92,24 +92,24 @@ class SeleniumStrategy(BaseScraper):
                             break
             except Exception:
                 pass  # Performance logs no disponibles, usar 200
-        except TimeoutException as exc:
-            raise RuntimeError(f"Timeout esperando body en {url}") from exc
-        except WebDriverException as exc:
-            raise RuntimeError(f"WebDriverException: {exc}") from exc
         finally:
             driver.quit()
 
-        # Fallback: si los performance logs no dieron el status code real, usar requests.head()
+        # Fallback: si los performance logs no dieron el status code real, usar requests
         if status_code == 200:
             try:
                 import requests as _req
 
-                _resp = _req.head(url, timeout=8, allow_redirects=True, headers={"User-Agent": "Mozilla/5.0"})
+                _resp = _req.get(
+                    url, timeout=8, allow_redirects=True, verify=False,
+                    headers={"User-Agent": "Mozilla/5.0"}, stream=True,
+                )
+                _resp.close()
                 if _resp.status_code != 200:
                     status_code = _resp.status_code
-                    logger.info("Selenium status fallback via HEAD: %d para %s", status_code, url)
+                    logger.info("Selenium status fallback via GET: %d para %s", status_code, url)
             except Exception:
-                pass  # Mantener 200 si el HEAD también falla
+                pass  # Mantener 200 si el request también falla
 
         # Parsear con BS4 para obtener HTML indentado y legible
         soup = BeautifulSoup(raw_html, settings.BS4_PARSER)

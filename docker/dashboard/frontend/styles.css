@@ -370,15 +370,17 @@ select.premium-input option {
 }
 
 [data-theme="light"] .tour-btn-primary {
-  background: linear-gradient(135deg, var(--primary), var(--purple));
-  color: #ffffff;
-  border: none;
+  background: transparent;
+  color: var(--primary);
+  border: 2px solid var(--primary);
+  box-shadow: none;
 }
 
 [data-theme="light"] .tour-btn-primary:hover {
-  background: linear-gradient(135deg, var(--purple), var(--primary));
+  background: var(--primary);
   color: #ffffff;
-  border: none;
+  border: 2px solid var(--primary);
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.25);
 }
 
 /* ── TOUR DROPDOWN MENU ── */

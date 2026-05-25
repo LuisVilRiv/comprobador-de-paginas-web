@@ -1,12 +1,13 @@
-import requests
 import time
-from bs4 import BeautifulSoup
-from requests.exceptions import RequestException, Timeout, ConnectionError
 
-from scraper.base.base_scraper import BaseScraper
-from scraper.models.scrape_result import ScrapeResult
+import requests
+from bs4 import BeautifulSoup
+from requests.exceptions import ConnectionError, RequestException, Timeout
+
 from config import settings
 from config.logging_config import setup_logger
+from scraper.base.base_scraper import BaseScraper
+from scraper.models.scrape_result import ScrapeResult
 
 logger = setup_logger(__name__)
 
@@ -54,10 +55,10 @@ class BeautifulSoupStrategy(BaseScraper):
             strategy=self.strategy_name,
             content=soup.prettify(),
             metadata={
-                "page_title":   soup.title.string if soup.title else None,
-                "status_code":  response.status_code,
+                "page_title": soup.title.string if soup.title else None,
+                "status_code": response.status_code,
                 "content_type": response.headers.get("Content-Type", ""),
-                "js_rendered":  False,
+                "js_rendered": False,
                 "response_time_ms": elapsed_ms,
             },
         )
@@ -67,6 +68,7 @@ class BeautifulSoupStrategy(BaseScraper):
     @staticmethod
     def _build_session() -> requests.Session:
         import random
+
         session = requests.Session()
         headers = dict(settings.DEFAULT_HEADERS)
         # Anti-deteccion: User-Agent aleatorio por sesion

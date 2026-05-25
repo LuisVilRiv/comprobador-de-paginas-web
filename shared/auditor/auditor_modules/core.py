@@ -1,37 +1,43 @@
 """
 auditor_modules/core.py — Core QualityAuditor class and main methods.
 """
-import json
+
 import re
-import time
-from urllib.parse import urljoin, urlparse
+from collections.abc import Callable
 
 import requests
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup
 from selenium import webdriver
-from selenium.common.exceptions import TimeoutException, WebDriverException
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
 
 from config import settings
 from config.logging_config import setup_logger
+
+from ..checks import (
+    check_buttons,
+    check_content,
+    check_images,
+    check_js_console_errors,
+    check_links_recursive,
+    check_security,
+    check_seo,
+    check_structure,
+    check_technical,
+    interact_buttons_selenium,
+)
 from ..dictionaries import build_audit_dictionaries
 from ..models import QualityAuditReport
-from ..regex import AuditRegexSet, LEET_TRANSLATION_TABLE, build_audit_regex_set
-from ..checks import (
-    check_security, check_structure, check_seo, check_content, check_images,
-    check_links_recursive, check_buttons, check_technical, check_js_console_errors,
-    interact_buttons_selenium
-)
+from ..regex import LEET_TRANSLATION_TABLE, build_audit_regex_set
+from ..scoring import build_recommendations, calculate_score, evaluate_release_gate, status_from_score
 from .helpers import (
-    is_banned_url, warm_up_cookies, close_driver, ensure_non_empty,
-    collect_metrics, check_url, classify_speed, find_line
-)
-from ..scoring import (
-    calculate_score, status_from_score, evaluate_release_gate,
-    build_recommendations
+    check_url,
+    classify_speed,
+    close_driver,
+    collect_metrics,
+    ensure_non_empty,
+    find_line,
+    is_banned_url,
+    warm_up_cookies,
 )
 
 logger = setup_logger(__name__)
@@ -98,6 +104,7 @@ ERROR_CONTEXT_TERMS = (
     "blocked",
 )
 
+
 class QualityAuditor:
     def __init__(self, timeout: int = settings.REQUEST_TIMEOUT):
         self._timeout = timeout
@@ -110,11 +117,13 @@ class QualityAuditor:
         self._max_browser_confirms = settings.AUDIT_MAX_BROWSER_CONFIRMS
         self._last_response_headers: dict = {}
 
-    def build_report(self, html: str, base_url: str, metadata: dict | None = None, on_progress: callable = None) -> QualityAuditReport:
+    def build_report(
+        self, html: str, base_url: str, metadata: dict | None = None, on_progress: Callable | None = None
+    ) -> QualityAuditReport:
         metadata = metadata or {}
         self._browser_confirms = 0
         self._last_response_headers = {}
-        
+
         total_steps = 8
         current_step = 0
 
@@ -174,38 +183,91 @@ class QualityAuditor:
             if isinstance(status_code, int) and status_code >= 400:
                 is_inoperative = True
                 inoperative_hard_signal = True
-                inoperative_reason = f"El código de estado HTTP {status_code} indica un error del servidor o del cliente."
+                inoperative_reason = (
+                    f"El código de estado HTTP {status_code} indica un error del servidor o del cliente."
+                )
             else:
                 # Patrones FUERTES: códigos HTTP y mensajes de error muy específicos.
                 # Se comprueban SIEMPRE en título, H1, H2 y cuerpo completo (sin límite de palabras).
                 strong_err_patterns = [
-                    "404 not found", "404 forbidden", "404 error", "error 404",
-                    "page not found", "página no encontrada", "pagina no encontrada",
-                    "internal server error", "500 internal", "500 error", "error 500", "http 500",
-                    "502 bad gateway", "bad gateway", "502 error", "error 502", "http 502",
-                    "503 service", "503 unavailable", "503 error", "service unavailable",
-                    "service temporarily unavailable", "temporarily unavailable",
-                    "error 503", "http 503", "servicio no disponible",
-                    "504 gateway", "gateway timeout", "504 error", "error 504", "http 504",
-                    "web server is down", "error establishing a database connection",
+                    "404 not found",
+                    "404 forbidden",
+                    "404 error",
+                    "error 404",
+                    "page not found",
+                    "página no encontrada",
+                    "pagina no encontrada",
+                    "internal server error",
+                    "500 internal",
+                    "500 error",
+                    "error 500",
+                    "http 500",
+                    "502 bad gateway",
+                    "bad gateway",
+                    "502 error",
+                    "error 502",
+                    "http 502",
+                    "503 service",
+                    "503 unavailable",
+                    "503 error",
+                    "service unavailable",
+                    "service temporarily unavailable",
+                    "temporarily unavailable",
+                    "error 503",
+                    "http 503",
+                    "servicio no disponible",
+                    "504 gateway",
+                    "gateway timeout",
+                    "504 error",
+                    "error 504",
+                    "http 504",
+                    "web server is down",
+                    "error establishing a database connection",
                     "error al establecer una conexión con la base de datos",
-                    "welcome to nginx", "apache2 ubuntu default page", "apache2 debian default page",
-                    "iis windows server", "hosting account suspended", "cuenta suspendida",
-                    "plesk default page", "cpanel hosting", "default website page",
-                    "cloudflare ray id", "sucuri web site blocker",
-                    "blocked by web application firewall", "ddos protection",
+                    "welcome to nginx",
+                    "apache2 ubuntu default page",
+                    "apache2 debian default page",
+                    "iis windows server",
+                    "hosting account suspended",
+                    "cuenta suspendida",
+                    "plesk default page",
+                    "cpanel hosting",
+                    "default website page",
+                    "cloudflare ray id",
+                    "sucuri web site blocker",
+                    "blocked by web application firewall",
+                    "ddos protection",
                 ]
                 # Patrones SUAVES: mantenimiento/construcción.
                 # Solo se comprueban en páginas con poco texto (< 500 palabras).
                 soft_maint_patterns = [
-                    "mantenimiento", "maintenance", "en construcción", "en construccion",
-                    "under construction", "coming soon", "próximamente", "proximamente",
-                    "volveremos pronto", "back soon", "temporarily down", "sitio inactivo",
-                    "temporarily down for maintenance", "site under maintenance", "sitio bajo mantenimiento",
-                    "error de conexión", "error de conexion", "database connection error",
-                    "fallo de conexión", "fallo de conexion", "connection error",
-                    "connection timed out", "connection refused", "error de base de datos",
-                    "database error", "access denied", "forbidden error",
+                    "mantenimiento",
+                    "maintenance",
+                    "en construcción",
+                    "en construccion",
+                    "under construction",
+                    "coming soon",
+                    "próximamente",
+                    "proximamente",
+                    "volveremos pronto",
+                    "back soon",
+                    "temporarily down",
+                    "sitio inactivo",
+                    "temporarily down for maintenance",
+                    "site under maintenance",
+                    "sitio bajo mantenimiento",
+                    "error de conexión",
+                    "error de conexion",
+                    "database connection error",
+                    "fallo de conexión",
+                    "fallo de conexion",
+                    "connection error",
+                    "connection timed out",
+                    "connection refused",
+                    "error de base de datos",
+                    "database error",
+                    "access denied",
+                    "forbidden error",
                 ]
 
                 title_raw = soup.title.string if soup.title else title_str
@@ -214,7 +276,9 @@ class QualityAuditor:
                 if any(p in title_str for p in strong_err_patterns):
                     is_inoperative = True
                     inoperative_hard_signal = True
-                    inoperative_reason = f"El título de la página ('{title_raw}') indica un estado de error del servidor."
+                    inoperative_reason = (
+                        f"El título de la página ('{title_raw}') indica un estado de error del servidor."
+                    )
                 elif any(p in h1_text for p in strong_err_patterns) or any(p in h2_text for p in strong_err_patterns):
                     is_inoperative = True
                     inoperative_hard_signal = True
@@ -225,45 +289,43 @@ class QualityAuditor:
                     and not looks_educational
                 ):
                     is_inoperative = True
-                    inoperative_reason = "El cuerpo de la página contiene indicadores de error del servidor (503, 502, 404, etc.)."
-                # Detect custom error codes (e.g., a 503 page that returns HTTP 200)
-                elif (
-                    not looks_educational and (
-                        self._has_contextual_error_code(title_str)
-                        or self._has_contextual_error_code(h1_text)
-                        or self._has_contextual_error_code(h2_text)
-                        or self._has_contextual_error_code(body_text)
+                    inoperative_reason = (
+                        "El cuerpo de la página contiene indicadores de error del servidor (503, 502, 404, etc.)."
                     )
+                # Detect custom error codes (e.g., a 503 page that returns HTTP 200)
+                elif not looks_educational and (
+                    self._has_contextual_error_code(title_str)
+                    or self._has_contextual_error_code(h1_text)
+                    or self._has_contextual_error_code(h2_text)
+                    or self._has_contextual_error_code(body_text)
                 ):
                     is_inoperative = True
-                    inoperative_reason = f"Página indica error HTTP código detectado en el contenido."
+                    inoperative_reason = "Página indica error HTTP código detectado en el contenido."
                 # --- Comprobación SUAVE (solo en páginas con poco texto) ---
                 elif word_count < 500:
                     if any(p in title_str for p in soft_maint_patterns):
                         is_inoperative = True
-                        inoperative_reason = f"El título de la página ('{title_raw}') indica que el sitio está en mantenimiento."
-                    elif (any(p in h1_text for p in soft_maint_patterns)
-                          or any(p in h2_text for p in soft_maint_patterns)
-                          or any(p in body_text for p in soft_maint_patterns)):
+                        inoperative_reason = (
+                            f"El título de la página ('{title_raw}') indica que el sitio está en mantenimiento."
+                        )
+                    elif (
+                        any(p in h1_text for p in soft_maint_patterns)
+                        or any(p in h2_text for p in soft_maint_patterns)
+                        or any(p in body_text for p in soft_maint_patterns)
+                    ):
                         is_inoperative = True
-                        inoperative_reason = "El contenido de la página indica que el sitio está en mantenimiento o no disponible."
-
+                        inoperative_reason = (
+                            "El contenido de la página indica que el sitio está en mantenimiento o no disponible."
+                        )
 
             # --- Integración con Microservicio de IA para análisis semántico ---
             ai_data = None
             if settings.AI_ANALYZER_ENABLED:
                 try:
                     logger.info("🤖 Invocando microservicio de IA local para análisis semántico: %s", base_url)
-                    ai_payload = {
-                        "html": html,
-                        "url": base_url,
-                        "status_code": status_code,
-                        "metadata": metadata
-                    }
+                    ai_payload = {"html": html, "url": base_url, "status_code": status_code, "metadata": metadata}
                     ai_resp = self._session.post(
-                        f"{settings.AI_ANALYZER_URL}/analyze",
-                        json=ai_payload,
-                        timeout=settings.AI_ANALYZER_TIMEOUT
+                        f"{settings.AI_ANALYZER_URL}/analyze", json=ai_payload, timeout=settings.AI_ANALYZER_TIMEOUT
                     )
                     if ai_resp.status_code == 200:
                         ai_data = ai_resp.json()
@@ -271,27 +333,38 @@ class QualityAuditor:
                     else:
                         logger.warning("⚠️ Microservicio de IA retornó código %s", ai_resp.status_code)
                 except Exception as exc:
-                    logger.warning("⚠️ Error al conectar con el microservicio de IA: %s. Continuando con reglas clásicas.", exc)
+                    logger.warning(
+                        "⚠️ Error al conectar con el microservicio de IA: %s. Continuando con reglas clásicas.", exc
+                    )
 
             if ai_data:
                 # 1. Detección de inoperatividad por IA
                 if ai_data.get("is_inoperative") and not is_inoperative:
                     is_inoperative = True
                     inoperative_reason = ai_data.get("inoperative_reason") or "Detectado por IA."
-                elif (
-                    not ai_data.get("is_inoperative")
-                    and is_inoperative
-                    and not inoperative_hard_signal
-                ):
+                elif not ai_data.get("is_inoperative") and is_inoperative and not inoperative_hard_signal:
                     # Si la regla clásica era heurística (no señal dura) y la IA no confirma,
                     # priorizamos el criterio semántico para evitar falsos positivos.
                     is_inoperative = False
                     inoperative_reason = ""
-                    
+
                 # 2. Agregar problemas detectados por la IA a sus respectivas listas
                 for issue in ai_data.get("issues", []):
                     # Si es un problema malicioso o no apto, se añade a seguridad y a contenido
-                    if any(kw in issue.lower() for kw in ["malicioso", "no apto", "adulto", "pornografía", "violencia", "phishing", "gambling", "malware", "estafa"]):
+                    if any(
+                        kw in issue.lower()
+                        for kw in [
+                            "malicioso",
+                            "no apto",
+                            "adulto",
+                            "pornografía",
+                            "violencia",
+                            "phishing",
+                            "gambling",
+                            "malware",
+                            "estafa",
+                        ]
+                    ):
                         if issue not in security_issues:
                             security_issues.append(issue)
                         if issue not in content_issues:
@@ -299,7 +372,7 @@ class QualityAuditor:
                     else:
                         if issue not in content_issues:
                             content_issues.append(issue)
-                            
+
                 for warning in ai_data.get("warnings", []):
                     if warning not in content_issues:
                         content_issues.append(warning)
@@ -310,7 +383,9 @@ class QualityAuditor:
                     technical_issues.append(warning_msg)
                 if warning_msg not in content_issues:
                     content_issues.append(warning_msg)
-                recommendations.append("Asegurar que el servidor web responda correctamente y desactivar el modo mantenimiento para permitir la auditoría.")
+                recommendations.append(
+                    "Asegurar que el servidor web responda correctamente y desactivar el modo mantenimiento para permitir la auditoría."
+                )
 
             if is_banned_url(base_url):
                 warning = f"URL prohibida para pruebas de red por politica: {base_url}"
@@ -323,9 +398,15 @@ class QualityAuditor:
             # Fase 1: Seguridad
             logger.info("🛡️ [Fase 1/8] Iniciando análisis de Seguridad para %s", base_url)
             check_security(
-                html=html, soup=soup, base_url=base_url, issues=security_issues,
-                session=self._session, last_response_headers=self._last_response_headers,
-                timeout=self._timeout, regex_set=self._regex, driver_factory=self._get_driver
+                html=html,
+                soup=soup,
+                base_url=base_url,
+                issues=security_issues,
+                session=self._session,
+                last_response_headers=self._last_response_headers,
+                timeout=self._timeout,
+                regex_set=self._regex,
+                driver_factory=self._get_driver,
             )
             update_progress()
 
@@ -333,7 +414,7 @@ class QualityAuditor:
             logger.info("📐 [Fase 2/8] Iniciando análisis de Estructura de encabezados")
             check_structure(soup=soup, issues=structure_issues)
             update_progress()
-            
+
             logger.info("🔍 [Fase 3/8] Iniciando análisis de SEO y meta-etiquetas")
             check_seo(soup=soup, issues=seo_issues, regex_set=self._regex)
             update_progress()
@@ -341,49 +422,79 @@ class QualityAuditor:
             # Fase 3: Contenido
             logger.info("📝 [Fase 4/8] Iniciando análisis de Contenido y legibilidad")
             check_content(
-                soup=soup, issues=content_issues, html_lines=html_lines, base_url=base_url,
-                dicts=self._dicts, regex_set=self._regex, 
-                normalize_fn=self._normalize_for_detection, find_line_fn=find_line
+                soup=soup,
+                issues=content_issues,
+                html_lines=html_lines,
+                base_url=base_url,
+                dicts=self._dicts,
+                regex_set=self._regex,
+                normalize_fn=self._normalize_for_detection,
+                find_line_fn=find_line,
             )
             update_progress()
 
             # Fase 4: Imagenes
             logger.info("🖼️ [Fase 5/8] Iniciando análisis de Imágenes rotas y etiquetas alt")
             check_images(
-                soup=soup, base_url=base_url, html_lines=html_lines, issues=image_issues,
-                is_banned_fn=is_banned_url, check_url_fn=lambda url, **kwargs: check_url(self._session, url, **kwargs),
-                classify_speed_fn=classify_speed, find_line_fn=find_line
+                soup=soup,
+                base_url=base_url,
+                html_lines=html_lines,
+                issues=image_issues,
+                is_banned_fn=is_banned_url,
+                check_url_fn=lambda url, **kwargs: check_url(self._session, url, **kwargs),
+                classify_speed_fn=classify_speed,
+                find_line_fn=find_line,
             )
             update_progress()
 
             # Fase 5: Enlaces
-            logger.info("🔗 [Fase 6/8] Iniciando rastreo recursivo y comprobación de Enlaces rotos (máx: %d)", settings.AUDIT_MAX_RECURSIVE_LINKS)
+            logger.info(
+                "🔗 [Fase 6/8] Iniciando rastreo recursivo y comprobación de Enlaces rotos (máx: %d)",
+                settings.AUDIT_MAX_RECURSIVE_LINKS,
+            )
             check_links_recursive(
-                soup=soup, base_url=base_url, html_lines=html_lines, issues=link_issues,
-                crawl_stats=crawl_stats, is_banned_fn=is_banned_url,
+                soup=soup,
+                base_url=base_url,
+                html_lines=html_lines,
+                issues=link_issues,
+                crawl_stats=crawl_stats,
+                is_banned_fn=is_banned_url,
                 check_url_fn=lambda url, **kwargs: check_url(self._session, url, **kwargs),
-                classify_speed_fn=classify_speed, find_line_fn=find_line,
-                blocked_admin_segments=settings.AUDIT_ADMIN_PROBE_PATHS
+                classify_speed_fn=classify_speed,
+                find_line_fn=find_line,
+                blocked_admin_segments=settings.AUDIT_ADMIN_PROBE_PATHS,
             )
             update_progress()
 
             # Fase 6: Botones
             logger.info("🔘 [Fase 7/8] Iniciando análisis de Botones y accesibilidad de formularios")
             check_buttons(
-                soup=soup, base_url=base_url, html_lines=html_lines, issues=button_issues,
-                is_banned_fn=is_banned_url, check_url_fn=lambda url, **kwargs: check_url(self._session, url, **kwargs),
-                classify_speed_fn=classify_speed, find_line_fn=find_line,
-                blocked_admin_segments=settings.AUDIT_ADMIN_PROBE_PATHS
+                soup=soup,
+                base_url=base_url,
+                html_lines=html_lines,
+                issues=button_issues,
+                is_banned_fn=is_banned_url,
+                check_url_fn=lambda url, **kwargs: check_url(self._session, url, **kwargs),
+                classify_speed_fn=classify_speed,
+                find_line_fn=find_line,
+                blocked_admin_segments=settings.AUDIT_ADMIN_PROBE_PATHS,
             )
             update_progress()
 
             # Fase 7: Tecnico + Browser
             logger.info("⚙️ [Fase 8/8] Iniciando análisis Técnico, recursos CSS/JS y errores de consola")
             check_technical(
-                html=html, soup=soup, base_url=base_url, html_lines=html_lines,
-                issues=technical_issues, asset_stats=asset_stats, recommendations=recommendations,
-                is_banned_fn=is_banned_url, check_url_fn=lambda url, **kwargs: check_url(self._session, url, **kwargs),
-                classify_speed_fn=classify_speed, find_line_fn=find_line
+                html=html,
+                soup=soup,
+                base_url=base_url,
+                html_lines=html_lines,
+                issues=technical_issues,
+                asset_stats=asset_stats,
+                recommendations=recommendations,
+                is_banned_fn=is_banned_url,
+                check_url_fn=lambda url, **kwargs: check_url(self._session, url, **kwargs),
+                classify_speed_fn=classify_speed,
+                find_line_fn=find_line,
             )
             if not is_banned_url(base_url):
                 logger.info("🌐 Iniciando driver de Selenium para interactividad en navegador y logs de consola")
@@ -406,11 +517,17 @@ class QualityAuditor:
 
         # Calcular score y estado final
         score = calculate_score(
-            security_issues, seo_issues, content_issues, image_issues,
-            structure_issues, link_issues, button_issues, technical_issues
+            security_issues,
+            seo_issues,
+            content_issues,
+            image_issues,
+            structure_issues,
+            link_issues,
+            button_issues,
+            technical_issues,
         )
         status = status_from_score(score)
-        
+
         is_blocked, blockers = evaluate_release_gate(
             score=score,
             security_issues=security_issues,
@@ -418,25 +535,31 @@ class QualityAuditor:
             link_issues=link_issues,
             technical_issues=technical_issues,
             image_issues=image_issues,
-            button_issues=button_issues
+            button_issues=button_issues,
         )
 
         final_recommendations = build_recommendations(
-            security_issues=security_issues, 
-            seo_issues=seo_issues, 
-            content_issues=content_issues, 
-            image_issues=image_issues, 
-            structure_issues=structure_issues, 
-            link_issues=link_issues, 
-            button_issues=button_issues, 
-            technical_issues=technical_issues
+            security_issues=security_issues,
+            seo_issues=seo_issues,
+            content_issues=content_issues,
+            image_issues=image_issues,
+            structure_issues=structure_issues,
+            link_issues=link_issues,
+            button_issues=button_issues,
+            technical_issues=technical_issues,
         )
         final_recommendations.extend(recommendations)
 
         report_metrics = collect_metrics(
-            soup, metadata, security_issues, image_issues, 
-            link_issues, button_issues, technical_issues,
-            crawl_stats, asset_stats
+            soup,
+            metadata,
+            security_issues,
+            image_issues,
+            link_issues,
+            button_issues,
+            technical_issues,
+            crawl_stats,
+            asset_stats,
         )
         if ai_data:
             report_metrics["ai_quality_score"] = ai_data.get("quality_score")
@@ -461,7 +584,7 @@ class QualityAuditor:
             release_blocked=is_blocked,
             release_blockers=blockers,
             recommendations=list(set(final_recommendations)),
-            metrics=report_metrics
+            metrics=report_metrics,
         )
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -479,39 +602,28 @@ class QualityAuditor:
             "Analisis de contenido (lorem ipsum, toxicidad, duplicidad)",
             "Verificacion de enlaces y recursos (rotos, mixed content, SRI)",
             "Pruebas de interaccion de UI (clics en botones y formularios via Selenium)",
-            "Monitorizacion de errores de consola JS y rendimiento "
-            "(bloqueo de renderizado)",
+            "Monitorizacion de errores de consola JS y rendimiento (bloqueo de renderizado)",
         ]
 
         top_improvements = (
-            report.recommendations[:5]
-            if report.recommendations
-            else ["Mantener monitorizacion periodica."]
+            report.recommendations[:5] if report.recommendations else ["Mantener monitorizacion periodica."]
         )
 
         score_checks = []
         if report.score >= 90:
             score_checks.append("[\u2713] Excelente salud tecnica y de seguridad.")
         elif report.score >= 70:
-            score_checks.append(
-                "[\u2713] Calidad buena, con margen de mejora en optimizacion."
-            )
+            score_checks.append("[\u2713] Calidad buena, con margen de mejora en optimizacion.")
         else:
-            score_checks.append(
-                "[x] Critico: Se requieren correcciones inmediatas de seguridad/SEO."
-            )
+            score_checks.append("[x] Critico: Se requieren correcciones inmediatas de seguridad/SEO.")
 
         if report.security_issues:
-            score_checks.append(
-                f"[x] Detectados {len(report.security_issues)} fallos de seguridad."
-            )
+            score_checks.append(f"[x] Detectados {len(report.security_issues)} fallos de seguridad.")
         else:
             score_checks.append("[\u2713] Sin brechas de seguridad criticas detectadas.")
 
         if report.link_issues or report.technical_issues:
-            score_checks.append(
-                "[x] Existen recursos rotos o errores tecnicos que penalizan la puntuacion."
-            )
+            score_checks.append("[x] Existen recursos rotos o errores tecnicos que penalizan la puntuacion.")
         else:
             score_checks.append("[\u2713] Estabilidad tecnica validada.")
 
@@ -541,52 +653,28 @@ class QualityAuditor:
             "-----------------------",
             "",
             "SEGURIDAD HTTP Y SONDEO DE RUTAS:",
-            *(
-                [f"  - {item}" for item in report.security_issues]
-                or ["  - OK. Sin vulnerabilidades detectadas."]
-            ),
+            *([f"  - {item}" for item in report.security_issues] or ["  - OK. Sin vulnerabilidades detectadas."]),
             "",
             "SEO Y METADATOS:",
-            *(
-                [f"  - {item}" for item in report.seo_issues]
-                or ["  - OK. Optimizacion SEO correcta."]
-            ),
+            *([f"  - {item}" for item in report.seo_issues] or ["  - OK. Optimizacion SEO correcta."]),
             "",
             "ESTRUCTURA Y ACCESIBILIDAD:",
-            *(
-                [f"  - {item}" for item in report.structure_issues]
-                or ["  - OK. Estructura semantica solida."]
-            ),
+            *([f"  - {item}" for item in report.structure_issues] or ["  - OK. Estructura semantica solida."]),
             "",
             "CONTENIDO Y CALIDAD:",
-            *(
-                [f"  - {item}" for item in report.content_issues]
-                or ["  - OK. Sin contenido problematico."]
-            ),
+            *([f"  - {item}" for item in report.content_issues] or ["  - OK. Sin contenido problematico."]),
             "",
             "IMAGENES Y RECURSOS:",
-            *(
-                [f"  - {item}" for item in report.image_issues]
-                or ["  - OK. Recursos optimizados."]
-            ),
+            *([f"  - {item}" for item in report.image_issues] or ["  - OK. Recursos optimizados."]),
             "",
             "ENLACES Y NAVEGACION:",
-            *(
-                [f"  - {item}" for item in report.link_issues]
-                or ["  - OK. Sin enlaces rotos."]
-            ),
+            *([f"  - {item}" for item in report.link_issues] or ["  - OK. Sin enlaces rotos."]),
             "",
             "BOTONES Y FORMULARIOS:",
-            *(
-                [f"  - {item}" for item in report.button_issues]
-                or ["  - OK. Interactividad correcta."]
-            ),
+            *([f"  - {item}" for item in report.button_issues] or ["  - OK. Interactividad correcta."]),
             "",
             "TECNICO / CONSOLA JS:",
-            *(
-                [f"  - {item}" for item in report.technical_issues]
-                or ["  - OK. Sin errores de ejecucion."]
-            ),
+            *([f"  - {item}" for item in report.technical_issues] or ["  - OK. Sin errores de ejecucion."]),
             "",
             "===========================================================",
             "               FIN DEL INFORME DE AUDITORIA                ",
@@ -601,18 +689,18 @@ class QualityAuditor:
     def _get_driver(self):
         if self._driver:
             return self._driver
-        
+
         options = Options()
         if settings.SELENIUM_HEADLESS:
             options.add_argument("--headless=new")
-        
+
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1920,1080")
         options.add_argument(f"user-agent={settings.USER_AGENT_POOL[0]}")
         options.set_capability("goog:loggingPrefs", {"browser": "ALL"})
-        
+
         try:
             self._driver = webdriver.Chrome(options=options)
             self._driver.set_page_load_timeout(settings.SELENIUM_PAGE_LOAD_TIMEOUT)
@@ -629,14 +717,14 @@ class QualityAuditor:
     @staticmethod
     def _normalize_for_detection(text: str) -> str:
         t = text.lower()
-        t = t.translate(str.maketrans(
-            "ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ"
-            "ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ"
-            "０１２３４５６７８９",
-            "abcdefghijklmnopqrstuvwxyz"
-            "abcdefghijklmnopqrstuvwxyz"
-            "0123456789",
-        ))
+        t = t.translate(
+            str.maketrans(
+                "ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ"
+                "ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ"
+                "０１２３４５６７８９",
+                "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz0123456789",
+            )
+        )
         t = t.translate(LEET_TRANSLATION_TABLE)
         t = re.sub(r"([a-z])[.\-_*,;:!?'\"\\]([a-z])", r"\1\2", t)
         t = re.sub(r"([a-z])[.\-_*,;:!?'\"\\]([a-z])", r"\1\2", t)

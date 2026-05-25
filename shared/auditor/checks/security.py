@@ -2,22 +2,19 @@
 check_security — Cabeceras HTTP, HTTPS, SRI y sondeo de rutas de administración.
 Extraído de QualityAuditor._check_security y métodos auxiliares de admin probing.
 """
+
 from __future__ import annotations
 
-import time
-import ssl
 import socket
+import ssl
+import time
 from datetime import datetime
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
-from selenium.common.exceptions import TimeoutException, WebDriverException
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
 
 from config import settings
-
 
 # ── Constantes de clasificación ──────────────────────────────────────────────
 
@@ -27,36 +24,42 @@ _CPANEL_DEEP_PATHS = (
 )
 
 _FIREWALL_TITLE_PATTERNS = (
-    "just a moment", "attention required", "bitninja", "imunify360",
-    "checking your browser", "please wait", "ddos protection",
+    "just a moment",
+    "attention required",
+    "bitninja",
+    "imunify360",
+    "checking your browser",
+    "please wait",
+    "ddos protection",
 )
 
 _FIREWALL_SCRIPT_PATTERNS = (
-    "__cf_chl", "challenge-platform", "turnstile",
-    "bitninja.io/challenge", "imunify360.com/challenge", "captcha",
+    "__cf_chl",
+    "challenge-platform",
+    "turnstile",
+    "bitninja.io/challenge",
+    "imunify360.com/challenge",
+    "captcha",
 )
 
 _REQUIRED_HEADERS = {
     "content-security-policy": (
-        "Falta cabecera Content-Security-Policy (CSP). "
-        "Impide inyección de scripts maliciosos (XSS)."
+        "Falta cabecera Content-Security-Policy (CSP). Impide inyección de scripts maliciosos (XSS)."
     ),
     "x-frame-options": (
-        "Falta cabecera X-Frame-Options. "
-        "La página puede ser embebida en iframes externos (clickjacking)."
+        "Falta cabecera X-Frame-Options. La página puede ser embebida en iframes externos (clickjacking)."
     ),
     "x-content-type-options": (
-        "Falta cabecera X-Content-Type-Options. "
-        "El navegador puede interpretar recursos con MIME incorrecto."
+        "Falta cabecera X-Content-Type-Options. El navegador puede interpretar recursos con MIME incorrecto."
     ),
     "referrer-policy": (
-        "Falta cabecera Referrer-Policy. "
-        "La URL completa puede filtrarse a terceros via cabecera Referer."
+        "Falta cabecera Referrer-Policy. La URL completa puede filtrarse a terceros via cabecera Referer."
     ),
 }
 
 
 # ── Helpers internos ─────────────────────────────────────────────────────────
+
 
 def _verify_tls(url: str, issues: list[str], timeout: int = 5) -> None:
     """Verifica la validez y expiración del certificado SSL/TLS del sitio web."""
@@ -74,7 +77,7 @@ def _verify_tls(url: str, issues: list[str], timeout: int = 5) -> None:
             with context.wrap_socket(sock, server_hostname=hostname) as ssock:
                 cert = ssock.getpeercert()
                 if cert and "notAfter" in cert:
-                    not_after_str = cert["notAfter"]
+                    not_after_str = str(cert["notAfter"])
                     try:
                         # Formato: 'May 18 07:19:26 2026 GMT'
                         expire_date = datetime.strptime(not_after_str, "%b %d %H:%M:%S %Y %Z")
@@ -97,17 +100,11 @@ def _verify_tls(url: str, issues: list[str], timeout: int = 5) -> None:
             f"o no coincide con el nombre de host (Detalle: {exc.reason})."
         )
     except ssl.SSLError as exc:
-        issues.append(
-            f"Error de protocolo SSL/TLS al conectar a {hostname}: {str(exc)}."
-        )
-    except (socket.timeout, TimeoutError):
-        issues.append(
-            f"Tiempo de espera agotado al verificar el certificado SSL/TLS en {hostname}."
-        )
+        issues.append(f"Error de protocolo SSL/TLS al conectar a {hostname}: {str(exc)}.")
+    except TimeoutError:
+        issues.append(f"Tiempo de espera agotado al verificar el certificado SSL/TLS en {hostname}.")
     except Exception as exc:
-        issues.append(
-            f"No se pudo establecer una conexión SSL/TLS segura con {hostname} (Error: {str(exc)})."
-        )
+        issues.append(f"No se pudo establecer una conexión SSL/TLS segura con {hostname} (Error: {str(exc)}).")
 
 
 def _normalize_host(host: str) -> str:
@@ -121,29 +118,42 @@ def _is_banned_url(url: str) -> bool:
 
 
 def _html_has_firewall_challenge(html_text: str, title: str) -> bool:
-    title_l = html_text.lower()
+    title_l = title.lower()
     html_l = html_text.lower()
     admin_indicators = (
-        "cpanel", "login", "admin", "dashboard", "backoffice",
-        "phpmyadmin", "administrator", "backend", "manage",
-        "sesión", "sesion", "autenticacion", "usuario", "password",
-        "contraseña", "acceder", "identificarse", "wp-login",
+        "cpanel",
+        "login",
+        "admin",
+        "dashboard",
+        "backoffice",
+        "phpmyadmin",
+        "administrator",
+        "backend",
+        "manage",
+        "sesión",
+        "sesion",
+        "autenticacion",
+        "usuario",
+        "password",
+        "contraseña",
+        "acceder",
+        "identificarse",
+        "wp-login",
     )
-    if any(kw in title.lower() for kw in ("admin", "cpanel", "login", "sesion", "dashboard")):
+    if any(kw in title_l for kw in ("admin", "cpanel", "login", "sesion", "dashboard")):
         return False
     if sum(1 for kw in admin_indicators if kw in html_l) >= 2:
         return False
-    return (
-        any(p in title.lower() for p in _FIREWALL_TITLE_PATTERNS)
-        or any(p in html_l for p in _FIREWALL_SCRIPT_PATTERNS)
+    return any(p in title_l for p in _FIREWALL_TITLE_PATTERNS) or any(
+        p in html_l for p in _FIREWALL_SCRIPT_PATTERNS
     )
 
 
 def _html_has_cpanel_login_signature(html_text: str) -> bool:
     html_l = html_text.lower()
     has_form = "login_form" in html_l
-    has_user = 'id="user"' in html_l or "name=\"user\"" in html_l
-    has_pass = 'id="pass"' in html_l or "name=\"pass\"" in html_l
+    has_user = 'id="user"' in html_l or 'name="user"' in html_l
+    has_pass = 'id="pass"' in html_l or 'name="pass"' in html_l
     has_keywords = "cpanel" in html_l and ("login" in html_l or "sesion" in html_l)
     return (has_form and (has_user or has_pass)) or has_keywords
 
@@ -154,6 +164,7 @@ def _html_has_cpanel_dashboard(html_text: str) -> bool:
 
 # ── Función pública ───────────────────────────────────────────────────────────
 
+
 def check_security(
     html: str,
     soup: BeautifulSoup,
@@ -163,15 +174,12 @@ def check_security(
     last_response_headers: dict,
     timeout: int,
     regex_set,
-    driver_factory,          # callable() → webdriver | None
+    driver_factory,  # callable() → webdriver | None
 ) -> None:
     """Ejecuta todas las comprobaciones de seguridad y añade hallazgos a `issues`."""
 
     if base_url.lower().startswith("http://"):
-        issues.append(
-            "La URL usa HTTP en lugar de HTTPS. "
-            "Todo el tráfico viaja sin cifrar."
-        )
+        issues.append("La URL usa HTTP en lugar de HTTPS. Todo el tráfico viaja sin cifrar.")
     else:
         # Verificación exhaustiva de SSL/TLS
         _verify_tls(base_url, issues, timeout=timeout)
@@ -183,8 +191,7 @@ def check_security(
 
     if base_url.lower().startswith("https://") and "strict-transport-security" not in headers:
         issues.append(
-            "Falta Strict-Transport-Security (HSTS). "
-            "Los navegadores podrían conectar por HTTP en visitas futuras."
+            "Falta Strict-Transport-Security (HSTS). Los navegadores podrían conectar por HTTP en visitas futuras."
         )
 
     if not headers:
@@ -233,9 +240,7 @@ def check_security(
                 continue
             if len(snippet) < 6:
                 continue
-            issues.append(
-                f"[DATO SENSIBLE] {label} detectado en HTML: '{snippet[:60]}...'"
-            )
+            issues.append(f"[DATO SENSIBLE] {label} detectado en HTML: '{snippet[:60]}...'")
             break
 
     # Admin probing
@@ -244,19 +249,14 @@ def check_security(
         base_origin = f"{parsed.scheme}://{parsed.netloc}"
         for admin_path in settings.AUDIT_ADMIN_PROBE_PATHS:
             probe_url = base_origin + admin_path
-            state, reason, final_url, resp_status = _probe_admin_path(
-                probe_url, session, timeout, driver_factory
-            )
+            state, reason, final_url, resp_status = _probe_admin_path(probe_url, session, timeout, driver_factory)
             if state == "protected":
                 issues.append(
                     f"Panel de administración en {admin_path} protegido con "
                     f"autenticación ({reason}, url_final={final_url}). OK."
                 )
             elif state == "firewall_block":
-                issues.append(
-                    f"Ruta {admin_path} bloqueada por firewall/WAF "
-                    f"({reason}, url_final={final_url})."
-                )
+                issues.append(f"Ruta {admin_path} bloqueada por firewall/WAF ({reason}, url_final={final_url}).")
             elif state == "exposed":
                 issues.append(
                     f"CRÍTICO: Panel de administración posiblemente accesible "
@@ -272,6 +272,7 @@ def check_security(
 
 
 # ── Admin probing (movido desde QualityAuditor) ───────────────────────────────
+
 
 def _probe_admin_path(
     url: str,
@@ -294,7 +295,7 @@ def _probe_admin_path(
         final_url = resp.url or url
         html_text = resp.text or ""
         soup_tmp = BeautifulSoup(html_text, settings.BS4_PARSER)
-        title = (soup_tmp.title.string.strip() if soup_tmp.title and soup_tmp.title.string else "")
+        title = soup_tmp.title.string.strip() if soup_tmp.title and soup_tmp.title.string else ""
 
         if resp.status_code in (404, 410):
             return "not_found", f"status={resp.status_code}", final_url, resp.status_code
@@ -330,7 +331,9 @@ def _probe_cpanel(
         html_text = resp.text or ""
         soup_cp = BeautifulSoup(html_text, settings.BS4_PARSER)
         title = soup_cp.title.string.strip() if soup_cp.title and soup_cp.title.string else ""
-        state, reason, f_url, status = _classify_cpanel_response(resp, html_text, title, final_url, base_origin, session)
+        state, reason, f_url, status = _classify_cpanel_response(
+            resp, html_text, title, final_url, base_origin, session
+        )
         if state != "unknown":
             return state, reason, f_url, status
     except requests.RequestException:
@@ -344,14 +347,16 @@ def _probe_cpanel(
             html_text = resp.text or ""
             soup_cp = BeautifulSoup(html_text, settings.BS4_PARSER)
             title = soup_cp.title.string.strip() if soup_cp.title and soup_cp.title.string else ""
-            state, reason, f_url, status = _classify_cpanel_response(resp, html_text, title, final_url, base_origin, session)
+            state, reason, f_url, status = _classify_cpanel_response(
+                resp, html_text, title, final_url, base_origin, session
+            )
             if state != "unknown":
                 return state, reason, f_url, status
         except requests.RequestException:
             continue
 
     port_host = base_origin.replace("https://", "").replace("http://", "").split("/")[0]
-    
+
     # Pre-comprobación de socket súper rápida para evitar que Selenium se cuelgue 30s si el puerto está cerrado/bloqueado
     port_open = False
     try:
@@ -401,22 +406,45 @@ def _classify_admin_response(probe_url: str, resp) -> tuple[str, str]:
         return "unknown", f"status={status}"
 
     auth_url_indicators = (
-        "login", "signin", "sign-in", "auth", "authenticate", "wp-login",
-        "user/login", "account", "session", "sso", "oauth",
+        "login",
+        "signin",
+        "sign-in",
+        "auth",
+        "authenticate",
+        "wp-login",
+        "user/login",
+        "account",
+        "session",
+        "sso",
+        "oauth",
     )
     if resp.history and any(ind in final_url_l for ind in auth_url_indicators):
         return "protected", f"redirect_to_auth={final_url}"
 
     strong_login_indicators = (
-        'type="password"', 'name="password"', 'id="password"',
-        "wp-submit", "user_login", "csrf", "_token", "login_form",
+        'type="password"',
+        'name="password"',
+        'id="password"',
+        "wp-submit",
+        "user_login",
+        "csrf",
+        "_token",
+        "login_form",
     )
     if any(ind in text_l for ind in strong_login_indicators):
         return "protected", "strong_login_form_detected"
 
     weak_login_indicators = (
-        "contraseña", "password", "iniciar sesión", "log in", "login",
-        "autenticación", "acceder", "identificarse", "usuario", "cpanel",
+        "contraseña",
+        "password",
+        "iniciar sesión",
+        "log in",
+        "login",
+        "autenticación",
+        "acceder",
+        "identificarse",
+        "usuario",
+        "cpanel",
     )
     is_home = final_url_l.rstrip("/") == f"{urlparse(probe_url).scheme}://{urlparse(probe_url).netloc}".lower()
     if any(ind in text_l for ind in weak_login_indicators):
@@ -425,8 +453,12 @@ def _classify_admin_response(probe_url: str, resp) -> tuple[str, str]:
         return "protected", "weak_indicator_detected"
 
     dashboard_indicators = (
-        "dashboard", "panel de administración", "logout", "cerrar sesión",
-        "plugins", "phpmyadmin",
+        "dashboard",
+        "panel de administración",
+        "logout",
+        "cerrar sesión",
+        "plugins",
+        "phpmyadmin",
     )
     if status < 400 and any(ind in text_l for ind in dashboard_indicators):
         return "exposed", "dashboard_indicators_detected"
@@ -441,7 +473,7 @@ def _probe_with_browser(url: str, driver_factory) -> tuple[str, str, str, int | 
     driver = driver_factory()
     if not driver:
         return "unknown", "selenium_not_available", url, None
-    
+
     orig_timeout = settings.SELENIUM_PAGE_LOAD_TIMEOUT
     try:
         # Timeout ultra-rápido de 5 segundos para sondeos del navegador
@@ -456,20 +488,24 @@ def _probe_with_browser(url: str, driver_factory) -> tuple[str, str, str, int | 
         final_url = driver.current_url
         html_text = driver.page_source or ""
         title = driver.title or ""
-        
+
         if "cpanel" in url.lower() or ":208" in url:
+
             class _FakeSession:
-                cookies = []
+                cookies: list = []
+
             state, reason, f_url, status = _classify_cpanel_response(
                 None, html_text, title, final_url, url, _FakeSession()
             )
             return state, f"browser_{reason}", f_url, status
-        
+
         class MockResponse:
             def __init__(self, text, url):
-                self.text = text; self.url = url
-                self.status_code = 200; self.history = []
-        
+                self.text = text
+                self.url = url
+                self.status_code = 200
+                self.history = []
+
         state, reason = _classify_admin_response(url, MockResponse(html_text, final_url))
         return state, f"browser_{reason}", final_url, 200
     except Exception as exc:

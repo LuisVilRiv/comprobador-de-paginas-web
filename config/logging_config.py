@@ -30,21 +30,22 @@ from config import settings
 # FUNCIONES
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def setup_logger(name: str) -> logging.Logger:
     """
     Crea y configura un logger con el nombre especificado.
-    
+
     Args:
         name (str): Nombre del logger (usualmente __name__ del módulo).
-    
+
     Returns:
         logging.Logger: Logger configurado con handlers de consola y archivo.
-    
+
     Example:
         >>> from config.logging_config import setup_logger
         >>> logger = setup_logger(__name__)
         >>> logger.info("Inicio del proceso de auditoría")
-    
+
     Note:
         - Los handlers solo se agregan si el logger no tiene handlers existentes
         - El nivel de log se obtiene de settings.LOG_LEVEL
@@ -72,7 +73,7 @@ def setup_logger(name: str) -> logging.Logger:
     if settings.LOG_TO_FILE:
         # Crear directorio de logs si no existe
         settings.LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
-        
+
         # Configurar handler rotativo (5MB por archivo, 3 archivos de respaldo)
         file_handler = logging.handlers.RotatingFileHandler(
             filename=settings.LOG_FILE,

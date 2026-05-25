@@ -1,5 +1,7 @@
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
 from docker.scraper.service import AuditService
 from scraper.models.scrape_result import ScrapeResult
 
@@ -17,7 +19,7 @@ class MockStrategy:
             content=self.content,
             strategy="BeautifulSoupStrategy",
             metadata=self.metadata,
-            error=None if self.status == "success" else "Error scraping"
+            error=None if self.status == "success" else "Error scraping",
         )
 
 
@@ -49,12 +51,9 @@ def test_classify_classic_ssr(base_context, base_auditor):
     </html>
     """
     bs_mock = MockStrategy(content=html)
-    strategy_registry = {
-        "beautifulsoup": bs_mock,
-        "selenium": MagicMock()
-    }
+    strategy_registry = {"beautifulsoup": bs_mock, "selenium": MagicMock()}
     service = AuditService(base_context, base_auditor, strategy_registry, ["beautifulsoup", "selenium"])
-    
+
     res, recommended = service.classify_and_scrape("https://recetas.com")
     assert recommended == "beautifulsoup"
     assert res is not None
@@ -74,12 +73,9 @@ def test_classify_empty_spa_root(base_context, base_auditor):
     </html>
     """
     bs_mock = MockStrategy(content=html)
-    strategy_registry = {
-        "beautifulsoup": bs_mock,
-        "selenium": MagicMock()
-    }
+    strategy_registry = {"beautifulsoup": bs_mock, "selenium": MagicMock()}
     service = AuditService(base_context, base_auditor, strategy_registry, ["beautifulsoup", "selenium"])
-    
+
     res, recommended = service.classify_and_scrape("https://spa-react.com")
     assert recommended == "selenium"
     assert res is None  # Debe requerir scrapeo con Selenium, por ende no devuelve el pre-fetch de BS
@@ -97,12 +93,9 @@ def test_classify_thin_content_heavy_js(base_context, base_auditor):
     </html>
     """
     bs_mock = MockStrategy(content=html)
-    strategy_registry = {
-        "beautifulsoup": bs_mock,
-        "selenium": MagicMock()
-    }
+    strategy_registry = {"beautifulsoup": bs_mock, "selenium": MagicMock()}
     service = AuditService(base_context, base_auditor, strategy_registry, ["beautifulsoup", "selenium"])
-    
+
     res, recommended = service.classify_and_scrape("https://heavy-js.com")
     assert recommended == "selenium"
     assert res is None
@@ -119,12 +112,9 @@ def test_classify_react_bundle_js(base_context, base_auditor):
     </html>
     """
     bs_mock = MockStrategy(content=html)
-    strategy_registry = {
-        "beautifulsoup": bs_mock,
-        "selenium": MagicMock()
-    }
+    strategy_registry = {"beautifulsoup": bs_mock, "selenium": MagicMock()}
     service = AuditService(base_context, base_auditor, strategy_registry, ["beautifulsoup", "selenium"])
-    
+
     res, recommended = service.classify_and_scrape("https://react-app.com")
     assert recommended == "selenium"
     assert res is None
@@ -141,12 +131,9 @@ def test_classify_vue_bundle_js(base_context, base_auditor):
     </html>
     """
     bs_mock = MockStrategy(content=html)
-    strategy_registry = {
-        "beautifulsoup": bs_mock,
-        "selenium": MagicMock()
-    }
+    strategy_registry = {"beautifulsoup": bs_mock, "selenium": MagicMock()}
     service = AuditService(base_context, base_auditor, strategy_registry, ["beautifulsoup", "selenium"])
-    
+
     res, recommended = service.classify_and_scrape("https://vue-app.com")
     assert recommended == "selenium"
     assert res is None
@@ -164,12 +151,9 @@ def test_classify_angular_bundle_js(base_context, base_auditor):
     </html>
     """
     bs_mock = MockStrategy(content=html)
-    strategy_registry = {
-        "beautifulsoup": bs_mock,
-        "selenium": MagicMock()
-    }
+    strategy_registry = {"beautifulsoup": bs_mock, "selenium": MagicMock()}
     service = AuditService(base_context, base_auditor, strategy_registry, ["beautifulsoup", "selenium"])
-    
+
     res, recommended = service.classify_and_scrape("https://angular-app.com")
     assert recommended == "selenium"
     assert res is None
@@ -187,26 +171,21 @@ def test_classify_fallback_if_selenium_missing(base_context, base_auditor):
     """
     bs_mock = MockStrategy(content=html)
     # Registry no posee selenium
-    strategy_registry = {
-        "beautifulsoup": bs_mock
-    }
+    strategy_registry = {"beautifulsoup": bs_mock}
     service = AuditService(base_context, base_auditor, strategy_registry, ["beautifulsoup"])
-    
+
     res, recommended = service.classify_and_scrape("https://no-selenium.com")
     assert recommended == "beautifulsoup"  # Hace fallback a BeautifulSoup
     assert res is not None  # Retorna el pre-fetched result de BS4
-    assert "<div id=\"app\"></div>" in res.content
+    assert '<div id="app"></div>' in res.content
 
 
 def test_classify_failsafe_empty_body(base_context, base_auditor):
     # Heurística: Cuerpo completamente vacío, pre-fetch da error
     bs_mock = MockStrategy(status="error")
-    strategy_registry = {
-        "beautifulsoup": bs_mock,
-        "selenium": MagicMock()
-    }
+    strategy_registry = {"beautifulsoup": bs_mock, "selenium": MagicMock()}
     service = AuditService(base_context, base_auditor, strategy_registry, ["beautifulsoup", "selenium"])
-    
+
     res, recommended = service.classify_and_scrape("https://error-site.com")
     assert recommended == "selenium"
     assert res is None

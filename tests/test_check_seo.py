@@ -1,6 +1,8 @@
-import pytest
 import re
+
+import pytest
 from bs4 import BeautifulSoup
+
 from shared.auditor.checks.seo import check_seo
 
 
@@ -45,7 +47,7 @@ def test_seo_perfect_page(regex_set):
     """
     soup = BeautifulSoup(html, "html.parser")
     issues = []
-    
+
     check_seo(soup, issues, regex_set)
     assert len(issues) == 0
 
@@ -66,7 +68,7 @@ def test_seo_missing_title_and_description(regex_set):
     """
     soup = BeautifulSoup(html, "html.parser")
     issues = []
-    
+
     check_seo(soup, issues, regex_set)
     assert any("Falta <title>" in issue for issue in issues)
     assert any("Falta meta description" in issue for issue in issues)
@@ -111,7 +113,7 @@ def test_seo_missing_essential_meta_tags(regex_set):
     """
     soup = BeautifulSoup(html, "html.parser")
     issues = []
-    
+
     check_seo(soup, issues, regex_set)
     assert any("La etiqueta <html> no define el atributo lang" in issue for issue in issues)
     assert any("Falta canonical" in issue for issue in issues)
@@ -131,7 +133,7 @@ def test_seo_multiple_h1_tags(regex_set):
     """
     soup = BeautifulSoup(html, "html.parser")
     issues = []
-    
+
     check_seo(soup, issues, regex_set)
     assert any("Múltiples <h1> detectados" in issue for issue in issues)
 
@@ -150,7 +152,7 @@ def test_seo_missing_og_and_twitter_card(regex_set):
     """
     soup = BeautifulSoup(html, "html.parser")
     issues = []
-    
+
     check_seo(soup, issues, regex_set)
     assert any("Open Graph incompleto" in issue for issue in issues)
     og_issues = [issue for issue in issues if "Open Graph incompleto" in issue]

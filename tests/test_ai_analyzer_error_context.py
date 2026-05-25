@@ -3,9 +3,7 @@ from pathlib import Path
 
 
 def _load_ai_analyzer_class():
-    analyzer_path = (
-        Path(__file__).resolve().parent.parent / "docker" / "ai-analyzer" / "analyzer.py"
-    )
+    analyzer_path = Path(__file__).resolve().parent.parent / "docker" / "ai-analyzer" / "analyzer.py"
     spec = importlib.util.spec_from_file_location("ai_analyzer_module", analyzer_path)
     module = importlib.util.module_from_spec(spec)
     assert spec and spec.loader
@@ -28,19 +26,14 @@ def test_error_code_without_context_is_not_inoperative_signal():
 
 def test_error_code_with_context_is_inoperative_signal():
     analyzer = AIContentAnalyzer()
-    text = (
-        "Error 503 service unavailable. The website is temporarily out of service "
-        "and will be back soon."
-    )
+    text = "Error 503 service unavailable. The website is temporarily out of service and will be back soon."
 
     assert analyzer._has_contextual_error_code(text) is True
 
 
 def test_status_code_reference_with_404_not_found_context_is_detected():
     analyzer = AIContentAnalyzer()
-    text = (
-        "Lo sentimos, pagina no encontrada. Codigo 404 not found para el recurso solicitado."
-    )
+    text = "Lo sentimos, pagina no encontrada. Codigo 404 not found para el recurso solicitado."
 
     assert analyzer._has_contextual_error_code(text) is True
 
@@ -69,31 +62,23 @@ def test_503_template_signature_is_detected_as_strong_error():
 
 def test_502_bad_gateway_signature_is_detected():
     analyzer = AIContentAnalyzer()
-    text = (
-        "502 Bad Gateway. The proxy server received an invalid response from an upstream server."
-    )
+    text = "502 Bad Gateway. The proxy server received an invalid response from an upstream server."
 
     assert analyzer._has_strong_error_signature(text) is True
 
 
 def test_429_rate_limit_signature_is_detected():
     analyzer = AIContentAnalyzer()
-    text = (
-        "429 Too Many Requests. Rate limit exceeded, please try again later."
-    )
+    text = "429 Too Many Requests. Rate limit exceeded, please try again later."
 
     assert analyzer._has_strong_error_signature(text) is True
 
 
 def test_rfc_article_url_is_treated_as_educational_context():
     analyzer = AIContentAnalyzer()
-    text = (
-        "RFC 9110 define HTTP semantics y documenta codigo de estado, definicion y especificacion."
-    )
+    text = "RFC 9110 define HTTP semantics y documenta codigo de estado, definicion y especificacion."
 
-    assert analyzer._looks_like_educational_content(
-        text, "https://www.rfc-editor.org/rfc/rfc9110"
-    ) is True
+    assert analyzer._looks_like_educational_content(text, "https://www.rfc-editor.org/rfc/rfc9110") is True
 
 
 def test_explanatory_http_text_is_not_strong_runtime_error_signature():

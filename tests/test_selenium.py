@@ -1,7 +1,9 @@
+from unittest.mock import MagicMock, PropertyMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, PropertyMock
-from scraper.strategies.selenium_strategy import SeleniumStrategy
+
 from scraper.models.scrape_result import ScrapeResult
+from scraper.strategies.selenium_strategy import SeleniumStrategy
 
 
 @pytest.fixture
@@ -9,14 +11,16 @@ def strategy() -> SeleniumStrategy:
     return SeleniumStrategy()
 
 
-def _mock_driver(page_source: str = "<html><body>JS Content</body></html>",
-                 title: str = "Página de prueba",
-                 current_url: str = "https://ejemplo.com") -> MagicMock:
+def _mock_driver(
+    page_source: str = "<html><body>JS Content</body></html>",
+    title: str = "Página de prueba",
+    current_url: str = "https://ejemplo.com",
+) -> MagicMock:
     """Crea un mock de webdriver.Chrome."""
     driver = MagicMock()
-    type(driver).page_source  = PropertyMock(return_value=page_source)
-    type(driver).title        = PropertyMock(return_value=title)
-    type(driver).current_url  = PropertyMock(return_value=current_url)
+    type(driver).page_source = PropertyMock(return_value=page_source)
+    type(driver).title = PropertyMock(return_value=title)
+    type(driver).current_url = PropertyMock(return_value=current_url)
     return driver
 
 
@@ -59,6 +63,7 @@ class TestSeleniumScrape:
 
     def test_fallo_total_devuelve_error_tras_reintentos(self, strategy):
         from selenium.common.exceptions import WebDriverException
+
         mock_driver = _mock_driver()
         mock_driver.get.side_effect = WebDriverException("fallo")
         with patch.object(strategy, "_create_driver", return_value=mock_driver):

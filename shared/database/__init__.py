@@ -8,17 +8,18 @@ NO contiene lógica: cada responsabilidad vive en su propio módulo.
     models.py       → modelos ORM
     repositories/   → lógica de acceso a datos
 """
+
+from shared.database import repositories
 from shared.database.connection import get_db
 from shared.database.models import (
-    Base,
-    Client,
-    Website,
+    AuditIssue,
     AuditRun,
     AuditRunSection,
-    AuditIssue,
+    Base,
+    Client,
     GlobalSetting,
+    Website,
 )
-from shared.database import repositories
 
 __all__ = [
     "get_db",

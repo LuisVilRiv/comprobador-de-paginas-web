@@ -50,9 +50,7 @@ DB_USER = os.environ.get("DB_USER", "auditor")
 DB_PASSWORD = os.environ.get("DB_PASSWORD", "auditor_secret")
 
 # URL de conexión completa para SQLAlchemy
-DATABASE_URL = (
-    f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-)
+DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENGINE Y SESIÓN
@@ -69,18 +67,19 @@ SessionLocal = sessionmaker(bind=engine, future=True, expire_on_commit=False)
 # FUNCIONES
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @contextmanager
 def get_db():
     """
     Context manager para gestión segura de sesiones de base de datos.
-    
+
     Yields:
         Session: Sesión de SQLAlchemy para operaciones CRUD.
-    
+
     Example:
         >>> with get_db() as db:
         ...     users = db.query(User).all()
-    
+
     Note:
         - La sesión se cierra automáticamente al salir del contexto
         - Garantiza que los recursos se liberen incluso en caso de excepción

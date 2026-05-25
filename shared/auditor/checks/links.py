@@ -2,9 +2,13 @@
 check_links_recursive — Rastreo de enlaces rotos con profundidad configurable.
 Extraído de QualityAuditor._check_links_recursive.
 """
+
 from __future__ import annotations
+
 from urllib.parse import urljoin, urlparse
+
 from bs4 import BeautifulSoup
+
 from config import settings
 
 
@@ -36,7 +40,7 @@ def check_links_recursive(
             fragment = href[1:]
             if fragment and not soup.find(id=fragment) and not soup.find("a", attrs={"name": fragment}):
                 ln, line = find_line_fn(html_lines, anchor)
-                issues.append(f"Ancla rota: href=\"{href}\" apunta a un id que no existe. Línea {ln}: {line}")
+                issues.append(f'Ancla rota: href="{href}" apunta a un id que no existe. Línea {ln}: {line}')
             continue
         full = urljoin(base_url, href)
         if full not in seen:
@@ -67,10 +71,7 @@ def check_links_recursive(
 
         if not ok:
             crawl_stats["broken"] += 1
-            issues.append(
-                f"Enlace roto confirmado {url} estado={status_code} "
-                f"tiempo={elapsed_ms}ms ({speed})"
-            )
+            issues.append(f"Enlace roto confirmado {url} estado={status_code} tiempo={elapsed_ms}ms ({speed})")
 
         if content and depth < settings.AUDIT_MAX_CRAWL_DEPTH:
             page_soup = BeautifulSoup(content, settings.BS4_PARSER)

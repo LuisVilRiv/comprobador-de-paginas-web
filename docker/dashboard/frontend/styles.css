@@ -609,3 +609,85 @@ input:checked + .slider:before {
 .icon-left {
   margin-right: 6px;
 }
+
+/* ── DRIVER.JS TOUR THEME OVERRIDES ── */
+/* Dark theme (default) */
+.driver-popover {
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--border-main) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+}
+
+.driver-popover .driver-popover-title {
+  color: var(--text-main) !important;
+}
+
+.driver-popover .driver-popover-description {
+  color: var(--text-dim) !important;
+}
+
+.driver-popover .driver-popover-progress-text {
+  color: var(--text-dim) !important;
+}
+
+.driver-popover .driver-popover-prev-btn {
+  background: var(--btn-ghost-bg) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--border-main) !important;
+  border-radius: 8px !important;
+}
+
+.driver-popover .driver-popover-next-btn,
+.driver-popover .driver-popover-close-btn {
+  background: var(--primary) !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 8px !important;
+}
+
+.driver-popover-arrow-side-left .driver-popover-arrow,
+.driver-popover-arrow-side-right .driver-popover-arrow,
+.driver-popover-arrow-side-top .driver-popover-arrow,
+.driver-popover-arrow-side-bottom .driver-popover-arrow {
+  border-color: var(--bg-card) !important;
+}
+
+/* Light theme overrides for Driver.js */
+[data-theme="light"] .driver-popover {
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--border-main) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
+}
+
+[data-theme="light"] .driver-popover .driver-popover-title {
+  color: var(--text-main) !important;
+}
+
+[data-theme="light"] .driver-popover .driver-popover-description {
+  color: var(--text-dim) !important;
+}
+
+[data-theme="light"] .driver-popover .driver-popover-progress-text {
+  color: var(--text-dim) !important;
+}
+
+[data-theme="light"] .driver-popover .driver-popover-prev-btn {
+  background: var(--btn-ghost-bg) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--border-main) !important;
+}
+
+[data-theme="light"] .driver-popover .driver-popover-next-btn,
+[data-theme="light"] .driver-popover .driver-popover-close-btn {
+  background: var(--primary) !important;
+  color: #ffffff !important;
+}
+
+[data-theme="light"] .driver-popover-arrow-side-left .driver-popover-arrow,
+[data-theme="light"] .driver-popover-arrow-side-right .driver-popover-arrow,
+[data-theme="light"] .driver-popover-arrow-side-top .driver-popover-arrow,
+[data-theme="light"] .driver-popover-arrow-side-bottom .driver-popover-arrow {
+  border-color: var(--bg-card) !important;
+}

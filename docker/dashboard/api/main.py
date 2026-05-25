@@ -1,3 +1,5 @@
+from app import app  # noqa: F401 — required for `uvicorn main:app`
+
 if __name__ == "__main__":
     import uvicorn
 

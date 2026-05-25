@@ -126,7 +126,8 @@ class AuditScheduler:
                 logger.info("Web %s (%s) programada para: %s", entry.get("url", web_id), source, next_t)
             
             # Si la hora de ejecución ha pasado, disparar y recalcular
-            if now >= self._web_cache[web_id]["next_run"]:
+            next_run_time = self._web_cache[web_id].get("next_run")
+            if next_run_time and now >= next_run_time:
                 logger.info("⏰ [CRON] Ejecutando auditoría programada para: %s", entry.get("url", web_id))
                 self._run_single(entry)
                 # Recalcular para la siguiente

@@ -34,7 +34,7 @@
  * - theme: Tema claro/oscuro
  * - showTourMenu: Estado del menú desplegable de tours
  * 
- * @version 2.2.0
+ * @version 2.3.0
  * @author Web Auditor Team
  * @since 2024
  */
@@ -127,6 +127,13 @@ function App() {
   const [editWebsiteForm, setEditWebsiteForm] = useState(null);
 
   const { runs, runSections, runIssues, loadRuns, toggleSections } = useAuditDetail();
+
+  // Inicializa los iconos de Lucide en cada renderizado
+  useEffect(() => {
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+  });
 
   const loadAll = async () => {
     setLoading(true);
@@ -278,27 +285,37 @@ function App() {
 
   return React.createElement("div", { className: "app" },
     // Header
-    React.createElement("div", { className: "header-area" },
+    React.createElement("header", { className: "header-area" },
       React.createElement("div", { id: "tour-toggles", style: { display: "flex", alignItems: "center", gap: "15px" } },
         React.createElement("h2", null, t("app.title")),
-        React.createElement("button", { className: "tour-btn", onClick: toggleLang, title: t("tour.lang_toggle") }, React.createElement("span", { className: "flag-emoji" }, lang === "es" ? "🇪🇸" : "🇬🇧")),
-        React.createElement("button", { className: "tour-btn", onClick: toggleTheme, title: t("tour.theme_toggle") }, theme === "light" ? "☀️" : "🌙")
+        React.createElement("button", { className: "tour-btn", onClick: toggleLang, title: t("tour.lang_toggle") }, 
+          React.createElement("i", { "data-lucide": "languages" })
+        ),
+        React.createElement("button", { className: "tour-btn", onClick: toggleTheme, title: t("tour.theme_toggle") }, 
+          React.createElement("i", { "data-lucide": theme === 'light' ? 'sun' : 'moon' })
+        )
       ),
       React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "10px" } },
         React.createElement("div", { style: { position: "relative" } },
           React.createElement("div", { style: { display: "flex", gap: "8px" } },
-            React.createElement("button", { className: "tour-btn tour-btn-primary", onClick: startTour, title: t("tour.full_tour_title") }, "🎯 " + t("tour.help_btn")),
-            React.createElement("button", { className: "tour-btn tour-btn-icon", onClick: () => setShowTourMenu(!showTourMenu), title: t("tour.module_tours") }, "▼")
+            React.createElement("button", { className: "tour-btn tour-btn-primary", onClick: startTour, title: t("tour.full_tour_title") }, 
+              React.createElement(React.Fragment, null, React.createElement("i", { "data-lucide": "help-circle", className: "icon-left" }), t("tour.help_btn"))
+            ),
+            React.createElement("button", { className: "tour-btn tour-btn-icon", onClick: () => setShowTourMenu(!showTourMenu), title: t("tour.module_tours") }, 
+              React.createElement("i", { "data-lucide": "chevron-down" })
+            )
           ),
           showTourMenu && React.createElement("div", { className: "tour-dropdown" },
-            React.createElement("button", { className: "tour-dropdown-item", onClick: () => { startModuleTour(statsTourSteps, "stats"); setShowTourMenu(false); } }, "📊 " + t("tour.module_stats")),
-            React.createElement("button", { className: "tour-dropdown-item", onClick: () => { startModuleTour(clientTourSteps, "clients"); setShowTourMenu(false); } }, "👥 " + t("tour.module_clients")),
-            React.createElement("button", { className: "tour-dropdown-item", onClick: () => { startModuleTour(websiteTourSteps, "websites"); setShowTourMenu(false); } }, "🌐 " + t("tour.module_websites")),
-            React.createElement("button", { className: "tour-dropdown-item", onClick: () => { startModuleTour(tableTourSteps, "table"); setShowTourMenu(false); } }, "📋 " + t("tour.module_table")),
-            React.createElement("button", { className: "tour-dropdown-item", onClick: () => { startModuleTour(schedulerTourSteps, "scheduler"); setShowTourMenu(false); } }, "⏰ " + t("tour.module_scheduler"))
+            React.createElement("button", { className: "tour-dropdown-item", onClick: () => { startModuleTour(statsTourSteps, "stats"); setShowTourMenu(false); } }, React.createElement(React.Fragment, null, React.createElement("i", { "data-lucide": "bar-chart-2", className: "icon-left" }), t("tour.module_stats"))),
+            React.createElement("button", { className: "tour-dropdown-item", onClick: () => { startModuleTour(clientTourSteps, "clients"); setShowTourMenu(false); } }, React.createElement(React.Fragment, null, React.createElement("i", { "data-lucide": "users", className: "icon-left" }), t("tour.module_clients"))),
+            React.createElement("button", { className: "tour-dropdown-item", onClick: () => { startModuleTour(websiteTourSteps, "websites"); setShowTourMenu(false); } }, React.createElement(React.Fragment, null, React.createElement("i", { "data-lucide": "globe", className: "icon-left" }), t("tour.module_websites"))),
+            React.createElement("button", { className: "tour-dropdown-item", onClick: () => { startModuleTour(tableTourSteps, "table"); setShowTourMenu(false); } }, React.createElement(React.Fragment, null, React.createElement("i", { "data-lucide": "table", className: "icon-left" }), t("tour.module_table"))),
+            React.createElement("button", { className: "tour-dropdown-item", onClick: () => { startModuleTour(schedulerTourSteps, "scheduler"); setShowTourMenu(false); } }, React.createElement(React.Fragment, null, React.createElement("i", { "data-lucide": "clock", className: "icon-left" }), t("tour.module_scheduler")))
           )
         ),
-        React.createElement("button", { id: "tour-global-settings", className: "btn-base btn-purple", onClick: () => setShowSettings(true) }, t("app.global_schedule"))
+        React.createElement("button", { id: "tour-global-settings", className: "btn-base btn-purple", onClick: () => setShowSettings(true) }, 
+          React.createElement(React.Fragment, null, React.createElement("i", { "data-lucide": "calendar", className: "icon-left" }), t("app.global_schedule"))
+        )
       )
     ),
 
@@ -331,9 +348,15 @@ function App() {
     // Toolbar
     React.createElement("div", { className: "topbar" },
       React.createElement("div", { style: { display: "flex", gap: "10px" } },
-        React.createElement("button", { id: "tour-new-client", className: "btn-base btn-success", onClick: () => setShowAddClient(true) }, t("app.new_client")),
-        React.createElement("button", { id: "tour-new-url", className: "btn-base btn-primary", onClick: () => setShowAddWebsite(true) }, t("app.new_url")),
-        React.createElement("button", { id: "tour-refresh", className: "btn-base btn-ghost", onClick: loadAll }, t("app.refresh"))
+        React.createElement("button", { id: "tour-new-client", className: "btn-base btn-success", onClick: () => setShowAddClient(true) }, 
+          React.createElement(React.Fragment, null, React.createElement("i", { "data-lucide": "user-plus", className: "icon-left" }), t("app.new_client"))
+        ),
+        React.createElement("button", { id: "tour-new-url", className: "btn-base btn-primary", onClick: () => setShowAddWebsite(true) }, 
+          React.createElement(React.Fragment, null, React.createElement("i", { "data-lucide": "plus", className: "icon-left" }), t("app.new_url"))
+        ),
+        React.createElement("button", { id: "tour-refresh", className: "btn-base btn-ghost", onClick: loadAll }, 
+          React.createElement(React.Fragment, null, React.createElement("i", { "data-lucide": "refresh-cw", className: "icon-left" }), t("app.refresh"))
+        )
       ),
       React.createElement("div", { style: { display: "flex", gap: "15px", alignItems: "center", flex: 1 } },
         React.createElement("div", { id: "tour-client-filter", style: { display: "flex", flex: 1, gap: "5px" } },
@@ -342,9 +365,15 @@ function App() {
             clients.map(c => React.createElement("option", { key: c.id, value: c.id }, c.name))
           ),
           clientId && React.createElement("div", { id: "tour-client-actions", style: { display: "flex", gap: "5px" } },
-            React.createElement("button", { className: "btn-base btn-ghost", style: { padding: "0 12px", border: "1px solid var(--border-main)" }, title: t("app.edit_client"), onClick: () => { const c = clients.find(x => x.id === clientId); if (c) { setEditClientForm(c); setShowEditClient(true); } } }, "✏️"),
-            React.createElement("button", { className: "btn-base btn-ghost", style: { padding: "0 12px", color: "var(--danger)", border: "1px solid var(--border-main)" }, title: t("app.delete_client"), onClick: () => { const c = clients.find(x => x.id === clientId); if (c) { setDeleteConfirm({ show: true, type: "client", id: c.id, name: c.name, input: "" }); } } }, "🗑️"),
-            React.createElement("button", { className: "btn-base btn-ghost", style: { padding: "0 12px", border: "1px solid var(--border-main)", fontWeight: "700" }, title: t("app.export_client_report") || "Exportar Reporte", onClick: handleExportClient }, "📄 Exportar Reporte")
+            React.createElement("button", { className: "btn-base btn-ghost", style: { padding: "0 12px", border: "1px solid var(--border-main)" }, title: t("app.edit_client"), onClick: () => { const c = clients.find(x => x.id === clientId); if (c) { setEditClientForm(c); setShowEditClient(true); } } }, 
+              React.createElement("i", { "data-lucide": "pencil" })
+            ),
+            React.createElement("button", { className: "btn-base btn-ghost", style: { padding: "0 12px", color: "var(--danger)", border: "1px solid var(--border-main)" }, title: t("app.delete_client"), onClick: () => { const c = clients.find(x => x.id === clientId); if (c) { setDeleteConfirm({ show: true, type: "client", id: c.id, name: c.name, input: "" }); } } }, 
+              React.createElement("i", { "data-lucide": "trash-2" })
+            ),
+            React.createElement("button", { className: "btn-base btn-ghost", style: { padding: "0 12px", border: "1px solid var(--border-main)", display: "flex", alignItems: "center", gap: "6px" }, title: t("app.export_client_report") || "Exportar Reporte", onClick: handleExportClient }, 
+              React.createElement(React.Fragment, null, React.createElement("i", { "data-lucide": "file-down" }), "Exportar Reporte")
+            )
           )
         ),
         React.createElement("input", { id: "tour-search", className: "premium-input", style: { flex: 1.5 }, value: query, onChange: (e) => setQuery(e.target.value), placeholder: t("app.search_placeholder") })

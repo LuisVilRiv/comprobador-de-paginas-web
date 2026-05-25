@@ -1,16 +1,17 @@
-from bs4 import BeautifulSoup
 import time
+
+from bs4 import BeautifulSoup
 from selenium import webdriver
+from selenium.common.exceptions import TimeoutException, WebDriverException
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import WebDriverException, TimeoutException
+from selenium.webdriver.support.ui import WebDriverWait
 
-from scraper.base.base_scraper import BaseScraper
-from scraper.models.scrape_result import ScrapeResult
 from config import settings
 from config.logging_config import setup_logger
+from scraper.base.base_scraper import BaseScraper
+from scraper.models.scrape_result import ScrapeResult
 
 logger = setup_logger(__name__)
 
@@ -32,7 +33,6 @@ class SeleniumStrategy(BaseScraper):
 
     # ── Implementación del contrato BaseScraper ───────────────────────────────
 
-
     def fetch(self, url: str) -> tuple[str, dict]:
         """Fetch page using a simple requests fallback.
         Returns raw HTML text and a metadata dict containing at least
@@ -42,6 +42,7 @@ class SeleniumStrategy(BaseScraper):
         invokes Selenium.
         """
         import requests as _req
+
         try:
             # Primary request: GET to obtain both content and status
             resp = _req.get(url, timeout=15, verify=False, headers={"User-Agent": "Mozilla/5.0"})
@@ -50,8 +51,9 @@ class SeleniumStrategy(BaseScraper):
         except Exception as e:
             # Fallback: try HEAD if GET fails
             try:
-                head_resp = _req.head(url, timeout=15, allow_redirects=True, verify=False,
-                                     headers={"User-Agent": "Mozilla/5.0"})
+                head_resp = _req.head(
+                    url, timeout=15, allow_redirects=True, verify=False, headers={"User-Agent": "Mozilla/5.0"}
+                )
                 html = ""
                 meta = {"status_code": head_resp.status_code, "error": str(e)}
             except Exception as e2:
@@ -67,20 +69,21 @@ class SeleniumStrategy(BaseScraper):
             WebDriverWait(driver, settings.SELENIUM_IMPLICIT_WAIT).until(
                 EC.presence_of_element_located(("tag name", "body"))
             )
-            elapsed_ms  = int((time.perf_counter() - start) * 1000)
-            raw_html    = driver.page_source
-            page_title  = driver.title
+            elapsed_ms = int((time.perf_counter() - start) * 1000)
+            raw_html = driver.page_source
+            page_title = driver.title
             current_url = driver.current_url
 
             # Obtener status code real de los performance logs
             status_code = 200  # Default si la pagina cargo
             try:
-                perf_logs = driver.execute_cdp_cmd("Network.getResponseBody", {})
+                driver.execute_cdp_cmd("Network.getResponseBody", {})
             except Exception:
                 pass
             try:
                 for entry in driver.get_log("performance"):
                     import json as _json
+
                     msg = _json.loads(entry["message"])["message"]
                     if msg.get("method") == "Network.responseReceived":
                         resp_url = msg["params"]["response"]["url"]
@@ -100,8 +103,8 @@ class SeleniumStrategy(BaseScraper):
         if status_code == 200:
             try:
                 import requests as _req
-                _resp = _req.head(url, timeout=8, allow_redirects=True,
-                                  headers={"User-Agent": "Mozilla/5.0"})
+
+                _resp = _req.head(url, timeout=8, allow_redirects=True, headers={"User-Agent": "Mozilla/5.0"})
                 if _resp.status_code != 200:
                     status_code = _resp.status_code
                     logger.info("Selenium status fallback via HEAD: %d para %s", status_code, url)
@@ -116,9 +119,9 @@ class SeleniumStrategy(BaseScraper):
             strategy=self.strategy_name,
             content=soup.prettify(),
             metadata={
-                "page_title":  page_title,
-                "final_url":   current_url,
-                "status_code":  status_code,
+                "page_title": page_title,
+                "final_url": current_url,
+                "status_code": status_code,
                 "js_rendered": True,
                 "response_time_ms": elapsed_ms,
             },
@@ -127,29 +130,29 @@ class SeleniumStrategy(BaseScraper):
     # ── Helpers privados ──────────────────────────────────────────────────────
 
     def _create_driver(self) -> webdriver.Chrome:
-        service = (
-            Service(settings.SELENIUM_DRIVER_PATH)
-            if settings.SELENIUM_DRIVER_PATH
-            else Service()
-        )
+        service = Service(settings.SELENIUM_DRIVER_PATH) if settings.SELENIUM_DRIVER_PATH else Service()
         driver = webdriver.Chrome(service=service, options=self._chrome_options)
         driver.set_page_load_timeout(settings.SELENIUM_PAGE_LOAD_TIMEOUT)
 
         # Anti-deteccion: eliminar flag navigator.webdriver
-        driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-            "source": """
+        driver.execute_cdp_cmd(
+            "Page.addScriptToEvaluateOnNewDocument",
+            {
+                "source": """
                 Object.defineProperty(navigator, "webdriver", { get: () => undefined });
                 Object.defineProperty(navigator, "plugins", { get: () => [1, 2, 3, 4, 5] });
                 Object.defineProperty(navigator, "languages", { get: () => ["es-ES", "es", "en"] });
                 window.chrome = { runtime: {} };
             """
-        })
+            },
+        )
 
         return driver
 
     @staticmethod
     def _build_options() -> Options:
         import random
+
         opts = Options()
         if settings.SELENIUM_HEADLESS:
             opts.add_argument("--headless=new")

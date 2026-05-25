@@ -37,10 +37,9 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import declarative_base, relationship
 
-from .connection import engine
-
 # Base declarativa para todos los modelos
 Base = declarative_base()
+
 
 class Client(Base):
     __tablename__ = "clients"
@@ -73,7 +72,9 @@ class Website(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     client = relationship("Client", back_populates="websites")
-    runs = relationship("AuditRun", back_populates="website", cascade="all, delete-orphan", order_by="desc(AuditRun.started_at)")
+    runs = relationship(
+        "AuditRun", back_populates="website", cascade="all, delete-orphan", order_by="desc(AuditRun.started_at)"
+    )
 
 
 class AuditRun(Base):

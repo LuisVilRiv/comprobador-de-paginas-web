@@ -20,4 +20,4 @@ Nota sobre imports:
 # o funciones más comunes de los submódulos.
 
 # from .settings import get_secret, get_db_url, AppStage # <-- Incorrecto, estas funciones no están en settings.py
-from .logging_config import setup_logger
+from .logging_config import setup_logger as setup_logger

@@ -1,6 +1,6 @@
+from config.logging_config import setup_logger
 from scraper.base.scraper_strategy import ScraperStrategy
 from scraper.models.scrape_result import ScrapeResult
-from config.logging_config import setup_logger
 
 logger = setup_logger(__name__)
 
@@ -35,7 +35,8 @@ class ScraperContext:
         """Sustituye la estrategia activa."""
         logger.debug(
             "Cambiando estrategia: %s → %s",
-            self._strategy, strategy,
+            self._strategy,
+            strategy,
         )
         self._strategy = strategy
 
@@ -43,7 +44,8 @@ class ScraperContext:
         """Delega el scraping en la estrategia activa."""
         logger.info(
             "Ejecutando [%s] sobre: %s",
-            self._strategy.strategy_name, url,
+            self._strategy.strategy_name,
+            url,
         )
         return self._strategy.scrape(url)
 

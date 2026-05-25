@@ -1,9 +1,13 @@
-import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import sys
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import pytest
+
 from scraper.strategies.selenium_strategy import SeleniumStrategy
 from shared.auditor.auditor_modules.core import QualityAuditor
-import pytest
+
+
 @pytest.mark.slow
 def test_selenium_fallback_503_detection():
     """Ensure SeleniumStrategy fallback via HEAD detects 503 error pages.

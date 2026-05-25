@@ -1,0 +1,62 @@
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "T20",  # flake8-print (detecta prints olvidados)
+]
+ignore = [
+    "E501",   # line too long (controlado por line-length del formatter)
+    "E701",   # multiple statements on one line — estilo aceptado en el proyecto
+    "E702",   # multiple statements on one line with semicolon
+    "E712",   # comparison to True/False — permitido por claridad con SQLAlchemy filters
+    "B008",   # function call in default argument — común en FastAPI (Depends)
+    "SIM108", # ternary operator — no forzar
+    "SIM102", # nested if — a veces más legible separado
+    "SIM105", # contextlib.suppress — try/except/pass es más explícito
+    "SIM117", # nested with — separar es más legible en sockets/SSL
+    "UP007",  # X | Y union syntax — mantener compatibilidad
+    "N806",   # uppercase variables in functions — usado para constantes locales (thresholds)
+    "N812",   # lowercase imported as non-lowercase — EC es convención estándar en Selenium
+    "B005",   # .strip() con multi-char — lstrip("www.") es intencional
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["T20"]           # permitir prints en tests
+"config/*" = ["E402"]         # imports dinámicos en config
+"docker/dashboard/api/app.py" = ["E402"]  # sys.path manipulation antes de imports
+"docker/scraper/entrypoint.py" = ["E402", "T20"]
+"docker/scraper/service.py" = ["T20"]
+"docker/scraper/scheduler.py" = ["T20"]
+"docker/ai-analyzer/*" = ["T20"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["config", "scraper", "shared"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = false
+warn_unused_configs = true
+disallow_untyped_defs = false
+check_untyped_defs = true
+ignore_missing_imports = true
+exclude = [
+    "tests/",
+    "docs/",
+    "docker/ai-analyzer/",  # usa tipos complejos de sentence-transformers/torch
+    ".venv/",
+]
+
+[[tool.mypy.overrides]]
+module = "shared.database.models"
+# SQLAlchemy declarative_base() no es compatible con mypy sin migrar a DeclarativeBase
+disable_error_code = ["valid-type", "misc"]

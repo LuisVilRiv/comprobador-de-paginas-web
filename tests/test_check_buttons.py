@@ -1,5 +1,5 @@
-import pytest
 from bs4 import BeautifulSoup
+
 from shared.auditor.checks.buttons import check_buttons
 
 
@@ -29,10 +29,10 @@ def test_buttons_perfect():
     """
     soup = BeautifulSoup(html, "html.parser")
     issues = []
-    
+
     def mock_check_url(url, method="get"):
         return True, 100, 200, ""
-        
+
     check_buttons(
         soup=soup,
         base_url="https://example.com",
@@ -42,9 +42,9 @@ def test_buttons_perfect():
         check_url_fn=mock_check_url,
         classify_speed_fn=mock_classify_speed,
         find_line_fn=mock_find_line,
-        blocked_admin_segments=("/admin",)
+        blocked_admin_segments=("/admin",),
     )
-    
+
     assert len(issues) == 0
 
 
@@ -53,7 +53,7 @@ def test_buttons_missing_buttons_warning():
     html = "<html><body><h1>Página informativa</h1></body></html>"
     soup = BeautifulSoup(html, "html.parser")
     issues = []
-    
+
     check_buttons(
         soup=soup,
         base_url="https://example.com",
@@ -63,9 +63,9 @@ def test_buttons_missing_buttons_warning():
         check_url_fn=None,
         classify_speed_fn=mock_classify_speed,
         find_line_fn=mock_find_line,
-        blocked_admin_segments=("/admin",)
+        blocked_admin_segments=("/admin",),
     )
-    
+
     assert any("No hay botones detectables en el HTML estático" in issue for issue in issues)
 
 
@@ -82,7 +82,7 @@ def test_buttons_empty_text():
     """
     soup = BeautifulSoup(html, "html.parser")
     issues = []
-    
+
     check_buttons(
         soup=soup,
         base_url="https://example.com",
@@ -92,9 +92,9 @@ def test_buttons_empty_text():
         check_url_fn=None,
         classify_speed_fn=mock_classify_speed,
         find_line_fn=mock_find_line,
-        blocked_admin_segments=("/admin",)
+        blocked_admin_segments=("/admin",),
     )
-    
+
     # Debe reportar 3 issues de botones sin texto
     assert sum("Botón sin texto visible" in issue for issue in issues) == 3
 
@@ -112,7 +112,7 @@ def test_buttons_form_action_errors():
     """
     soup = BeautifulSoup(html, "html.parser")
     issues = []
-    
+
     check_buttons(
         soup=soup,
         base_url="https://example.com",
@@ -122,9 +122,9 @@ def test_buttons_form_action_errors():
         check_url_fn=None,
         classify_speed_fn=mock_classify_speed,
         find_line_fn=mock_find_line,
-        blocked_admin_segments=("/admin",)
+        blocked_admin_segments=("/admin",),
     )
-    
+
     assert any("Formulario sin action" in issue for issue in issues)
     assert any("Formulario apunta a una ruta prohibida" in issue for issue in issues)
 
@@ -141,10 +141,10 @@ def test_buttons_form_action_broken():
     """
     soup = BeautifulSoup(html, "html.parser")
     issues = []
-    
+
     def mock_check_url(url, method="get"):
         return False, 700, 500, ""
-        
+
     check_buttons(
         soup=soup,
         base_url="https://example.com",
@@ -154,9 +154,9 @@ def test_buttons_form_action_broken():
         check_url_fn=mock_check_url,
         classify_speed_fn=mock_classify_speed,
         find_line_fn=mock_find_line,
-        blocked_admin_segments=("/admin",)
+        blocked_admin_segments=("/admin",),
     )
-    
+
     assert any("Fallo al probar el action del formulario" in issue for issue in issues)
     assert any("método=POST" in issue for issue in issues)
     assert any("estado=500" in issue for issue in issues)

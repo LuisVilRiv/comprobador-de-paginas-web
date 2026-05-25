@@ -23,11 +23,11 @@ ENDPOINTS:
 
 from fastapi import APIRouter, HTTPException
 
-# Importar repositorio de base de datos
-from shared.database.repositories import dashboard as repo
-
 # Importar esquema de validación
 from schemas.settings import SettingsUpdate
+
+# Importar repositorio de base de datos
+from shared.database.repositories import dashboard as repo
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # CONFIGURACIÓN DEL ROUTER
@@ -39,6 +39,7 @@ router = APIRouter(prefix="/settings", tags=["settings"])
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENDPOINTS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.get("")
 def get_settings():
@@ -57,21 +58,18 @@ def get_settings():
 def update_settings(payload: SettingsUpdate):
     """
     Actualiza la configuración del sistema.
-    
+
     Args:
         payload (SettingsUpdate): Nueva configuración con expresiones CRON.
-    
+
     Returns:
         dict: Mensaje de confirmación.
-    
+
     Raises:
         HTTPException: 500 si hay un error al actualizar la configuración.
     """
     try:
-        repo.update_settings(
-            cron_active=payload.cron_active,
-            cron_inactive=payload.cron_inactive
-        )
+        repo.update_settings(cron_active=payload.cron_active, cron_inactive=payload.cron_inactive)
         return {"message": "Configuración actualizada correctamente"}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc)) from exc

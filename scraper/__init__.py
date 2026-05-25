@@ -22,9 +22,9 @@ COMPONENTES PRINCIPALES:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 from scraper.context.scraper_context import ScraperContext
-from scraper.strategies.selenium_strategy import SeleniumStrategy
-from scraper.strategies.beautifulsoup_strategy import BeautifulSoupStrategy
 from scraper.models.scrape_result import ScrapeResult
+from scraper.strategies.beautifulsoup_strategy import BeautifulSoupStrategy
+from scraper.strategies.selenium_strategy import SeleniumStrategy
 
 __all__ = [
     "ScraperContext",

@@ -1,5 +1,6 @@
 import pytest
 from bs4 import BeautifulSoup
+
 from shared.auditor.checks.links import check_links_recursive
 
 
@@ -40,12 +41,13 @@ def test_links_recursive_base_url_seen():
     soup = BeautifulSoup(html, "html.parser")
     issues = []
     crawl_stats = {"tested": 0, "skipped": 0, "broken": 0}
-    
+
     called_urls = []
+
     def mock_check_url(url, include_content=False):
         called_urls.append(url)
         return True, 100, 200, ""  # ok, elapsed_ms, status_code, content
-        
+
     check_links_recursive(
         soup=soup,
         base_url="https://example.com",
@@ -56,9 +58,9 @@ def test_links_recursive_base_url_seen():
         check_url_fn=mock_check_url,
         classify_speed_fn=mock_classify_speed,
         find_line_fn=mock_find_line,
-        blocked_admin_segments=("/admin",)
+        blocked_admin_segments=("/admin",),
     )
-    
+
     # "https://example.com" ya está en seen, por lo que NO se debe rastrear como enlace hijo
     assert "https://example.com" not in called_urls
     assert "https://example.com/about" in called_urls
@@ -84,14 +86,15 @@ def test_links_recursive_circular_links_skipped():
     soup_a = BeautifulSoup(html_a, "html.parser")
     issues = []
     crawl_stats = {"tested": 0, "skipped": 0, "broken": 0}
-    
+
     called_urls = []
+
     def mock_check_url(url, include_content=False):
         called_urls.append(url)
         if "page-b" in url:
             return True, 100, 200, html_b
         return True, 100, 200, ""
-        
+
     check_links_recursive(
         soup=soup_a,
         base_url="https://example.com/page-a",
@@ -102,9 +105,9 @@ def test_links_recursive_circular_links_skipped():
         check_url_fn=mock_check_url,
         classify_speed_fn=mock_classify_speed,
         find_line_fn=mock_find_line,
-        blocked_admin_segments=("/admin",)
+        blocked_admin_segments=("/admin",),
     )
-    
+
     # Debe encolar "page-b", obtener su HTML, ver que apunta a "page-a", pero como "page-a" es la URL base (seen), omitirla
     assert "https://example.com/page-b" in called_urls
     assert len(called_urls) == 1
@@ -124,12 +127,13 @@ def test_links_recursive_duplicated_urls():
     soup = BeautifulSoup(html, "html.parser")
     issues = []
     crawl_stats = {"tested": 0, "skipped": 0, "broken": 0}
-    
+
     called_urls = []
+
     def mock_check_url(url, include_content=False):
         called_urls.append(url)
         return True, 100, 200, ""
-        
+
     check_links_recursive(
         soup=soup,
         base_url="https://example.com",
@@ -140,9 +144,9 @@ def test_links_recursive_duplicated_urls():
         check_url_fn=mock_check_url,
         classify_speed_fn=mock_classify_speed,
         find_line_fn=mock_find_line,
-        blocked_admin_segments=("/admin",)
+        blocked_admin_segments=("/admin",),
     )
-    
+
     assert called_urls.count("https://example.com/target") == 1
     assert crawl_stats["tested"] == 1
 
@@ -159,12 +163,13 @@ def test_links_recursive_banned_url():
     soup = BeautifulSoup(html, "html.parser")
     issues = []
     crawl_stats = {"tested": 0, "skipped": 0, "broken": 0}
-    
+
     called_urls = []
+
     def mock_check_url(url, include_content=False):
         called_urls.append(url)
         return True, 100, 200, ""
-        
+
     check_links_recursive(
         soup=soup,
         base_url="https://example.com",
@@ -175,9 +180,9 @@ def test_links_recursive_banned_url():
         check_url_fn=mock_check_url,
         classify_speed_fn=mock_classify_speed,
         find_line_fn=mock_find_line,
-        blocked_admin_segments=("/admin",)
+        blocked_admin_segments=("/admin",),
     )
-    
+
     assert "https://example.com/banned-path" not in called_urls
     assert crawl_stats["skipped"] == 1
     assert any("omitido por política de bloqueo" in issue for issue in issues)
@@ -196,12 +201,13 @@ def test_links_recursive_external_domains_ignored():
     soup = BeautifulSoup(html, "html.parser")
     issues = []
     crawl_stats = {"tested": 0, "skipped": 0, "broken": 0}
-    
+
     called_urls = []
+
     def mock_check_url(url, include_content=False):
         called_urls.append(url)
         return True, 100, 200, ""
-        
+
     check_links_recursive(
         soup=soup,
         base_url="https://example.com",
@@ -212,9 +218,9 @@ def test_links_recursive_external_domains_ignored():
         check_url_fn=mock_check_url,
         classify_speed_fn=mock_classify_speed,
         find_line_fn=mock_find_line,
-        blocked_admin_segments=("/admin",)
+        blocked_admin_segments=("/admin",),
     )
-    
+
     assert "https://google.com" in called_urls  # La URL inicial sí se encola y comprueba su estatus (200)
     # Sin embargo, no se rastrean subenlaces de google.com
     assert "https://example.com/internal" in called_urls
@@ -235,22 +241,25 @@ def test_links_recursive_max_loop_iterations(monkeypatch):
         </body>
     </html>
     """
+
     # Fijar el límite de links testeados en 2
     class TinySettings:
         AUDIT_MAX_RECURSIVE_LINKS = 2
         AUDIT_MAX_CRAWL_DEPTH = 2
         BS4_PARSER = "html.parser"
+
     monkeypatch.setattr("shared.auditor.checks.links.settings", TinySettings)
 
     soup = BeautifulSoup(html, "html.parser")
     issues = []
     crawl_stats = {"tested": 0, "skipped": 0, "broken": 0}
-    
+
     called_urls = []
+
     def mock_check_url(url, include_content=False):
         called_urls.append(url)
         return True, 100, 200, ""
-        
+
     check_links_recursive(
         soup=soup,
         base_url="https://example.com",
@@ -261,9 +270,9 @@ def test_links_recursive_max_loop_iterations(monkeypatch):
         check_url_fn=mock_check_url,
         classify_speed_fn=mock_classify_speed,
         find_line_fn=mock_find_line,
-        blocked_admin_segments=("/admin",)
+        blocked_admin_segments=("/admin",),
     )
-    
+
     # Se debe detener tras comprobar 2 enlaces (el límite máximo de la auditoría)
     assert len(called_urls) == 2
     assert crawl_stats["tested"] == 2
@@ -295,8 +304,9 @@ def test_links_recursive_depth_limits():
     soup = BeautifulSoup(html_root, "html.parser")
     issues = []
     crawl_stats = {"tested": 0, "skipped": 0, "broken": 0}
-    
+
     checked_depths_with_content = []
+
     def mock_check_url(url, include_content=False):
         if include_content:
             checked_depths_with_content.append(url)
@@ -305,7 +315,7 @@ def test_links_recursive_depth_limits():
         if "depth-2" in url:
             return True, 100, 200, html_d2
         return True, 100, 200, ""
-        
+
     check_links_recursive(
         soup=soup,
         base_url="https://example.com",
@@ -316,9 +326,9 @@ def test_links_recursive_depth_limits():
         check_url_fn=mock_check_url,
         classify_speed_fn=mock_classify_speed,
         find_line_fn=mock_find_line,
-        blocked_admin_segments=("/admin",)
+        blocked_admin_segments=("/admin",),
     )
-    
+
     # Con AUDIT_MAX_CRAWL_DEPTH = 2:
     # depth-1 (depth=0) -> include_content = True
     # depth-2 (depth=1) -> include_content = True
@@ -340,10 +350,10 @@ def test_links_recursive_broken_link():
     soup = BeautifulSoup(html, "html.parser")
     issues = []
     crawl_stats = {"tested": 0, "skipped": 0, "broken": 0}
-    
+
     def mock_check_url(url, include_content=False):
         return False, 800, 404, ""
-        
+
     check_links_recursive(
         soup=soup,
         base_url="https://example.com",
@@ -354,8 +364,8 @@ def test_links_recursive_broken_link():
         check_url_fn=mock_check_url,
         classify_speed_fn=mock_classify_speed,
         find_line_fn=mock_find_line,
-        blocked_admin_segments=("/admin",)
+        blocked_admin_segments=("/admin",),
     )
-    
+
     assert crawl_stats["broken"] == 1
     assert any("Enlace roto confirmado" in issue for issue in issues)

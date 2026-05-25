@@ -1,9 +1,10 @@
+import logging
 import os
 import re
-import logging
-from bs4 import BeautifulSoup
-from langdetect import detect, DetectorFactory
+
 import numpy as np
+from bs4 import BeautifulSoup
+from langdetect import DetectorFactory, detect
 from transformers import pipeline
 
 # Establecer semilla para langdetect de forma determinista
@@ -21,37 +22,37 @@ ERROR_ANCHORS = {
         "404 page not found error",
         "error 404 página no encontrada",
         "el recurso solicitado no existe",
-        "404 not found requested url not found"
+        "404 not found requested url not found",
     ],
     "500 HTML": [
         "500 internal server error connection failure",
         "error interno del servidor 500",
         "error al establecer una conexion con la base de datos",
-        "database connection failed database error"
+        "database connection failed database error",
     ],
     "parking domain": [
         "this domain is parked by hosting company godaddy cpanel dondoninio plesk",
         "dominio aparcado en plesk cuenta de hosting activada",
-        "sitio web en venta comprar dominio"
+        "sitio web en venta comprar dominio",
     ],
     "maintenance page": [
         "website is under maintenance we will be back soon",
         "estamos en mantenimiento disculpe las molestias",
-        "sitio temporalmente fuera de servicio por mantenimiento"
+        "sitio temporalmente fuera de servicio por mantenimiento",
     ],
     "access denied": [
         "access denied 403 forbidden cloudflare ddos",
         "acceso denegado no tienes permisos para acceder",
-        "please solve the captcha to continue connection blocked"
+        "please solve the captcha to continue connection blocked",
     ],
     "website suspended": [
         "website suspended hosting account suspended contact support",
-        "cuenta suspendida por falta de pago servicio suspendido"
+        "cuenta suspendida por falta de pago servicio suspendido",
     ],
     "coming soon": [
         "coming soon website under construction stay tuned",
-        "próximamente sitio web en desarrollo en construccion"
-    ]
+        "próximamente sitio web en desarrollo en construccion",
+    ],
 }
 
 # Anclas semánticas de contenido técnico/educativo sobre HTTP y documentación.
@@ -169,28 +170,28 @@ STRONG_ERROR_SIGNATURES = (
 MALICIOUS_ANCHORS = {
     "pornography": [
         "explicit sexual content pornography videos photos adult entertainment porn",
-        "contenido sexual explícito pornografía erotismo sexo adultos"
+        "contenido sexual explícito pornografía erotismo sexo adultos",
     ],
     "violence": [
         "incitement to violence threats hate speech terrorist propagation firearms",
-        "incitación a la violencia amenazas extremistas terrorismo armas"
+        "incitación a la violencia amenazas extremistas terrorismo armas",
     ],
     "phishing": [
         "scam phishing fake bank login credit card theft credentials steal",
-        "estafa phishing robo de credenciales inicio de sesion falso"
+        "estafa phishing robo de credenciales inicio de sesion falso",
     ],
     "gambling": [
         "online gambling casino betting slot machine play and win cash sports book",
-        "apuestas en línea casino tragaperras poker ganar dinero"
+        "apuestas en línea casino tragaperras poker ganar dinero",
     ],
     "malware": [
         "malware virus trojan download malicious software cracked program installer",
-        "descarga de virus troyanos software malicioso instalador modificado"
+        "descarga de virus troyanos software malicioso instalador modificado",
     ],
     "seo_spam": [
         "buy cheap viagra online cialis generic prescription pharmacy best price replica watches",
-        "comprar viagra barata farmacia online replicas de relojes lujo"
-    ]
+        "comprar viagra barata farmacia online replicas de relojes lujo",
+    ],
 }
 
 
@@ -214,10 +215,9 @@ class AIContentAnalyzer:
         if self.model is None:
             logger.info("⏳ Cargando modelo 'paraphrase-multilingual-MiniLM-L12-v2' en CPU...")
             from sentence_transformers import SentenceTransformer
+
             self.model = SentenceTransformer(
-                'paraphrase-multilingual-MiniLM-L12-v2',
-                cache_folder=self.cache_dir,
-                device='cpu'
+                "paraphrase-multilingual-MiniLM-L12-v2", cache_folder=self.cache_dir, device="cpu"
             )
             logger.info("✓ Modelo cargado correctamente.")
             self._precalculate_anchors()
@@ -238,7 +238,7 @@ class AIContentAnalyzer:
     def _precalculate_anchors(self):
         """Precalcula los embeddings de todas las anclas semánticas al inicializar el modelo."""
         logger.info("⚙️ Precalculando embeddings para las anclas semánticas...")
-        
+
         # Precalcular anclas de errores
         for category, sentences in ERROR_ANCHORS.items():
             self.error_embeddings[category] = self.model.encode(sentences, convert_to_numpy=True)
@@ -246,11 +246,11 @@ class AIContentAnalyzer:
         # Precalcular anclas educativas/documentales
         for category, sentences in EDUCATIONAL_ANCHORS.items():
             self.educational_embeddings[category] = self.model.encode(sentences, convert_to_numpy=True)
-            
+
         # Precalcular anclas de contenido malicioso
         for category, sentences in MALICIOUS_ANCHORS.items():
             self.malicious_embeddings[category] = self.model.encode(sentences, convert_to_numpy=True)
-            
+
         logger.info("✓ Embeddings de anclas precalculados correctamente.")
 
     def clean_html(self, html: str) -> str:
@@ -258,15 +258,15 @@ class AIContentAnalyzer:
         if not html:
             return ""
         soup = BeautifulSoup(html, "html.parser")
-        
+
         # Eliminar elementos irrelevantes
         for element in soup(["script", "style", "noscript", "meta", "iframe", "header", "footer", "nav"]):
             element.decompose()
-            
+
         text = soup.get_text(separator=" ")
-        
+
         # Limpieza de espacios y líneas vacías
-        text = re.sub(r'\s+', ' ', text)
+        text = re.sub(r"\s+", " ", text)
         return text.strip()
 
     def _cosine_similarity_matrix(self, embedding_a, embeddings_b):
@@ -305,7 +305,7 @@ class AIContentAnalyzer:
     def _layout_evidence(self, html: str, cleaned_text: str) -> tuple[float, float]:
         """Calcula evidencia estructural de plantilla de error vs artículo/documentación."""
         soup = BeautifulSoup(html or "", "html.parser")
-        title = (soup.title.get_text(" ", strip=True).lower() if soup.title else "")
+        title = soup.title.get_text(" ", strip=True).lower() if soup.title else ""
         h1_text = " ".join(h.get_text(" ", strip=True).lower() for h in soup.find_all("h1"))
         h2_text = " ".join(h.get_text(" ", strip=True).lower() for h in soup.find_all("h2"))
         link_text = " ".join(a.get_text(" ", strip=True).lower() for a in soup.find_all("a"))
@@ -393,15 +393,15 @@ class AIContentAnalyzer:
             return 0.0
         return min(1.0, hits / max_hits)
 
-    def analyze(self, html: str, url: str, status_code: int, metadata: dict = None) -> dict:
+    def analyze(self, html: str, url: str, status_code: int, metadata: dict | None = None) -> dict:
         """
         Ejecuta el análisis semántico del contenido de una página.
         """
         # Asegurar que el modelo esté cargado (lazy loading)
         self._load_model()
-        
+
         cleaned_text = self.clean_html(html)
-        
+
         # Valores por defecto para páginas vacías
         if not cleaned_text:
             return {
@@ -414,17 +414,17 @@ class AIContentAnalyzer:
                 "detected_language": "unknown",
                 "quality_score": 5,
                 "issues": ["La página no contiene texto analizable."],
-                "warnings": ["Página vacía."]
+                "warnings": ["Página vacía."],
             }
-            
+
         # Limitar longitud para evitar uso excesivo de recursos
         # El modelo paraphrase-multilingual MiniLM trunca a ~128/256 tokens de todos modos.
         words = cleaned_text.split()
-        limited_text = " ".join(words[:400]) # Primeras 400 palabras
-        
+        limited_text = " ".join(words[:400])  # Primeras 400 palabras
+
         # Generar embedding del texto del sitio
         text_embedding = self.model.encode(limited_text, convert_to_numpy=True)
-        
+
         # 1. DETECCIÓN DE PÁGINA INOPERATIVA (ERROR DISFRAZADO)
         is_inoperative = False
         inoperative_reason = None
@@ -447,11 +447,11 @@ class AIContentAnalyzer:
                 edu_sim = float(np.max(self._cosine_similarity_matrix(text_embedding, embeddings)))
                 if edu_sim > max_educational_sim:
                     max_educational_sim = edu_sim
-            
+
             # Evaluar similitud con anclas de error
             # Umbral de similitud semántica para error: 0.52
             ERROR_THRESHOLD = 0.52
-            
+
             for category, embeddings in self.error_embeddings.items():
                 similarities = self._cosine_similarity_matrix(text_embedding, embeddings)
                 max_sim = float(np.max(similarities))
@@ -490,8 +490,7 @@ class AIContentAnalyzer:
                 if fallback_decision is True and fallback_confidence >= 0.62:
                     is_inoperative = True
                     inoperative_reason = (
-                        "Detectado por fallback fuerte como página de error "
-                        f"(confianza={fallback_confidence:.2f})"
+                        f"Detectado por fallback fuerte como página de error (confianza={fallback_confidence:.2f})"
                     )
                     max_error_sim = max(max_error_sim, fallback_confidence)
                 elif fallback_decision is False and fallback_confidence >= 0.62:
@@ -501,7 +500,9 @@ class AIContentAnalyzer:
             if (
                 max_error_sim > ERROR_THRESHOLD
                 and evidence_delta > ERROR_MARGIN
-                and not (is_inoperative is False and inoperative_reason is None and abs(evidence_delta) <= AMBIGUITY_BAND)
+                and not (
+                    is_inoperative is False and inoperative_reason is None and abs(evidence_delta) <= AMBIGUITY_BAND
+                )
             ):
                 is_inoperative = True
                 inoperative_reason = (
@@ -514,10 +515,10 @@ class AIContentAnalyzer:
         has_spam = False
         malicious_reasons = []
         max_malicious_sim = 0.0
-        
+
         # Umbral de similitud semántica para contenido malicioso: 0.53
         MALICIOUS_THRESHOLD = 0.53
-        
+
         for category, embeddings in self.malicious_embeddings.items():
             similarities = self._cosine_similarity_matrix(text_embedding, embeddings)
             max_sim = float(np.max(similarities))
@@ -529,25 +530,27 @@ class AIContentAnalyzer:
                     malicious_reasons.append(f"Spam SEO detectado ({category}, Similitud: {max_sim:.2f})")
                 else:
                     has_malicious_content = True
-                    malicious_reasons.append(f"Contenido no apto o malicioso detectado ({category}, Similitud: {max_sim:.2f})")
+                    malicious_reasons.append(
+                        f"Contenido no apto o malicioso detectado ({category}, Similitud: {max_sim:.2f})"
+                    )
 
         # 3. DETECCIÓN DE INCOHERENCIA
         has_incoherent_content = False
         coherence_score = 1.0
-        
+
         # Dividir en oraciones (por punto) para medir la coherencia semántica
-        sentences = [s.strip() for s in re.split(r'[.!?]+', cleaned_text) if len(s.strip()) > 15]
-        
+        sentences = [s.strip() for s in re.split(r"[.!?]+", cleaned_text) if len(s.strip()) > 15]
+
         # Analizar hasta las primeras 8 oraciones significativas
         sentences = sentences[:8]
         if len(sentences) >= 3:
             sentence_embeddings = self.model.encode(sentences, convert_to_numpy=True)
             similarities = []
             for i in range(len(sentence_embeddings) - 1):
-                sim = float(self._cosine_similarity_matrix(sentence_embeddings[i], sentence_embeddings[i+1:i+2]))
+                sim = float(self._cosine_similarity_matrix(sentence_embeddings[i], sentence_embeddings[i + 1 : i + 2]))
                 similarities.append(sim)
             coherence_score = float(np.mean(similarities))
-            
+
             # Si la coherencia semántica media entre oraciones es extremadamente baja, hay incoherencia
             if coherence_score < 0.12:
                 has_incoherent_content = True
@@ -563,20 +566,20 @@ class AIContentAnalyzer:
         quality_score = 100.0
         issues = []
         warnings = []
-        
+
         if is_inoperative:
             quality_score -= 95.0
             issues.append(f"Página no operativa: {inoperative_reason}")
         if has_malicious_content:
             quality_score -= 80.0
-            issues.append(f"Contenido potencialmente no apto o malicioso detectado semánticamente.")
+            issues.append("Contenido potencialmente no apto o malicioso detectado semánticamente.")
         if has_spam:
             quality_score -= 50.0
             issues.append("Contenido identificado como Spam / SEO keyword stuffing.")
         if has_incoherent_content:
             quality_score -= 40.0
             issues.append(f"Incoherencia semántica alta detectada en los textos (Coherencia: {coherence_score:.2f}).")
-        
+
         # Penalizaciones menores
         if len(words) < 50:
             quality_score -= 15.0
@@ -584,14 +587,14 @@ class AIContentAnalyzer:
         elif len(words) < 150:
             quality_score -= 5.0
             warnings.append(f"Contenido bajo en texto plano ({len(words)} palabras).")
-            
+
         if detected_language == "unknown":
             quality_score -= 5.0
             warnings.append("No se pudo identificar con precisión el idioma del contenido.")
 
         # Garantizar límites
         quality_score = max(5, min(100, int(quality_score)))
-        
+
         # Construir listas de issues y warnings detallados
         for reason in malicious_reasons:
             if "Spam" in reason:
@@ -604,7 +607,7 @@ class AIContentAnalyzer:
             confidence = float(1.0 - max(max_error_sim, max_malicious_sim) * 0.2)
         else:
             confidence = float(max(max_error_sim, max_malicious_sim))
-            
+
         confidence = max(0.5, min(1.0, confidence))
 
         return {
@@ -617,5 +620,5 @@ class AIContentAnalyzer:
             "detected_language": detected_language,
             "quality_score": quality_score,
             "issues": issues,
-            "warnings": warnings
+            "warnings": warnings,
         }

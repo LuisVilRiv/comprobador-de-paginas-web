@@ -33,14 +33,15 @@ router = APIRouter(tags=["health"])
 # ENDPOINTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/health")
 def health():
     """
     Verifica que la API esté operativa.
-    
+
     Returns:
         dict: Estado de salud con {"status": "ok"} si todo funciona correctamente.
-    
+
     Note:
         Este endpoint es útil para:
         - Monitoreo de disponibilidad

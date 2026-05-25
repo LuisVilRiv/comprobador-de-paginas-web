@@ -2,8 +2,10 @@
 check_structure — Landmarks semánticos, jerarquía Hx, accesibilidad y HTML obsoleto.
 Extraído de QualityAuditor._check_structure.
 """
+
 from __future__ import annotations
-from bs4 import BeautifulSoup, Tag
+
+from bs4 import BeautifulSoup
 
 
 def check_structure(soup: BeautifulSoup, issues: list[str]) -> None:
@@ -19,7 +21,7 @@ def check_structure(soup: BeautifulSoup, issues: list[str]) -> None:
 
     for landmark, label in (
         (lambda s: s.find("main") or s.find(attrs={"role": "main"}), "main"),
-        (lambda s: s.find("nav")  or s.find(attrs={"role": "navigation"}), "nav"),
+        (lambda s: s.find("nav") or s.find(attrs={"role": "navigation"}), "nav"),
         (lambda s: s.find("header") or s.find(attrs={"role": "banner"}), "header"),
         (lambda s: s.find("footer") or s.find(attrs={"role": "contentinfo"}), "footer"),
     ):
@@ -27,8 +29,18 @@ def check_structure(soup: BeautifulSoup, issues: list[str]) -> None:
             issues.append(f"Falta el landmark <{label}>.")
 
     generic_texts = {
-        "haz clic aquí", "click here", "leer más", "read more", "aquí", "here",
-        "más información", "more info", "enlace", "link", "ver más", "seguir leyendo",
+        "haz clic aquí",
+        "click here",
+        "leer más",
+        "read more",
+        "aquí",
+        "here",
+        "más información",
+        "more info",
+        "enlace",
+        "link",
+        "ver más",
+        "seguir leyendo",
     }
     for anchor in soup.find_all("a"):
         link_text = anchor.get_text(" ", strip=True).lower().strip(" .,;")
@@ -62,5 +74,5 @@ def check_structure(soup: BeautifulSoup, issues: list[str]) -> None:
     headings = [int(h.name[1]) for h in soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6"])]
     for idx in range(1, len(headings)):
         if headings[idx] - headings[idx - 1] > 1:
-            issues.append(f"Salto brusco en la jerarquía de encabezados: h{headings[idx-1]} -> h{headings[idx]}.")
+            issues.append(f"Salto brusco en la jerarquía de encabezados: h{headings[idx - 1]} -> h{headings[idx]}.")
             break

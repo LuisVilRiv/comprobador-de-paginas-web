@@ -24,14 +24,14 @@ ENDPOINTS:
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
-# Importar repositorio de base de datos
-from shared.database.repositories import dashboard as repo
-
 # Importar conexión a base de datos
 from shared.database.connection import get_db
 
 # Importar modelos ORM
 from shared.database.models import AuditRun, Website
+
+# Importar repositorio de base de datos
+from shared.database.repositories import dashboard as repo
 
 # Importar generador de reportes PDF
 from shared.utils.pdf_generator import generate_audit_pdf
@@ -47,17 +47,18 @@ router = APIRouter(prefix="/runs", tags=["runs"])
 # ENDPOINTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/{run_id}")
 def get_run_detail(run_id: str):
     """
     Devuelve el detalle completo de un run de auditoría.
-    
+
     Args:
         run_id (str): ID de la ejecución de auditoría.
-    
+
     Returns:
         dict: Detalle completo del run con métricas, estado y timestamps.
-    
+
     Raises:
         HTTPException: 404 si el run no existe.
     """
@@ -71,10 +72,10 @@ def get_run_detail(run_id: str):
 def get_run_sections(run_id: str):
     """
     Devuelve las secciones del informe de un run (SEO, seguridad, etc.).
-    
+
     Args:
         run_id (str): ID de la ejecución de auditoría.
-    
+
     Returns:
         list: Array de secciones con su estado individual (passed/failed/blocked).
     """
@@ -84,17 +85,19 @@ def get_run_sections(run_id: str):
 @router.get("/{run_id}/issues")
 def get_run_issues(
     run_id: str,
-    category: str | None = Query(None, description="Filtrar por categoría (security, seo, content, images, structure, links, buttons, technical)"),
+    category: str | None = Query(
+        None, description="Filtrar por categoría (security, seo, content, images, structure, links, buttons, technical)"
+    ),
     severity: str | None = Query(None, description="Filtrar por severidad (critical, high, medium, low, ok)"),
 ):
     """
     Devuelve las incidencias detectadas en un run.
-    
+
     Args:
         run_id (str): ID de la ejecución de auditoría.
         category (str, optional): Filtrar por categoría específica.
         severity (str, optional): Filtrar por nivel de severidad.
-    
+
     Returns:
         list: Array de incidencias con detalles, severidad y sugerencias de solución.
     """
@@ -105,13 +108,13 @@ def get_run_issues(
 def export_run_pdf(run_id: str):
     """
     Genera y descarga el informe de auditoría en formato PDF.
-    
+
     Args:
         run_id (str): ID de la ejecución de auditoría.
-    
+
     Returns:
         StreamingResponse: Archivo PDF en streaming para descarga.
-    
+
     Raises:
         HTTPException: 404 si el run no existe.
     """
@@ -130,12 +133,10 @@ def export_run_pdf(run_id: str):
     )
 
     with get_db() as db:
-        run = db.get(AuditRun, run_id)   # re-fetch dentro del contexto para el PDF
+        run = db.get(AuditRun, run_id)  # re-fetch dentro del contexto para el PDF
         pdf_buffer = generate_audit_pdf(run, website, history=history)
 
     filename = f"auditoria_{run.started_at.strftime('%Y%m%d')}.pdf"
     return StreamingResponse(
-        pdf_buffer,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        pdf_buffer, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename={filename}"}
     )

@@ -1,5 +1,5 @@
-import pytest
 from bs4 import BeautifulSoup
+
 from shared.auditor.checks.images import check_images
 
 
@@ -27,10 +27,10 @@ def test_images_perfect():
     """
     soup = BeautifulSoup(html, "html.parser")
     issues = []
-    
+
     def mock_check_url(url):
         return True, 100, 200, ""
-        
+
     check_images(
         soup=soup,
         base_url="https://example.com",
@@ -39,9 +39,9 @@ def test_images_perfect():
         is_banned_fn=mock_is_banned,
         check_url_fn=mock_check_url,
         classify_speed_fn=mock_classify_speed,
-        find_line_fn=mock_find_line
+        find_line_fn=mock_find_line,
     )
-    
+
     assert len(issues) == 0
 
 
@@ -50,7 +50,7 @@ def test_images_no_images_warning():
     html = "<html><body><h1>Texto sin imágenes</h1></body></html>"
     soup = BeautifulSoup(html, "html.parser")
     issues = []
-    
+
     check_images(
         soup=soup,
         base_url="https://example.com",
@@ -59,9 +59,9 @@ def test_images_no_images_warning():
         is_banned_fn=mock_is_banned,
         check_url_fn=None,
         classify_speed_fn=mock_classify_speed,
-        find_line_fn=mock_find_line
+        find_line_fn=mock_find_line,
     )
-    
+
     assert any("No hay imágenes en la página" in issue for issue in issues)
 
 
@@ -77,10 +77,10 @@ def test_images_missing_src_or_alt():
     """
     soup = BeautifulSoup(html, "html.parser")
     issues = []
-    
+
     def mock_check_url(url):
         return True, 100, 200, ""
-        
+
     check_images(
         soup=soup,
         base_url="https://example.com",
@@ -89,9 +89,9 @@ def test_images_missing_src_or_alt():
         is_banned_fn=mock_is_banned,
         check_url_fn=mock_check_url,
         classify_speed_fn=mock_classify_speed,
-        find_line_fn=mock_find_line
+        find_line_fn=mock_find_line,
     )
-    
+
     assert any("Imagen sin src" in issue for issue in issues)
     assert any("Imagen sin alt" in issue for issue in issues)
 
@@ -107,10 +107,10 @@ def test_images_broken_source():
     """
     soup = BeautifulSoup(html, "html.parser")
     issues = []
-    
+
     def mock_check_url(url):
         return False, 900, 404, ""
-        
+
     check_images(
         soup=soup,
         base_url="https://example.com",
@@ -119,9 +119,9 @@ def test_images_broken_source():
         is_banned_fn=mock_is_banned,
         check_url_fn=mock_check_url,
         classify_speed_fn=mock_classify_speed,
-        find_line_fn=mock_find_line
+        find_line_fn=mock_find_line,
     )
-    
+
     assert any("Imagen rota" in issue for issue in issues)
     assert any("estado=404" in issue for issue in issues)
 
@@ -137,10 +137,10 @@ def test_images_missing_attributes():
     """
     soup = BeautifulSoup(html, "html.parser")
     issues = []
-    
+
     def mock_check_url(url):
         return True, 100, 200, ""
-        
+
     check_images(
         soup=soup,
         base_url="https://example.com",
@@ -149,10 +149,10 @@ def test_images_missing_attributes():
         is_banned_fn=mock_is_banned,
         check_url_fn=mock_check_url,
         classify_speed_fn=mock_classify_speed,
-        find_line_fn=mock_find_line
+        find_line_fn=mock_find_line,
     )
-    
-    assert any("sin loading=\"lazy\"" in issue for issue in issues)
+
+    assert any('sin loading="lazy"' in issue for issue in issues)
     assert any("sin width/height explícitos" in issue for issue in issues)
 
 
@@ -168,10 +168,10 @@ def test_images_legacy_formats():
     """
     soup = BeautifulSoup(html, "html.parser")
     issues = []
-    
+
     def mock_check_url(url):
         return True, 100, 200, ""
-        
+
     check_images(
         soup=soup,
         base_url="https://example.com",
@@ -180,8 +180,8 @@ def test_images_legacy_formats():
         is_banned_fn=mock_is_banned,
         check_url_fn=mock_check_url,
         classify_speed_fn=mock_classify_speed,
-        find_line_fn=mock_find_line
+        find_line_fn=mock_find_line,
     )
-    
+
     assert any("formato heredado (jpg)" in issue for issue in issues)
     assert any("formato heredado (png)" in issue for issue in issues)

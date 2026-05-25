@@ -26,19 +26,20 @@ from scraper.models.scrape_result import ScrapeResult
 # CLASES
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class ScraperStrategy(ABC):
     """
     Interfaz abstracta del patrón Strategy para scraping web.
-    
+
     Todas las estrategias de scraping deben heredar de esta clase
     e implementar el método `scrape`. Esto garantiza que el contexto
     (ScraperContext) pueda intercambiarlas sin conocer su implementación.
-    
+
     Contrato:
       - Recibe una URL como string.
       - Siempre devuelve un ScrapeResult (nunca lanza excepciones al exterior;
         los errores se encapsulan dentro del ScrapeResult).
-    
+
     Example:
         >>> class MyStrategy(ScraperStrategy):
         ...     def scrape(self, url: str) -> ScrapeResult:
@@ -50,10 +51,10 @@ class ScraperStrategy(ABC):
     def scrape(self, url: str) -> ScrapeResult:
         """
         Ejecuta el scraping sobre la URL indicada.
-        
+
         Args:
             url (str): Dirección web a scrapear.
-        
+
         Returns:
             ScrapeResult: Objeto con el contenido extraído o información del error.
         """
@@ -63,7 +64,7 @@ class ScraperStrategy(ABC):
     def strategy_name(self) -> str:
         """
         Nombre identificador de la estrategia.
-        
+
         Returns:
             str: Nombre de la clase (ej: "SeleniumStrategy").
         """

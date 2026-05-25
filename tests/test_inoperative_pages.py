@@ -1,4 +1,3 @@
-import pytest
 from shared.auditor.auditor_modules.core import QualityAuditor
 
 
@@ -7,6 +6,7 @@ def _make_auditor():
 
 
 # ─── 1. Detección por código HTTP ≥ 400 ────────────────────────────────────────
+
 
 def test_inoperative_by_status_code():
     """Un HTTP 500 debe forzar score=5 y bloquear la release."""
@@ -20,8 +20,7 @@ def test_inoperative_by_status_code():
         </body>
     </html>
     """
-    report = auditor.build_report(html=html, base_url="https://example.com",
-                                  metadata={"status_code": 500})
+    report = auditor.build_report(html=html, base_url="https://example.com", metadata={"status_code": 500})
 
     assert report.score == 5
     assert report.status == "crítico"
@@ -33,6 +32,7 @@ def test_inoperative_by_status_code():
 
 # ─── 2. Detección por TÍTULO de error (status_code=200, caso Selenium) ────────
 
+
 def test_inoperative_by_title_error():
     """Título '404 Not Found' con status 200 → inoperativo (ej. SPA mal configurada)."""
     auditor = _make_auditor()
@@ -42,14 +42,15 @@ def test_inoperative_by_title_error():
         <body><h1>Página no encontrada</h1></body>
     </html>
     """
-    report = auditor.build_report(html=html, base_url="https://example.com",
-                                  metadata={"status_code": 200})
+    report = auditor.build_report(html=html, base_url="https://example.com", metadata={"status_code": 200})
 
     assert report.score == 5
     assert report.status == "crítico"
     assert report.release_blocked is True
-    assert any("El título de la página ('404 Not Found') indica un estado de error del servidor" in i
-               for i in report.technical_issues)
+    assert any(
+        "El título de la página ('404 Not Found') indica un estado de error del servidor" in i
+        for i in report.technical_issues
+    )
 
 
 def test_inoperative_503_title_with_200_status():
@@ -61,8 +62,7 @@ def test_inoperative_503_title_with_200_status():
         <body><p>El servicio no está disponible temporalmente.</p></body>
     </html>
     """
-    report = auditor.build_report(html=html, base_url="https://example.com",
-                                  metadata={"status_code": 200})
+    report = auditor.build_report(html=html, base_url="https://example.com", metadata={"status_code": 200})
 
     assert report.score == 5
     assert report.status == "crítico"
@@ -72,6 +72,7 @@ def test_inoperative_503_title_with_200_status():
 
 # ─── 3. Detección por CUERPO de la página (sin límite de palabras) ─────────────
 
+
 def test_inoperative_503_in_body_text_no_word_limit():
     """
     'service unavailable' en el cuerpo debe detectarse aunque la página tenga
@@ -79,7 +80,7 @@ def test_inoperative_503_in_body_text_no_word_limit():
     """
     auditor = _make_auditor()
     # Simulamos una página de error con bastante texto (> 300 palabras)
-    extra_text = " Lorem ipsum dolor sit amet consectetur." * 30   # ~180 palabras extra
+    extra_text = " Lorem ipsum dolor sit amet consectetur." * 30  # ~180 palabras extra
     html = f"""
     <html>
         <head><title>Mi Portal</title></head>
@@ -92,8 +93,7 @@ def test_inoperative_503_in_body_text_no_word_limit():
         </body>
     </html>
     """
-    report = auditor.build_report(html=html, base_url="https://example.com",
-                                  metadata={"status_code": 200})
+    report = auditor.build_report(html=html, base_url="https://example.com", metadata={"status_code": 200})
 
     assert report.score == 5
     assert report.status == "crítico"
@@ -102,6 +102,7 @@ def test_inoperative_503_in_body_text_no_word_limit():
 
 
 # ─── 4. Detección por TÍTULO de mantenimiento ──────────────────────────────────
+
 
 def test_inoperative_by_title_maintenance():
     """Título con 'Mantenimiento' y página pequeña → inoperativo."""
@@ -112,8 +113,7 @@ def test_inoperative_by_title_maintenance():
         <body><p>Disculpe las molestias, volveremos pronto.</p></body>
     </html>
     """
-    report = auditor.build_report(html=html, base_url="https://example.com",
-                                  metadata={"status_code": 200})
+    report = auditor.build_report(html=html, base_url="https://example.com", metadata={"status_code": 200})
 
     assert report.score == 5
     assert report.status == "crítico"
@@ -122,6 +122,7 @@ def test_inoperative_by_title_maintenance():
 
 
 # ─── 5. Detección por ENCABEZADO de mantenimiento en página pequeña ────────────
+
 
 def test_inoperative_by_heading_maintenance_thin_content():
     """H1 con 'mantenimiento' y título genérico → inoperativo (page < 500 palabras)."""
@@ -135,8 +136,7 @@ def test_inoperative_by_heading_maintenance_thin_content():
         </body>
     </html>
     """
-    report = auditor.build_report(html=html, base_url="https://example.com",
-                                  metadata={"status_code": 200})
+    report = auditor.build_report(html=html, base_url="https://example.com", metadata={"status_code": 200})
 
     assert report.score == 5
     assert report.status == "crítico"
@@ -145,6 +145,7 @@ def test_inoperative_by_heading_maintenance_thin_content():
 
 
 # ─── 6. Página operativa normal NO debe ser penalizada ─────────────────────────
+
 
 def test_operative_page_is_not_flagged():
     """Una página real y funcional no debe ser marcada como inoperativa."""
@@ -163,8 +164,7 @@ def test_operative_page_is_not_flagged():
         </body>
     </html>
     """
-    report = auditor.build_report(html=html, base_url="https://example.com/contacto",
-                                  metadata={"status_code": 200})
+    report = auditor.build_report(html=html, base_url="https://example.com/contacto", metadata={"status_code": 200})
 
     # No debe calificarse con 5, y no debe estar inoperativo
     assert report.score > 50

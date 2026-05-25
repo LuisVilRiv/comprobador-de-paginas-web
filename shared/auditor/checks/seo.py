@@ -2,9 +2,11 @@
 check_seo — Metadatos SEO, Open Graph, canonical, JSON-LD y hreflang.
 Extraído de QualityAuditor._check_seo.
 """
+
 from __future__ import annotations
+
 import json
-import re
+
 from bs4 import BeautifulSoup
 
 
@@ -64,12 +66,10 @@ def check_seo(soup: BeautifulSoup, issues: list[str], regex_set) -> None:
     page_lang = (html_tag.get("lang") or "").strip() if html_tag else ""
     hreflang_links = soup.find_all("link", attrs={"rel": "alternate", "hreflang": True})
     if page_lang and not hreflang_links:
-        issues.append(
-            f"La página declara lang=\"{page_lang}\" pero no tiene etiquetas hreflang."
-        )
+        issues.append(f'La página declara lang="{page_lang}" pero no tiene etiquetas hreflang.')
 
     for img in soup.find_all("img"):
         alt = (img.get("alt") or "").strip()
         if alt and regex_set.filename_alt_regex.match(alt):
             src_hint = (img.get("src") or "")[:80]
-            issues.append(f"El alt de una imagen es un nombre de archivo (\"{alt}\"), no descriptivo. src={src_hint}")
+            issues.append(f'El alt de una imagen es un nombre de archivo ("{alt}"), no descriptivo. src={src_hint}')

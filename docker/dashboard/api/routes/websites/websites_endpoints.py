@@ -26,11 +26,11 @@ ENDPOINTS:
 
 from fastapi import APIRouter, HTTPException, Query
 
-# Importar repositorio de base de datos para operaciones CRUD
-from shared.database.repositories import dashboard as repo
-
 # Importar esquemas de validación (Pydantic)
 from schemas.websites import WebsiteCreate, WebsiteUpdate
+
+# Importar repositorio de base de datos para operaciones CRUD
+from shared.database.repositories import dashboard as repo
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # CONFIGURACIÓN DEL ROUTER
@@ -43,17 +43,18 @@ router = APIRouter(prefix="/websites", tags=["websites"])
 # ENDPOINTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("")
 def list_websites(client_id: str | None = Query(None)):
     """
     Lista todos los websites, opcionalmente filtrados por cliente.
-    
+
     Args:
         client_id (str, optional): ID del cliente para filtrar. Si es None, devuelve todos.
-    
+
     Returns:
         list: Array de objetos Website con sus datos completos.
-    
+
     Example:
         GET /api/websites - Todos los websites
         GET /api/websites?client_id=123 - Websites del cliente 123
@@ -65,13 +66,13 @@ def list_websites(client_id: str | None = Query(None)):
 def website_status(website_id: str):
     """
     Obtiene el estado actual de un website específico.
-    
+
     Args:
         website_id (str): ID del website.
-    
+
     Returns:
         dict: Estado actual del website (activo/inactivo, última auditoría, etc.)
-    
+
     Raises:
         HTTPException: 404 si el website no existe.
     """
@@ -89,12 +90,12 @@ def website_runs(
 ):
     """
     Obtiene el historial de auditorías de un website con paginación.
-    
+
     Args:
         website_id (str): ID del website.
         limit (int, optional): Número máximo de resultados (1-100). Default: 20.
         offset (int, optional): Número de resultados a saltar. Default: 0.
-    
+
     Returns:
         list: Array de objetos AuditRun (ejecuciones de auditoría).
     """
@@ -105,7 +106,7 @@ def website_runs(
 def create_website(payload: WebsiteCreate):
     """
     Crea un nuevo website para auditoría.
-    
+
     Args:
         payload (WebsiteCreate): Datos del website a crear.
             - client_id (str, optional): ID del cliente propietario
@@ -114,10 +115,10 @@ def create_website(payload: WebsiteCreate):
             - strategy (str, required): Estrategia de scraping ("auto", "selenium", "bs4")
             - active (bool, required): Si está activo para auditorías automáticas
             - custom_cron (str, optional): Programación CRON personalizada
-    
+
     Returns:
         Website: Objeto del website creado con su ID generado.
-    
+
     Raises:
         HTTPException: 400 si la URL ya existe o hay error en los datos.
     """
@@ -134,27 +135,27 @@ def create_website(payload: WebsiteCreate):
         message = str(exc)
         # Manejar error de URL duplicada (unique constraint)
         if "unique" in message.lower():
-            raise HTTPException(status_code=400, detail="La URL ya existe")
-        raise HTTPException(status_code=400, detail=f"Error: {message}")
+            raise HTTPException(status_code=400, detail="La URL ya existe") from exc
+        raise HTTPException(status_code=400, detail=f"Error: {message}") from exc
 
 
 @router.put("/{website_id}")
 def update_website(website_id: str, payload: WebsiteUpdate):
     """
     Actualiza los datos de un website existente.
-    
+
     Args:
         website_id (str): ID del website a actualizar.
         payload (WebsiteUpdate): Datos a actualizar (todos opcionales).
-    
+
     Returns:
         Website: Objeto del website actualizado.
-    
+
     Raises:
         HTTPException:
             - 400 si no hay campos para actualizar
             - 404 si el website no existe
-    
+
     Note:
         Usa model_fields_set para distinguir entre "no enviado" y "enviado como null",
         permitiendo actualizaciones parciales sin sobrescribir con null valores existentes.
@@ -176,13 +177,13 @@ def update_website(website_id: str, payload: WebsiteUpdate):
 def delete_website(website_id: str):
     """
     Elimina un website del sistema de auditoría.
-    
+
     Args:
         website_id (str): ID del website a eliminar.
-    
+
     Returns:
         dict: Mensaje de confirmación con el ID del website eliminado.
-    
+
     Raises:
         HTTPException: 404 si el website no existe.
     """
@@ -195,13 +196,13 @@ def delete_website(website_id: str):
 def trigger_manual_audit(website_id: str):
     """
     Inicia una auditoría manual e inmediata para un website específico.
-    
+
     Args:
         website_id (str): ID del website a auditar.
-    
+
     Returns:
         dict: Mensaje de confirmación con información del website.
-    
+
     Raises:
         HTTPException: 404 si el website no existe.
     """

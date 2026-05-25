@@ -2,8 +2,11 @@
 check_buttons — Botones sin texto, formularios con action inválido.
 Extraído de QualityAuditor._check_buttons.
 """
+
 from __future__ import annotations
+
 from urllib.parse import urljoin
+
 from bs4 import BeautifulSoup, Tag
 
 

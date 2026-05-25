@@ -195,10 +195,20 @@ AUDIT_KEYWORD_DENSITY_MAX = float(os.environ.get("AUDIT_KEYWORD_DENSITY_MAX", "0
 # Rutas de administración a probar (separadas por coma)
 _admin_paths_env = os.environ.get("AUDIT_ADMIN_PATHS")
 AUDIT_ADMIN_PROBE_PATHS = (
-    tuple(_admin_paths_env.split(",")) if _admin_paths_env else (
-        "/admin", "/wp-admin", "/wp-login.php", "/administrator",
-        "/admin/login", "/cpanel", "/phpmyadmin", "/backend",
-        "/backoffice", "/manage", "/dashboard",
+    tuple(_admin_paths_env.split(","))
+    if _admin_paths_env
+    else (
+        "/admin",
+        "/wp-admin",
+        "/wp-login.php",
+        "/administrator",
+        "/admin/login",
+        "/cpanel",
+        "/phpmyadmin",
+        "/backend",
+        "/backoffice",
+        "/manage",
+        "/dashboard",
     )
 )
 

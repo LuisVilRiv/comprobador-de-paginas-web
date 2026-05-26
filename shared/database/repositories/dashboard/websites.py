@@ -12,7 +12,7 @@ from shared.database.models import AuditRun, Client, Website
 from .helpers import row_to_dict
 
 # Importar la lógica de procesamiento de auditorías del scraper
-from scraper.service import AuditService
+from service import AuditService
 from scraper.context import ScraperContext
 from scraper.strategies.beautifulsoup_strategy import BeautifulSoupStrategy
 from scraper.strategies.selenium_strategy import SeleniumStrategy

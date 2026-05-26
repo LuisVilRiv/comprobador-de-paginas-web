@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget curl gnupg ca-certificates unzip \
+    wget curl gnupg ca-certificates unzip dnsutils \
     libglib2.0-0 libnss3 libfontconfig1 \
     libxss1 \
     fonts-liberation libgtk-3-0 libxshmfence1 \

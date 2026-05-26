@@ -8,6 +8,7 @@ from __future__ import annotations
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
+
 from shared.auditor.auditor_modules.helpers import attr_to_str
 
 

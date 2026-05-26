@@ -153,6 +153,9 @@ AUDIT_MAX_CRAWL_DEPTH = int(os.environ.get("AUDIT_MAX_DEPTH", "1"))
 # Hosts prohibidos para el crawl (separados por coma)
 AUDIT_BANNED_HOSTS = set(os.environ.get("AUDIT_BANNED_HOSTS", "apdigroup.com,81.0.54.124").split(","))
 
+# Dominios prohibidos para el crawl (separados por coma)
+AUDIT_BANNED_DOMAINS = set(os.environ.get("AUDIT_BANNED_DOMAINS", "").split(","))
+
 # Número máximo de confirmaciones de navegador (alerts/confirm)
 AUDIT_MAX_BROWSER_CONFIRMS = int(os.environ.get("AUDIT_MAX_BROWSER_CONFIRMS", "15"))
 

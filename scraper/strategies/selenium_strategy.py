@@ -156,6 +156,9 @@ class SeleniumStrategy(BaseScraper):
         opts = Options()
         if settings.SELENIUM_HEADLESS:
             opts.add_argument("--headless=new")
+        
+        # Forzar DNS de Google para evitar problemas con el resolver de Docker
+        opts.add_argument("--dns-server=8.8.8.8")
 
         # Anti-deteccion: User-Agent aleatorio
         ua = random.choice(settings.USER_AGENT_POOL)

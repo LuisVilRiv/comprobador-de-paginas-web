@@ -297,10 +297,23 @@ class AIContentAnalyzer:
         """
         lowered_text = text.lower()
         educational_hits = sum(1 for term in EDUCATIONAL_CONTEXT_TERMS if term in lowered_text)
+        explanatory_hits = sum(1 for cue in EXPLANATORY_CUES if cue in lowered_text)
+
+        # Dominios conocidos de documentación/educación
+        educational_domains = ("wikipedia.org", "rfc-editor.org", "w3.org", "developer.mozilla.org", "mdn.io")
+        url_is_educational = any(domain in url.lower() for domain in educational_domains)
 
         # Señales adicionales típicas de artículos/documentación.
         has_many_words = len(lowered_text.split()) >= 180
-        return educational_hits >= 2 and has_many_words
+
+        # Contenido educativo si: muchas palabras + términos educativos,
+        # o si hay suficientes señales explicativas + contexto educativo,
+        # o si la URL es de un dominio educativo conocido + al menos 1 término educativo.
+        return bool(
+            (educational_hits >= 2 and has_many_words)
+            or (educational_hits >= 2 and explanatory_hits >= 1)
+            or (url_is_educational and educational_hits >= 1)
+        )
 
     def _layout_evidence(self, html: str, cleaned_text: str) -> tuple[float, float]:
         """Calcula evidencia estructural de plantilla de error vs artículo/documentación."""
@@ -370,10 +383,17 @@ class AIContentAnalyzer:
     def _has_strong_error_signature(self, text: str, html: str = "") -> bool:
         """
         Detecta plantillas explícitas de error del servidor.
-        Estas señales tienen prioridad y no deben suprimirse por filtros educativos.
+        Estas señales tienen prioridad y no deben suprimirse por filtros educativos,
+        salvo cuando el contexto es claramente explicativo/documental.
         """
         lowered_text = text.lower()
         lowered_html = (html or "").lower()
+
+        # Si el texto tiene señales explicativas fuertes, no es un error en tiempo de ejecución.
+        explanatory_hits = sum(1 for cue in EXPLANATORY_CUES if cue in lowered_text)
+        educational_hits = sum(1 for term in EDUCATIONAL_CONTEXT_TERMS if term in lowered_text)
+        if explanatory_hits >= 2 and educational_hits >= 1:
+            return False
 
         # 1) Frases inequívocas de error en el contenido visible o en el markup.
         if any(signature in lowered_text or signature in lowered_html for signature in STRONG_ERROR_SIGNATURES):
@@ -547,7 +567,7 @@ class AIContentAnalyzer:
             sentence_embeddings = self.model.encode(sentences, convert_to_numpy=True)
             similarities = []
             for i in range(len(sentence_embeddings) - 1):
-                sim = float(self._cosine_similarity_matrix(sentence_embeddings[i], sentence_embeddings[i + 1 : i + 2]))
+                sim = float(self._cosine_similarity_matrix(sentence_embeddings[i], sentence_embeddings[i + 1 : i + 2])[0])
                 similarities.append(sim)
             coherence_score = float(np.mean(similarities))
 

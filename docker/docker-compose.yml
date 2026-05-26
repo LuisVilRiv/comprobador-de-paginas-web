@@ -93,6 +93,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      ai-analyzer:
+        condition: service_healthy
     environment:
       DB_HOST:     db
       DB_PORT:     5432

@@ -9,6 +9,7 @@ from config.logging_config import setup_logger
 from scraper import ScraperContext
 from scraper.models.scrape_result import ScrapeResult
 from shared.auditor import QualityAuditor
+from shared.auditor.auditor_modules.helpers import attr_to_str
 from shared.database.repositories import scraper as db
 
 logger = setup_logger(__name__)
@@ -89,7 +90,7 @@ class AuditService:
 
         # C. Detección de bundles específicos en scripts
         has_spa_js_bundles = False
-        script_srcs = [s.get("src", "").lower() for s in scripts if s.get("src")]
+        script_srcs = [attr_to_str(s.get("src")).lower() for s in scripts if s.get("src")]
         spa_keywords = ["react", "vue", "angular", "webpack", "chunk-vendors", "main-es2015", "svelte"]
         for src in script_srcs:
             if any(kw in src for kw in spa_keywords):
@@ -134,12 +135,14 @@ class AuditService:
                 for strat_name in order:
                     if strat_name not in self.strategy_registry:
                         continue
-                    self.context.set_strategy(self.strategy_registry[strat_name])
-                    result = self.context.execute(url)
-                    if result.status == "success":
-                        used_strat = strat_name
-                        break
-                    logger.warning("Estrategia %s falló para %s", strat_name, url)
+                    try:
+                        self.context.set_strategy(self.strategy_registry[strat_name])
+                        result = self.context.execute(url)
+                        if result.status == "success":
+                            used_strat = strat_name
+                            break
+                    except Exception as e:
+                        logger.warning("Estrategia %s lanzó excepción para %s: %s", strat_name, url, e)
 
                 # Failsafe absoluto si todas las ejecuciones principales fallaron
                 if (
@@ -162,12 +165,14 @@ class AuditService:
             for strat_name in order:
                 if strat_name not in self.strategy_registry:
                     continue
-                self.context.set_strategy(self.strategy_registry[strat_name])
-                result = self.context.execute(url)
-                if result.status == "success":
-                    used_strat = strat_name
-                    break
-                logger.warning("Estrategia %s falló para %s", strat_name, url)
+                try:
+                    self.context.set_strategy(self.strategy_registry[strat_name])
+                    result = self.context.execute(url)
+                    if result.status == "success":
+                        used_strat = strat_name
+                        break
+                except Exception as e:
+                    logger.warning("Estrategia %s lanzó excepción para %s: %s", strat_name, url, e)
 
         # Manejo de error en el scraping
         if result is None or result.status != "success":

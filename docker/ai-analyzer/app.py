@@ -18,6 +18,15 @@ app = FastAPI(
 analyzer = AIContentAnalyzer()
 
 
+@app.on_event("startup")
+def startup_event():
+    logger.info("⏳ Inicializando modelos semánticos en el arranque de la aplicación...")
+    analyzer._load_model()
+    if analyzer.enable_strong_fallback:
+        analyzer._load_strong_fallback_model()
+    logger.info("✓ Todos los modelos se cargaron e inicializaron exitosamente.")
+
+
 class AnalysisRequest(BaseModel):
     html: str = Field(..., description="Contenido HTML completo de la página web.")
     url: str = Field(..., description="URL de la página web analizada.")
@@ -45,11 +54,17 @@ def health_check():
     """
     Endpoint de comprobación de salud que indica si el servicio FastAPI está
     operativo y si el modelo de HuggingFace ya ha sido cargado en memoria.
+    Retorna 503 Service Unavailable si los modelos aún no están listos.
     """
     model_loaded = analyzer.model is not None
+    if not model_loaded:
+        raise HTTPException(
+            status_code=503,
+            detail="Los modelos de IA aún se están cargando en memoria."
+        )
     return {
         "status": "healthy",
-        "model_loaded": model_loaded,
+        "model_loaded": True,
         "device": "cpu",
         "model_name": "paraphrase-multilingual-MiniLM-L12-v2",
     }

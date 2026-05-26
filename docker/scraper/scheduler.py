@@ -78,16 +78,14 @@ class AuditScheduler:
 
         # Próxima ejecución de webs activas
         active_times: list[datetime] = [
-            t for e in active_entries
-            if (t := self._web_cache.get(e["website_id"], {}).get("next_run")) is not None
+            t for e in active_entries if (t := self._web_cache.get(e["website_id"], {}).get("next_run")) is not None
         ]
         if active_times:
             next_active_run = min(active_times)
 
         # Próxima ejecución de webs inactivas
         inactive_times: list[datetime] = [
-            t for e in inactive_entries
-            if (t := self._web_cache.get(e["website_id"], {}).get("next_run")) is not None
+            t for e in inactive_entries if (t := self._web_cache.get(e["website_id"], {}).get("next_run")) is not None
         ]
         if inactive_times:
             next_inactive_run = min(inactive_times)

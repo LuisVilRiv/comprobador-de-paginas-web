@@ -3,8 +3,6 @@ Helpers for auditor modules
 """
 from __future__ import annotations
 
-import re
-import time
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
@@ -14,6 +12,7 @@ from config import settings
 
 if TYPE_CHECKING:
     import requests
+
     from .. import QualityAuditor
 
 
@@ -32,7 +31,7 @@ def is_banned_url(url: str) -> bool:
     Checks if a URL is banned for network testing.
     """
     domain = urlparse(url).netloc.lower()
-    return any(banned_domain in domain for banned_domain in settings.AUDIT_BANNED_DOMAINS)
+    return any(banned_domain in domain for banned_domain in settings.AUDIT_BANNED_HOSTS)
 
 
 def find_line(html_lines: list[str], tag: BeautifulSoup) -> tuple[int, str]:

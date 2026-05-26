@@ -16,7 +16,7 @@ from service import AuditService
 from scraper.context import ScraperContext
 from scraper.strategies.beautifulsoup_strategy import BeautifulSoupStrategy
 from scraper.strategies.selenium_strategy import SeleniumStrategy
-from shared.auditor.quality_auditor import QualityAuditor
+from shared.auditor import QualityAuditor
 
 
 def list_websites(client_id: str | None = None) -> list[dict]:

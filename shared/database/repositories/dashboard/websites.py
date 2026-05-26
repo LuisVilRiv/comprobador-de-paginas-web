@@ -11,13 +11,6 @@ from shared.database.models import AuditRun, Client, Website
 
 from .helpers import row_to_dict
 
-# Importar la lógica de procesamiento de auditorías del scraper
-from service import AuditService
-from scraper.context import ScraperContext
-from scraper.strategies.beautifulsoup_strategy import BeautifulSoupStrategy
-from scraper.strategies.selenium_strategy import SeleniumStrategy
-from shared.auditor import QualityAuditor
-
 
 def list_websites(client_id: str | None = None) -> list[dict]:
     with get_db() as db:
@@ -28,15 +21,12 @@ def list_websites(client_id: str | None = None) -> list[dict]:
             .subquery()
         )
 
-        # Encontramos el ID real comparando con la fecha máxima (o usando IDs si fueran secuenciales)
-        # Para ser 100% robustos en Postgres, podríamos usar DISTINCT ON, pero mantenemos compatibilidad SQL estándar
-        latest_run_id_sub = (
+        latest_run_id_select = (
             select(AuditRun.id)
             .join(
                 latest_ids,
                 (AuditRun.website_id == latest_ids.c.website_id) & (AuditRun.started_at == latest_ids.c.max_started),
             )
-            .subquery()
         )
 
         stmt = (
@@ -63,7 +53,7 @@ def list_websites(client_id: str | None = None) -> list[dict]:
                 AuditRun.error_message,
             )
             .outerjoin(Client, Website.client_id == Client.id)
-            .outerjoin(AuditRun, (AuditRun.website_id == Website.id) & (AuditRun.id.in_(latest_run_id_sub)))  # type: ignore[arg-type]
+            .outerjoin(AuditRun, (AuditRun.website_id == Website.id) & (AuditRun.id.in_(latest_run_id_select)))  # type: ignore[arg-type]
             .order_by(Client.name, Website.url)
         )
         if client_id is not None:
@@ -172,26 +162,6 @@ def trigger_manual_audit(website_id: str) -> dict | None:
         website.updated_at = datetime.now(UTC)
         db.commit()
         db.refresh(website)
-
-        # Instanciar y ejecutar la auditoría manualmente
-        strategy_registry = {
-            "beautifulsoup": BeautifulSoupStrategy(),
-            "selenium": SeleniumStrategy()
-        }
-        strategy_order = ["beautifulsoup", "selenium"]
-        context = ScraperContext(strategy_registry["beautifulsoup"])
-        auditor = QualityAuditor()
-        service = AuditService(context, auditor, strategy_registry, strategy_order)
-
-        # Crear el diccionario de entrada para process_website
-        entry = {
-            "website_id": str(website.id),
-            "url": website.url,
-            "strategy": website.strategy,
-        }
-        
-        # Ejecutar la auditoría
-        service.process_website(entry)
 
         return {
             "url": website.url,

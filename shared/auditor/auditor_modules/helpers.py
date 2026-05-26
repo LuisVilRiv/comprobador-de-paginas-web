@@ -3,8 +3,6 @@ Helpers for auditor modules
 """
 from __future__ import annotations
 
-import re
-import time
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
@@ -14,6 +12,7 @@ from config import settings
 
 if TYPE_CHECKING:
     import requests
+
     from .. import QualityAuditor
 
 

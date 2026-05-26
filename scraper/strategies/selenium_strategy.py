@@ -47,7 +47,7 @@ class SeleniumStrategy(BaseScraper):
             # Primary request: GET to obtain both content and status
             resp = _req.get(url, timeout=15, verify=False, headers={"User-Agent": "Mozilla/5.0"})
             html = resp.text
-            meta = {"status_code": resp.status_code}
+            meta: dict[str, int | str] = {"status_code": resp.status_code}
         except Exception as e:
             # Fallback: try HEAD if GET fails
             try:
@@ -156,7 +156,7 @@ class SeleniumStrategy(BaseScraper):
         opts = Options()
         if settings.SELENIUM_HEADLESS:
             opts.add_argument("--headless=new")
-        
+
         # Forzar DNS de Google para evitar problemas con el resolver de Docker
         opts.add_argument("--dns-server=8.8.8.8")
 

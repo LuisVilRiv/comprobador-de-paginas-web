@@ -104,6 +104,29 @@ ERROR_CONTEXT_TERMS = (
     "blocked",
 )
 
+EXPLANATORY_CUES = (
+    "is a status code",
+    "es un código de estado",
+    "es un codigo de estado",
+    "indicates that",
+    "indica que",
+    "defined in",
+    "definido en",
+    "semantics",
+    "semántica",
+    "specification",
+    "especificación",
+    "reference",
+)
+
+EDUCATIONAL_DOMAINS = (
+    "wikipedia.org",
+    "rfc-editor.org",
+    "w3.org",
+    "developer.mozilla.org",
+    "mdn.io",
+)
+
 
 class QualityAuditor:
     def __init__(self, timeout: int = settings.REQUEST_TIMEOUT):
@@ -168,16 +191,26 @@ class QualityAuditor:
             words = body_text.split()
             word_count = len(words)
             educational_hits = sum(1 for term in EDUCATIONAL_CONTEXT_TERMS if term in body_text)
+            explanatory_hits = sum(1 for cue in EXPLANATORY_CUES if cue in body_text)
             heading_count = len(soup.find_all(["h2", "h3"]))
             has_reference_sections = any(
                 marker in body_text for marker in ("references", "referencias", "table of contents", "specification")
             )
             spec_cue_hits = sum(1 for c in SPEC_TECHNICAL_CUES if c in body_text)
             looks_like_spec_document = word_count >= 800 and spec_cue_hits >= 2
+            # Detect educational context in title (e.g. "Wikipedia", "RFC", "Enciclopedia")
+            title_educational_terms = ("wikipedia", "enciclopedia", "rfc ", "rfc-", "documentación", "documentation",
+                                       "especificación", "especificacion", "specification", "tutorial", "guía", "guide")
+            title_is_educational = any(t in title_str for t in title_educational_terms)
+            # Detect educational context from URL domain
+            url_is_educational = any(domain in base_url.lower() for domain in EDUCATIONAL_DOMAINS)
             looks_educational = (
                 (educational_hits >= 2 and word_count >= 180)
+                or (educational_hits >= 2 and explanatory_hits >= 1)
                 or (word_count >= 300 and (heading_count >= 3 or has_reference_sections))
                 or looks_like_spec_document
+                or title_is_educational
+                or (url_is_educational and educational_hits >= 1)
             )
 
             if isinstance(status_code, int) and status_code >= 400:
@@ -738,8 +771,14 @@ class QualityAuditor:
 
     @staticmethod
     def _has_contextual_error_code(text: str) -> bool:
-        """Devuelve True solo si aparece 4xx/5xx con contexto de error real."""
+        """Devuelve True solo si aparece 4xx/5xx con contexto de error real,
+        excluyendo cuando el contexto es claramente explicativo/documental."""
         lowered = (text or "").lower()
+        # Si el texto tiene señales explicativas fuertes, no es un error en tiempo de ejecución.
+        explanatory_hits = sum(1 for cue in EXPLANATORY_CUES if cue in lowered)
+        educational_hits = sum(1 for term in EDUCATIONAL_CONTEXT_TERMS if term in lowered)
+        if explanatory_hits >= 2 and educational_hits >= 1:
+            return False
         for match in re.finditer(r"\b(4\d{2}|5\d{2})\b", lowered):
             start = max(0, match.start() - 90)
             end = min(len(lowered), match.end() + 90)

@@ -8,13 +8,14 @@ from __future__ import annotations
 import socket
 import ssl
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 import requests
 from bs4 import BeautifulSoup
 
 from config import settings
+from shared.auditor.auditor_modules.helpers import attr_to_str
 
 # ── Constantes de clasificación ──────────────────────────────────────────────
 
@@ -81,7 +82,8 @@ def _verify_tls(url: str, issues: list[str], timeout: int = 5) -> None:
                     try:
                         # Formato: 'May 18 07:19:26 2026 GMT'
                         expire_date = datetime.strptime(not_after_str, "%b %d %H:%M:%S %Y %Z")
-                        days_left = (expire_date - datetime.utcnow()).days
+                        days_left = (expire_date - datetime.now(UTC)).days
+
                         if days_left < 0:
                             issues.append(
                                 f"El certificado SSL/TLS para {hostname} ha EXPIRADO "
@@ -144,9 +146,7 @@ def _html_has_firewall_challenge(html_text: str, title: str) -> bool:
         return False
     if sum(1 for kw in admin_indicators if kw in html_l) >= 2:
         return False
-    return any(p in title_l for p in _FIREWALL_TITLE_PATTERNS) or any(
-        p in html_l for p in _FIREWALL_SCRIPT_PATTERNS
-    )
+    return any(p in title_l for p in _FIREWALL_TITLE_PATTERNS) or any(p in html_l for p in _FIREWALL_SCRIPT_PATTERNS)
 
 
 def _html_has_cpanel_login_signature(html_text: str) -> bool:
@@ -206,12 +206,12 @@ def check_security(
     sri_missing = []
     for tag in soup.find_all(["script", "link"]):
         if tag.name == "script":
-            src = (tag.get("src") or "").strip()
+            src = attr_to_str(tag.get("src")).strip()
         else:
-            rel = " ".join(tag.get("rel", [])).lower()
+            rel = " ".join(attr_to_str(tag.get("rel")).split()).lower()
             if "stylesheet" not in rel:
                 continue
-            src = (tag.get("href") or "").strip()
+            src = attr_to_str(tag.get("href")).strip()
         if not src or not src.startswith("http"):
             continue
         tag_host = _normalize_host(urlparse(src).netloc)

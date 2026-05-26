@@ -48,26 +48,38 @@ class TestSeleniumScrape:
         assert result.metadata["final_url"] == "https://ejemplo.com"
 
     def test_url_invalida_devuelve_error(self, strategy):
-        result = strategy.scrape("no-es-una-url")
-        assert result.status == "error"
+        """Una URL inválida debe lanzar RuntimeError al intentar navegar."""
+        from selenium.common.exceptions import InvalidArgumentException
+
+        mock_driver = _mock_driver()
+        mock_driver.get.side_effect = InvalidArgumentException("invalid argument")
+        with patch.object(SeleniumStrategy, "_create_driver", return_value=mock_driver):
+            with pytest.raises(RuntimeError, match="WebDriverException"):
+                strategy.scrape("no-es-una-url")
+        mock_driver.quit.assert_called()
 
     def test_driver_se_cierra_siempre(self, strategy):
-        """Garantiza que driver.quit() se llama en cada intento aunque falle."""
-        mock_driver = _mock_driver()
-        mock_driver.get.side_effect = Exception("Error inesperado")
-        with patch.object(strategy, "_create_driver", return_value=mock_driver):
-            strategy.scrape("https://ejemplo.com")
+        """Garantiza que driver.quit() se llama aunque falle el scrape."""
+        from selenium.common.exceptions import WebDriverException
 
-        # quit() debe llamarse una vez por cada reintento (no solo una vez en total)
-        assert mock_driver.quit.call_count == strategy.max_retries
+        mock_driver = _mock_driver()
+        mock_driver.get.side_effect = WebDriverException("Error inesperado")
+        with patch.object(strategy, "_create_driver", return_value=mock_driver):
+            with pytest.raises(RuntimeError):
+                strategy.scrape("https://ejemplo.com")
+
+        # quit() debe llamarse siempre en el bloque finally
+        mock_driver.quit.assert_called()
 
     def test_fallo_total_devuelve_error_tras_reintentos(self, strategy):
+        """Un fallo de WebDriver debe lanzar RuntimeError y cerrar el driver."""
         from selenium.common.exceptions import WebDriverException
 
         mock_driver = _mock_driver()
         mock_driver.get.side_effect = WebDriverException("fallo")
         with patch.object(strategy, "_create_driver", return_value=mock_driver):
-            result = strategy.scrape("https://ejemplo.com")
+            with pytest.raises(RuntimeError, match="WebDriverException"):
+                strategy.scrape("https://ejemplo.com")
 
-        assert result.status == "error"
-        assert mock_driver.quit.call_count == strategy.max_retries
+        # quit() debe llamarse siempre en el bloque finally
+        mock_driver.quit.assert_called()

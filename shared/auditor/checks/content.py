@@ -11,6 +11,7 @@ import re
 from bs4 import BeautifulSoup
 
 from config import settings
+from shared.auditor.auditor_modules.helpers import attr_to_str
 
 
 def check_content(
@@ -130,7 +131,7 @@ def check_content(
     legal_terms = {"aviso legal", "política de privacidad", "privacy policy", "términos", "cookies", "rgpd", "gdpr"}
     has_legal = any(term in text_l for term in legal_terms) or any(
         any(
-            term in (a.get_text(" ", strip=True).lower()) or term in (a.get("href") or "").lower()
+            term in (a.get_text(" ", strip=True).lower()) or term in attr_to_str(a.get("href")).lower()
             for term in legal_terms
         )
         for a in soup.find_all("a")

@@ -226,7 +226,7 @@ AUDIT_JS_CONSOLE_MAX_ERRORS = int(os.environ.get("AUDIT_JS_CONSOLE_MAX_ERRORS", 
 AI_ANALYZER_URL = os.environ.get("AI_ANALYZER_URL", "http://ai-analyzer:8080")
 
 # Timeout para solicitudes al AI Analyzer (segundos)
-AI_ANALYZER_TIMEOUT = float(os.environ.get("AI_ANALYZER_TIMEOUT", "6.0"))
+AI_ANALYZER_TIMEOUT = float(os.environ.get("AI_ANALYZER_TIMEOUT", "30.0"))
 
 # Habilitar análisis con IA
 AI_ANALYZER_ENABLED = os.environ.get("AI_ANALYZER_ENABLED", "true").lower() == "true"

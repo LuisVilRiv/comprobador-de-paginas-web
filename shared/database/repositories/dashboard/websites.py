@@ -11,13 +11,6 @@ from shared.database.models import AuditRun, Client, Website
 
 from .helpers import row_to_dict
 
-# Importar la lógica de procesamiento de auditorías del scraper
-from service import AuditService
-from scraper.context import ScraperContext
-from scraper.strategies.beautifulsoup_strategy import BeautifulSoupStrategy
-from scraper.strategies.selenium_strategy import SeleniumStrategy
-from shared.auditor import QualityAuditor
-
 
 def list_websites(client_id: str | None = None) -> list[dict]:
     with get_db() as db:
@@ -173,28 +166,49 @@ def trigger_manual_audit(website_id: str) -> dict | None:
         db.commit()
         db.refresh(website)
 
-        # Instanciar y ejecutar la auditoría manualmente
-        strategy_registry = {
-            "beautifulsoup": BeautifulSoupStrategy(),
-            "selenium": SeleniumStrategy()
-        }
-        strategy_order = ["beautifulsoup", "selenium"]
-        context = ScraperContext(strategy_registry["beautifulsoup"])
-        auditor = QualityAuditor()
-        service = AuditService(context, auditor, strategy_registry, strategy_order)
-
-        # Crear el diccionario de entrada para process_website
-        entry = {
-            "website_id": str(website.id),
-            "url": website.url,
-            "strategy": website.strategy,
-        }
-        
-        # Ejecutar la auditoría
-        service.process_website(entry)
+        _run_audit_in_background(str(website.id), website.url, website.strategy)
 
         return {
             "url": website.url,
             "label": website.label,
             "pending_audit": website.pending_audit,
         }
+
+
+def _run_audit_in_background(website_id: str, url: str, strategy: str) -> None:
+    """Launches the audit in a background thread so the API responds immediately."""
+    import threading
+
+    def _run() -> None:
+        try:
+            # Lazy-import to avoid circular/missing-module errors at module load time
+            import importlib
+
+            from scraper import BeautifulSoupStrategy, ScraperContext, SeleniumStrategy
+            from shared.auditor import QualityAuditor
+            from shared.database.repositories import scraper as scraper_db
+            service_mod = importlib.import_module("service")
+            AuditService = service_mod.AuditService
+
+            strategy_registry = {
+                "beautifulsoup": BeautifulSoupStrategy(),
+                "selenium": SeleniumStrategy(),
+            }
+            strategy_order = ["beautifulsoup", "selenium"]
+            context = ScraperContext(strategy_registry["beautifulsoup"])
+            auditor = QualityAuditor()
+            service = AuditService(context, auditor, strategy_registry, strategy_order)
+
+            entry = {"website_id": website_id, "url": url, "strategy": strategy}
+            service.process_website(entry)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception("Background audit failed for %s", url)
+        finally:
+            try:
+                from shared.database.repositories import scraper as scraper_db
+                scraper_db.clear_pending_audit(website_id)
+            except Exception:
+                pass
+
+    threading.Thread(target=_run, daemon=True).start()

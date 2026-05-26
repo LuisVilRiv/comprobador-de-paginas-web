@@ -87,6 +87,8 @@ services:
       dockerfile: docker/dashboard/api/Dockerfile
     container_name: web_auditor_dashboard_api
     restart: unless-stopped
+    dns:
+      - 8.8.8.8
     depends_on:
       db:
         condition: service_healthy

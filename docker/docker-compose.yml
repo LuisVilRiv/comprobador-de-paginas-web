@@ -88,7 +88,8 @@ services:
     container_name: web_auditor_dashboard_api
     restart: unless-stopped
     dns:
-      - 8.8.8.8
+      - 8.8.8.8       # DNS público para conexión a Internet
+      - 127.0.0.11    # DNS interno de Docker para resolución de servicios (ej: 'db', 'ai-analyzer')
     depends_on:
       db:
         condition: service_healthy

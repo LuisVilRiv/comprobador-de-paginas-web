@@ -19,6 +19,7 @@ from ..checks import (
     check_images,
     check_js_console_errors,
     check_links_recursive,
+    check_network,
     check_security,
     check_seo,
     check_structure,
@@ -30,7 +31,6 @@ from ..models import QualityAuditReport
 from ..regex import LEET_TRANSLATION_TABLE, build_audit_regex_set
 from ..scoring import build_recommendations, calculate_score, evaluate_release_gate, status_from_score
 from .helpers import (
-    check_url,
     classify_speed,
     close_driver,
     collect_metrics,
@@ -441,7 +441,7 @@ class QualityAuditor:
                 html_lines=html_lines,
                 issues=image_issues,
                 is_banned_fn=is_banned_url,
-                check_url_fn=lambda url, **kwargs: check_url(self._session, url, **kwargs),
+                check_url_fn=lambda url, **kwargs: check_network.check_url(self._session, url, **kwargs),
                 classify_speed_fn=classify_speed,
                 find_line_fn=find_line,
             )
@@ -459,7 +459,7 @@ class QualityAuditor:
                 issues=link_issues,
                 crawl_stats=crawl_stats,
                 is_banned_fn=is_banned_url,
-                check_url_fn=lambda url, **kwargs: check_url(self._session, url, **kwargs),
+                check_url_fn=lambda url, **kwargs: check_network.check_url(self._session, url, **kwargs),
                 classify_speed_fn=classify_speed,
                 find_line_fn=find_line,
                 blocked_admin_segments=settings.AUDIT_ADMIN_PROBE_PATHS,
@@ -474,7 +474,7 @@ class QualityAuditor:
                 html_lines=html_lines,
                 issues=button_issues,
                 is_banned_fn=is_banned_url,
-                check_url_fn=lambda url, **kwargs: check_url(self._session, url, **kwargs),
+                check_url_fn=lambda url, **kwargs: check_network.check_url(self._session, url, **kwargs),
                 classify_speed_fn=classify_speed,
                 find_line_fn=find_line,
                 blocked_admin_segments=settings.AUDIT_ADMIN_PROBE_PATHS,
@@ -492,7 +492,7 @@ class QualityAuditor:
                 asset_stats=asset_stats,
                 recommendations=recommendations,
                 is_banned_fn=is_banned_url,
-                check_url_fn=lambda url, **kwargs: check_url(self._session, url, **kwargs),
+                check_url_fn=lambda url, **kwargs: check_network.check_url(self._session, url, **kwargs),
                 classify_speed_fn=classify_speed,
                 find_line_fn=find_line,
             )
